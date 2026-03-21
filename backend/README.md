@@ -54,7 +54,11 @@ backend/
 
 ## 🛠️ Cài đặt & Chạy
 
-Chạy cả API + PostgreSQL chỉ với 1 lệnh:
+Chạy cả API + PostgreSQL:
+
+```bash
+cp .env.example .env
+```
 
 ```bash
 docker compose up --build
