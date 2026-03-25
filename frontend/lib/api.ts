@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import { router } from 'expo-router';
 import { Platform } from 'react-native';
 
 import { getAccessToken } from '@/lib/session';
@@ -114,6 +115,11 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      router.replace('/login');
+      throw new Error('Phiên đăng nhập hết hạn');
+    }
+
     let message = `Request failed with status ${response.status}`;
 
     try {
