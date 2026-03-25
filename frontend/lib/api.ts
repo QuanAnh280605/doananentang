@@ -1,6 +1,8 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
+import { getAccessToken } from '@/lib/session';
+
 const FALLBACK_PORT = '8000';
 const LOCALHOST_API_URL = `http://localhost:${FALLBACK_PORT}`;
 
@@ -96,13 +98,19 @@ export const API_URL = apiConfig.url;
 export const API_URL_SOURCE = apiConfig.source;
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = getAccessToken();
+  const headers = new Headers(init?.headers);
+
+  headers.set('Accept', 'application/json');
+  headers.set('Content-Type', 'application/json');
+
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      ...init?.headers,
-    },
+    headers,
   });
 
   if (!response.ok) {

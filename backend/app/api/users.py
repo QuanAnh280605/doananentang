@@ -1,9 +1,10 @@
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.core.database import get_db
-from app.crud.user import create_user, get_user_by_email, get_user_by_id, list_users
+from app.crud.user import create_user, get_user_by_email, get_user_by_id, get_user_by_phone, list_users
 from app.schemas.user import UserCreate, UserRead
 
 router = APIRouter()
@@ -11,11 +12,19 @@ router = APIRouter()
 
 @router.post('', response_model=UserRead, status_code=status.HTTP_201_CREATED)
 def create_user_endpoint(payload: UserCreate, db: Session = Depends(get_db)) -> UserRead:
-  existing_user = get_user_by_email(db, payload.email)
-  if existing_user is not None:
+  if payload.email is not None and get_user_by_email(db, str(payload.email)) is not None:
     raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Email already exists')
+  if payload.phone is not None and get_user_by_phone(db, payload.phone) is not None:
+    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Phone already exists')
 
-  user = create_user(db, payload)
+  try:
+    user = create_user(db, payload)
+  except IntegrityError as error:
+    if payload.email is not None and get_user_by_email(db, str(payload.email)) is not None:
+      raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Email already exists') from error
+    if payload.phone is not None and get_user_by_phone(db, payload.phone) is not None:
+      raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Phone already exists') from error
+    raise
   return UserRead.model_validate(user)
 
 

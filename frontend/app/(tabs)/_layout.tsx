@@ -13,11 +13,7 @@ export default function TabLayout() {
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopColor: '#E2E8F0',
-          height: 64,
-          paddingBottom: 8,
-          paddingTop: 8,
+          display: 'none',
         },
         tabBarLabelStyle: {
           fontSize: 12,
@@ -34,6 +30,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="explore"
         options={{
+          href: null,
           title: 'Explore',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
         }}

@@ -76,6 +76,29 @@ Truy cập tài liệu API tự động tại: `http://localhost:8000/docs`
 
 ---
 
+## 🔐 Authentication
+
+Backend hiện hỗ trợ auth cơ bản với JWT access token:
+
+- `POST /api/auth/register` — tạo tài khoản bằng `contact` (email hoặc phone), `password`, `first_name`, `last_name`, `birth_date`, `gender`
+- `POST /api/auth/login` — đăng nhập bằng `identifier` (email hoặc phone) + `password`
+- `GET /api/auth/me` — lấy thông tin user hiện tại qua Bearer token
+
+Ví dụ payload đăng ký:
+
+```json
+{
+  "contact": "alice@example.com",
+  "password": "secret123",
+  "first_name": "Alice",
+  "last_name": "Example",
+  "birth_date": "2000-01-02",
+  "gender": "female"
+}
+```
+
+---
+
 ## 🗄️ Database & Migration
 
 ### Tạo migration mới
@@ -152,6 +175,9 @@ pytest -v
 | `APP_HOST` | `0.0.0.0` | Host binding |
 | `APP_PORT` | `8000` | Port của server |
 | `DATABASE_URL` | `postgresql+psycopg://...` | Connection string đến PostgreSQL |
+| `JWT_SECRET_KEY` | `change-me` | Secret key dùng để ký access token |
+| `JWT_ALGORITHM` | `HS256` | Thuật toán ký JWT |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | Thời gian sống access token |
 
 ---
 
