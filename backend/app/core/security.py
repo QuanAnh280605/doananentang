@@ -39,10 +39,33 @@ def create_access_token(subject: str) -> str:
   payload: dict[str, Any] = {
     'sub': subject,
     'exp': expires_at,
+    'type': 'access_token'
   }
   return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
 
 def decode_access_token(token: str) -> dict[str, Any]:
   settings = get_settings()
-  return jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+  payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+  if payload['type'] != 'access_token':
+    raise ValueError('Invalid token type')
+  return payload
+
+
+def create_reset_token(email: str) -> str:
+    settings = get_settings()
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=30)
+    payload = {
+        "sub": email,
+        "exp": expires_at,
+        "type": "reset_password"
+    }
+    return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+
+
+def decode_reset_token(token: str) -> dict[str, Any]:
+    settings = get_settings()
+    payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+    if payload['type'] != 'reset_password':
+        raise ValueError('Invalid token type')
+    return payload

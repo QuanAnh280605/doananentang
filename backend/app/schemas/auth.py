@@ -46,3 +46,7 @@ class AuthResponse(BaseModel):
   access_token: str
   token_type: str = 'bearer'
   user: UserRead
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password: str

@@ -127,6 +127,12 @@ export default function RegisterScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successUser, setSuccessUser] = useState<AuthUser | null>(null);
 
+  function clearErrorOnChange() {
+    if (errorMessage) {
+      setErrorMessage(null);
+    }
+  }
+
   if (getAccessToken()) {
     return <Redirect href="/(tabs)" />;
   }
@@ -182,7 +188,10 @@ export default function RegisterScreen() {
                 <View className={isLargeScreen ? 'flex-1' : ''}>
                   <TextInput
                     className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-base text-slate-900"
-                    onChangeText={setFirstName}
+                    onChangeText={(value) => {
+                      setFirstName(value);
+                      clearErrorOnChange();
+                    }}
                     placeholder="First name"
                     placeholderTextColor="#64748B"
                     value={firstName}
@@ -191,7 +200,10 @@ export default function RegisterScreen() {
                 <View className={isLargeScreen ? 'flex-1' : ''}>
                   <TextInput
                     className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-base text-slate-900"
-                    onChangeText={setLastName}
+                    onChangeText={(value) => {
+                      setLastName(value);
+                      clearErrorOnChange();
+                    }}
                     placeholder="Last name"
                     placeholderTextColor="#64748B"
                     value={lastName}
@@ -202,7 +214,10 @@ export default function RegisterScreen() {
               <TextInput
                 autoCapitalize="none"
                 className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-base text-slate-900"
-                onChangeText={setContact}
+                onChangeText={(value) => {
+                  setContact(value);
+                  clearErrorOnChange();
+                }}
                 placeholder="Email or mobile number"
                 placeholderTextColor="#64748B"
                 value={contact}
@@ -211,7 +226,10 @@ export default function RegisterScreen() {
               <TextInput
                 autoCapitalize="none"
                 className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-base text-slate-900"
-                onChangeText={setPassword}
+                onChangeText={(value) => {
+                  setPassword(value);
+                  clearErrorOnChange();
+                }}
                 placeholder="Password"
                 placeholderTextColor="#64748B"
                 secureTextEntry
@@ -220,7 +238,10 @@ export default function RegisterScreen() {
 
               <TextInput
                 className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-base text-slate-900"
-                onChangeText={setBirthDate}
+                onChangeText={(value) => {
+                  setBirthDate(value);
+                  clearErrorOnChange();
+                }}
                 placeholder="Date of birth (DD/MM/YYYY or YYYY-MM-DD)"
                 placeholderTextColor="#64748B"
                 value={birthDate}
@@ -256,7 +277,11 @@ export default function RegisterScreen() {
               </ThemedText>
             </Pressable>
 
-            {errorMessage ? <ThemedText className="mt-3 text-sm text-rose-600">{errorMessage}</ThemedText> : null}
+            {errorMessage ? (
+              <ThemedView className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
+                <ThemedText className="text-sm font-semibold text-rose-700">{errorMessage}</ThemedText>
+              </ThemedView>
+            ) : null}
             {successUser ? (
               <ThemedView className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
                 <ThemedText className="text-sm font-semibold text-emerald-700">

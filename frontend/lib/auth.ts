@@ -44,6 +44,19 @@ export type LoginRequest = {
   password: string;
 };
 
+export type ForgotPasswordRequest = {
+  email: string;
+};
+
+export type ResetPasswordRequest = {
+  token: string;
+  new_password: string;
+};
+
+export type MessageResponse = {
+  message: string;
+};
+
 function normalizeText(value: string): string {
   return value.trim();
 }
@@ -86,6 +99,19 @@ export function buildLoginRequest(identifier: string, password: string): LoginRe
   };
 }
 
+export function buildForgotPasswordRequest(email: string): ForgotPasswordRequest {
+  return {
+    email: normalizeText(email),
+  };
+}
+
+export function buildResetPasswordRequest(token: string, newPassword: string): ResetPasswordRequest {
+  return {
+    token: normalizeText(token),
+    new_password: newPassword,
+  };
+}
+
 export { getAccessToken, setAccessToken } from '@/lib/session';
 
 export async function registerUser(payload: RegisterRequest): Promise<AuthResponse> {
@@ -115,4 +141,25 @@ export async function fetchCurrentUser(): Promise<AuthUser> {
   }
 
   return apiFetch<AuthUser>('/api/auth/me');
+}
+
+export async function requestPasswordReset(payload: ForgotPasswordRequest): Promise<MessageResponse> {
+  const params = new URLSearchParams({
+    email: payload.email,
+  });
+
+  return apiFetch<MessageResponse>(`/api/auth/forgot-password?${params}`, {
+    method: 'POST',
+  });
+}
+
+export async function resetPassword(payload: ResetPasswordRequest): Promise<MessageResponse> {
+  const params = new URLSearchParams({
+    token: payload.token,
+    password: payload.new_password,
+  });
+
+  return apiFetch<MessageResponse>(`/api/auth/reset-password?${params}`, {
+    method: 'POST',
+  });
 }

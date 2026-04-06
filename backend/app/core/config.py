@@ -8,11 +8,23 @@ class Settings(BaseSettings):
   app_env: str = 'development'
   app_host: str = '0.0.0.0'
   app_port: int = 8000
+  
   database_url: str = 'postgresql+psycopg://postgres:postgres@localhost:5433/doananentang'
   cors_origins: str = 'http://localhost:8081,http://127.0.0.1:8081,http://localhost:19006,http://127.0.0.1:19006'
+
   jwt_secret_key: str = 'dev-secret-key-change-me'
   jwt_algorithm: str = 'HS256'
   access_token_expire_minutes: int = 60
+
+  frontend_base_url: str = 'http://localhost:8081'
+
+  smtp_host: str = 'smtp.gmail.com'
+  smtp_port: int = 587
+  smtp_username: str = 'quanna.tmi@gmail.com'
+  smtp_password: str = 'your-app-password'
+  smtp_from_email: str = 'quanna.tmi@gmail.com'
+  smtp_use_starttls: bool = True
+  smtp_use_tls: bool = False
 
   model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')
 

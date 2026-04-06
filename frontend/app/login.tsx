@@ -167,7 +167,11 @@ function LoginCard({
         </ThemedText>
       </Pressable>
 
-      {errorMessage ? <ThemedText className="mt-3 text-sm text-rose-600">{errorMessage}</ThemedText> : null}
+      {errorMessage ? (
+        <ThemedView className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
+          <ThemedText className="text-sm font-semibold text-rose-700">{errorMessage}</ThemedText>
+        </ThemedView>
+      ) : null}
       {successUser ? (
         <ThemedView className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
           <ThemedText className="text-sm font-semibold text-emerald-700">
@@ -179,9 +183,11 @@ function LoginCard({
         </ThemedView>
       ) : null}
 
-      <Pressable className="mt-4 self-center px-3 py-2">
-        <ThemedText className="text-sm font-semibold text-[#1877F2]">Forgotten password?</ThemedText>
-      </Pressable>
+      <Link asChild href="/forgot-password">
+        <Pressable className="mt-4 self-center px-3 py-2">
+          <ThemedText className="text-sm font-semibold text-[#1877F2]">Forgotten password?</ThemedText>
+        </Pressable>
+      </Link>
 
       <View className={`border-t border-slate-200 ${isLargeScreen ? 'mt-5 pt-5' : 'mt-4 pt-4'}`}>
         <Link asChild href="/register">
@@ -253,8 +259,18 @@ export default function LoginScreen() {
               identifier={identifier}
               onSubmit={handleLogin}
               password={password}
-              setIdentifier={setIdentifier}
-              setPassword={setPassword}
+              setIdentifier={(value) => {
+                setIdentifier(value);
+                if (errorMessage) {
+                  setErrorMessage(null);
+                }
+              }}
+              setPassword={(value) => {
+                setPassword(value);
+                if (errorMessage) {
+                  setErrorMessage(null);
+                }
+              }}
               successUser={successUser}
             />
           </View>
