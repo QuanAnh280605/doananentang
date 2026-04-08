@@ -1,5 +1,5 @@
 import { apiFetch } from '@/lib/api';
-import { getAccessToken, setAccessToken } from '@/lib/session';
+import { clearAuthTokens, getAccessToken, getRefreshToken, setAuthTokens } from '@/lib/session';
 
 export type GenderValue = 'female' | 'male' | 'custom';
 
@@ -17,6 +17,7 @@ export type AuthUser = {
 
 export type AuthResponse = {
   access_token: string;
+  refresh_token: string;
   token_type: 'bearer';
   user: AuthUser;
 };
@@ -112,7 +113,7 @@ export function buildResetPasswordRequest(token: string, newPassword: string): R
   };
 }
 
-export { getAccessToken, setAccessToken } from '@/lib/session';
+export { clearAuthTokens, getAccessToken, getRefreshToken, setAuthTokens } from '@/lib/session';
 
 export async function registerUser(payload: RegisterRequest): Promise<AuthResponse> {
   const response = await apiFetch<AuthResponse>('/api/auth/register', {
@@ -120,7 +121,7 @@ export async function registerUser(payload: RegisterRequest): Promise<AuthRespon
     body: JSON.stringify(payload),
   });
 
-  await setAccessToken(response.access_token);
+  await setAuthTokens(response.access_token, response.refresh_token);
   return response;
 }
 
@@ -130,17 +131,27 @@ export async function loginUser(payload: LoginRequest): Promise<AuthResponse> {
     body: JSON.stringify(payload),
   });
 
-  await setAccessToken(response.access_token);
+  await setAuthTokens(response.access_token, response.refresh_token);
   return response;
 }
 
 export async function fetchCurrentUser(): Promise<AuthUser> {
-  const token = getAccessToken();
-  if (!token) {
-    throw new Error('No active access token');
-  }
-
   return apiFetch<AuthUser>('/api/auth/me');
+}
+
+export async function logoutUser(): Promise<void> {
+  const refreshToken = await getRefreshToken();
+
+  try {
+    if (refreshToken) {
+      await apiFetch<void>('/api/auth/logout', {
+        method: 'POST',
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+    }
+  } finally {
+    await clearAuthTokens();
+  }
 }
 
 export async function requestPasswordReset(payload: ForgotPasswordRequest): Promise<MessageResponse> {
