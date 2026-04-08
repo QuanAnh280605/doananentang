@@ -15,6 +15,7 @@ class Settings(BaseSettings):
   jwt_secret_key: str = 'dev-secret-key-change-me'
   jwt_algorithm: str = 'HS256'
   access_token_expire_minutes: int = 60
+  refresh_token_expire_days: int = 7
 
   frontend_base_url: str = 'http://localhost:8081'
 

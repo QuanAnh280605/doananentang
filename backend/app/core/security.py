@@ -4,6 +4,7 @@ import hmac
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from uuid import uuid4
 
 import jwt
 
@@ -39,7 +40,9 @@ def create_access_token(subject: str) -> str:
   payload: dict[str, Any] = {
     'sub': subject,
     'exp': expires_at,
-    'type': 'access_token'
+    'iat': datetime.now(timezone.utc),
+    'jti': str(uuid4()),
+    'type': 'access_token',
   }
   return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
@@ -50,6 +53,33 @@ def decode_access_token(token: str) -> dict[str, Any]:
   if payload['type'] != 'access_token':
     raise ValueError('Invalid token type')
   return payload
+
+
+def create_refresh_token(subject: str, token_id: str) -> str:
+  settings = get_settings()
+  issued_at = datetime.now(timezone.utc)
+  expires_at = issued_at + timedelta(days=settings.refresh_token_expire_days)
+  payload: dict[str, Any] = {
+    'sub': subject,
+    'exp': expires_at,
+    'iat': issued_at,
+    'jti': token_id,
+    'type': 'refresh_token',
+  }
+  return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+
+
+def decode_refresh_token(token: str) -> dict[str, Any]:
+  settings = get_settings()
+  payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+  if payload['type'] != 'refresh_token':
+    raise ValueError('Invalid token type')
+  return payload
+
+
+def hash_token(token: str) -> str:
+  settings = get_settings()
+  return hmac.new(settings.jwt_secret_key.encode('utf-8'), token.encode('utf-8'), hashlib.sha256).hexdigest()
 
 
 def create_reset_token(email: str) -> str:

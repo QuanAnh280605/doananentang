@@ -1,3 +1,9 @@
+from datetime import datetime, timezone
+import hmac
+import logging
+from uuid import uuid4
+
+import jwt
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -6,15 +12,31 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from app.api.deps import get_current_user
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.security import create_access_token, verify_password, create_reset_token, decode_reset_token, hash_password
+from app.core.security import (
+  create_access_token,
+  create_refresh_token,
+  create_reset_token,
+  decode_refresh_token,
+  decode_reset_token,
+  hash_password,
+  hash_token,
+  verify_password,
+)
 from app.crud.auth import create_user_from_register, get_authenticated_user
+from app.crud.refresh_session import (
+  create_refresh_session,
+  delete_expired_refresh_sessions,
+  get_refresh_session_by_token_id,
+  revoke_refresh_session,
+)
 from app.crud.user import create_user, get_user_by_email, get_user_by_phone
 from app.models.user import User
-from app.schemas.auth import AuthResponse, LoginRequest, RegisterRequest
+from app.schemas.auth import AuthResponse, LoginRequest, RefreshTokenRequest, RegisterRequest
 from app.schemas.user import UserRead
 from app.services.email import send_email
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def _raise_for_duplicates(db: Session, *, email: str | None, phone: str | None) -> None:
@@ -24,9 +46,25 @@ def _raise_for_duplicates(db: Session, *, email: str | None, phone: str | None) 
     raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Phone already exists')
 
 
-def _build_auth_response(user: User) -> AuthResponse:
+def _raise_invalid_credentials() -> HTTPException:
+  return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid credentials')
+
+
+def _build_auth_response(db: Session, user: User) -> AuthResponse:
+  delete_expired_refresh_sessions(db)
+  token_id = str(uuid4())
+  refresh_token = create_refresh_token(str(user.id), token_id)
+  refresh_payload = decode_refresh_token(refresh_token)
+  create_refresh_session(
+    db,
+    user_id=user.id,
+    token_id=token_id,
+    token_hash=hash_token(refresh_token),
+    expires_at=datetime.fromtimestamp(refresh_payload['exp'], tz=timezone.utc),
+  )
   return AuthResponse(
     access_token=create_access_token(str(user.id)),
+    refresh_token=refresh_token,
     user=UserRead.model_validate(user),
   )
 
@@ -59,7 +97,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> AuthRes
       email=str(user_payload.email) if user_payload.email is not None else None,
       phone=user_payload.phone,
     ) from error
-  return _build_auth_response(user)
+  return _build_auth_response(db, user)
 
 
 @router.post('/login', response_model=AuthResponse)
@@ -70,8 +108,69 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> AuthResponse:
     raise _create_validation_exception(str(error)) from error
 
   if user is None or not verify_password(payload.password, user.hashed_password):
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid credentials')
-  return _build_auth_response(user)
+    raise _raise_invalid_credentials()
+  return _build_auth_response(db, user)
+
+
+@router.post('/refresh', response_model=AuthResponse)
+def refresh_tokens(payload: RefreshTokenRequest, db: Session = Depends(get_db)) -> AuthResponse:
+  try:
+    token_payload = decode_refresh_token(payload.refresh_token)
+    token_id = str(token_payload['jti'])
+    subject = str(token_payload['sub'])
+  except (jwt.InvalidTokenError, KeyError, TypeError, ValueError):
+    raise _raise_invalid_credentials()
+
+  session = get_refresh_session_by_token_id(db, token_id)
+  if session is None or not hmac.compare_digest(session.token_hash, hash_token(payload.refresh_token)):
+    raise _raise_invalid_credentials()
+
+  if not revoke_refresh_session(db, token_id, commit=False):
+    db.rollback()
+    raise _raise_invalid_credentials()
+
+  if not subject.isdigit():
+    db.rollback()
+    raise _raise_invalid_credentials()
+  user = db.get(User, int(subject))
+  if user is None:
+    db.rollback()
+    raise _raise_invalid_credentials()
+
+  new_token_id = str(uuid4())
+  refresh_token = create_refresh_token(str(user.id), new_token_id)
+  refresh_payload = decode_refresh_token(refresh_token)
+  create_refresh_session(
+    db,
+    user_id=user.id,
+    token_id=new_token_id,
+    token_hash=hash_token(refresh_token),
+    expires_at=datetime.fromtimestamp(refresh_payload['exp'], tz=timezone.utc),
+    commit=False,
+  )
+  db.commit()
+
+  return AuthResponse(
+    access_token=create_access_token(str(user.id)),
+    refresh_token=refresh_token,
+    user=UserRead.model_validate(user),
+  )
+
+
+@router.post('/logout', status_code=status.HTTP_204_NO_CONTENT)
+def logout(payload: RefreshTokenRequest, db: Session = Depends(get_db)) -> None:
+  try:
+    token_payload = decode_refresh_token(payload.refresh_token)
+    token_id = str(token_payload['jti'])
+  except (jwt.InvalidTokenError, KeyError, TypeError, ValueError):
+    raise _raise_invalid_credentials()
+
+  session = get_refresh_session_by_token_id(db, token_id)
+  if session is None or not hmac.compare_digest(session.token_hash, hash_token(payload.refresh_token)):
+    raise _raise_invalid_credentials()
+  if not revoke_refresh_session(db, token_id):
+    raise _raise_invalid_credentials()
+  return None
 
 
 @router.get('/me', response_model=UserRead)
@@ -112,6 +211,9 @@ def reset_password(token: str, password: str, db: Session = Depends(get_db)):
     try:
         payload = decode_reset_token(token)
         email = payload["sub"]
+    except jwt.InvalidTokenError as error:
+        logger.warning('Rejected invalid or expired reset password token')
+        raise _create_validation_exception('Your reset password link is invalid or has expired') from error
     except (ValueError, KeyError) as error:
         raise _create_validation_exception(str(error)) from error
     user = get_user_by_email(db, email)

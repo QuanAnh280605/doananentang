@@ -7,7 +7,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import get_settings
 from app.models.base import Base
-from app.models import user  # noqa: F401
+from app.models import refresh_session, user  # noqa: F401
 
 config = context.config
 

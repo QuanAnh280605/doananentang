@@ -14,7 +14,7 @@ services:
       APP_ENV: ${APP_ENV}
       APP_HOST: ${APP_HOST}
       APP_PORT: ${APP_PORT}
-      DATABASE_URL: ${DOCKER_DATABASE_URL}
+      DATABASE_URL: ${DATABASE_URL}
     ports:
       - '${APP_PORT}:${APP_PORT}'
     volumes:
