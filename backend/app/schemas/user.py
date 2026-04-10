@@ -53,9 +53,18 @@ class UserCreate(UserBase):
 
 class UserRead(UserBase):
   id: int
+  username: str | None = None
+  full_name: str | None = None
+  bio: str | None = None
+  avatar_url: str | None = None
   email: EmailStr | None = None
   phone: str | None = None
   created_at: datetime
   updated_at: datetime
 
   model_config = ConfigDict(from_attributes=True)
+
+class UserUpdate(BaseModel):
+  full_name: str | None = None
+  username: str | None = None
+  bio: str | None = None

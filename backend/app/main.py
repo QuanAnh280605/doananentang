@@ -1,10 +1,14 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.api.router import api_router
 from app.core.config import get_settings
 
 settings = get_settings()
+
+os.makedirs('uploads/avt', exist_ok=True)
 
 app = FastAPI(title=settings.app_name)
 app.add_middleware(
@@ -15,6 +19,7 @@ app.add_middleware(
   allow_headers=['*'],
 )
 app.include_router(api_router, prefix='/api')
+app.mount('/static', StaticFiles(directory='uploads'), name='static')
 
 
 @app.get('/', tags=['root'])

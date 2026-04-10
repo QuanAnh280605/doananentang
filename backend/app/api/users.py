@@ -1,3 +1,10 @@
+import os
+import shutil
+import uuid
+from fastapi import UploadFile, File
+from app.api.deps import get_current_user
+from app.models.user import User
+from app.schemas.user import UserUpdate
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -41,3 +48,47 @@ def get_user_endpoint(user_id: int, db: Session = Depends(get_db)) -> UserRead:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found')
 
   return UserRead.model_validate(user)
+
+@router.get('/me', response_model=UserRead)
+def get_current_user_profile(current_user: User = Depends(get_current_user)) -> UserRead:
+  """Lấy thông tin của chính mình (đã đăng nhập)"""
+  return UserRead.model_validate(current_user)
+@router.patch('/me', response_model=UserRead)
+def update_user_profile(
+  payload: UserUpdate, 
+  current_user: User = Depends(get_current_user),
+  db: Session = Depends(get_db)
+) -> UserRead:
+  """Cập nhật thông tin hồ sơ"""
+  # Chỉ cập nhật các trường được gửi lên
+  update_data = payload.model_dump(exclude_unset=True)
+  for field, value in update_data.items():
+    setattr(current_user, field, value)
+    
+  db.commit()
+  db.refresh(current_user)
+  return UserRead.model_validate(current_user)
+@router.post('/me/avatar')
+def upload_avatar(
+  file: UploadFile = File(...),
+  current_user: User = Depends(get_current_user),
+  db: Session = Depends(get_db)
+):
+  """Tải lên ảnh đại diện và lưu vào cơ sở dữ liệu"""
+  if not file.content_type.startswith("image/"):
+    raise HTTPException(status_code=400, detail="File must be an image")
+  
+  file_ext = file.filename.split(".")[-1]
+  new_filename = f"{current_user.id}_{uuid.uuid4().hex}.{file_ext}"
+  file_path = f"uploads/avatars/{new_filename}"
+  
+  with open(file_path, "wb") as buffer:
+    shutil.copyfileobj(file.file, buffer)
+  
+  # Cập nhật đường dẫn vào thư mục public local
+  avatar_url = f"/static/avatars/{new_filename}"
+  current_user.avatar_url = avatar_url
+  db.commit()
+  db.refresh(current_user)
+  
+  return {"message": "Tải ảnh lên thành công", "avatar_url": avatar_url}

@@ -12,7 +12,10 @@ class User(Base):
     CheckConstraint('email IS NOT NULL OR phone IS NOT NULL', name='ck_users_email_or_phone'),
     CheckConstraint("gender IN ('female', 'male', 'custom')", name='ck_users_gender'),
   )
-
+  username: Mapped[str | None] = mapped_column(String(50), unique=True, index=True, nullable=True)
+  full_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+  bio: Mapped[str | None] = mapped_column(String(500), nullable=True)
+  avatar_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
   id: Mapped[int] = mapped_column(primary_key=True, index=True)
   email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
   phone: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True)
