@@ -5,7 +5,7 @@ import { View } from 'react-native';
 import 'react-native-reanimated';
 
 import { ToastProvider } from '@/components/toast/ToastProvider';
-import { hydrateAccessToken } from '@/lib/session';
+import { restoreAuthSession } from '@/lib/api';
 
 import '../global.css';
 
@@ -19,7 +19,7 @@ export default function RootLayout() {
   useEffect(() => {
     let isMounted = true;
 
-    hydrateAccessToken().finally(() => {
+    restoreAuthSession().finally(() => {
       if (isMounted) {
         setIsAuthReady(true);
       }

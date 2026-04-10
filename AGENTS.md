@@ -74,7 +74,7 @@
 - Chạy backend bằng Docker: `docker run --env-file .env -p 8000:8000 doananentang-backend`
 - Chạy cả API + DB bằng Compose: `docker compose up --build api db`
 - Compose đọc biến môi trường từ `backend/.env`.
-- `DATABASE_URL` dùng cho local run từ host; `DOCKER_DATABASE_URL` dùng cho service `api` trong Compose.
+- `DATABASE_URL` dùng cho local run từ host; `DATABASE_URL` dùng cho service `api` trong Compose.
 - Compose expose API backend ở cổng `8001` để tránh xung đột cổng `8000` trên máy host.
 
 ## Build

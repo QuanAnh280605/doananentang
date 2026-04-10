@@ -107,14 +107,13 @@ export default function ResetPasswordScreen() {
       setErrorMessage(null);
       const payload = buildResetPasswordRequest(resolvedToken, newPassword);
       const response = await resetPassword(payload);
-      const message = response.message?.trim() || 'Đổi mật khẩu thành công';
+      const message = response.message?.trim() || 'Password reset successfully';
       toast.success(message);
       router.replace('/(tabs)');
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : 'Unable to reset password right now';
       setErrorMessage(message);
-      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }

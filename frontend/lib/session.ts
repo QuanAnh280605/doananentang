@@ -3,58 +3,59 @@ import { jwtDecode } from 'jwt-decode';
 import { Platform } from 'react-native';
 
 const ACCESS_TOKEN_STORAGE_KEY = 'auth.accessToken';
+const REFRESH_TOKEN_STORAGE_KEY = 'auth.refreshToken';
 
 let accessToken: string | null = null;
 
-function readWebAccessToken(): string | null {
+function readWebToken(storageKey: string): string | null {
   if (typeof localStorage === 'undefined') {
     return null;
   }
 
-  return localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);
+  return localStorage.getItem(storageKey);
 }
 
-function writeWebAccessToken(token: string | null): void {
+function writeWebToken(storageKey: string, token: string | null): void {
   if (typeof localStorage === 'undefined') {
     return;
   }
 
   if (token === null) {
-    localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+    localStorage.removeItem(storageKey);
     return;
   }
 
-  localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, token);
+  localStorage.setItem(storageKey, token);
 }
 
-async function readPersistedAccessToken(): Promise<string | null> {
+async function readPersistedToken(storageKey: string): Promise<string | null> {
   try {
     if (Platform.OS === 'web') {
-      return readWebAccessToken();
+      return readWebToken(storageKey);
     }
 
-    return await SecureStore.getItemAsync(ACCESS_TOKEN_STORAGE_KEY);
+    return await SecureStore.getItemAsync(storageKey);
   } catch (error) {
-    console.warn('Unable to restore access token', error);
+    console.warn(`Unable to restore token for ${storageKey}`, error);
     return null;
   }
 }
 
-async function writePersistedAccessToken(token: string | null): Promise<void> {
+async function writePersistedToken(storageKey: string, token: string | null): Promise<void> {
   try {
     if (Platform.OS === 'web') {
-      writeWebAccessToken(token);
+      writeWebToken(storageKey, token);
       return;
     }
 
     if (token === null) {
-      await SecureStore.deleteItemAsync(ACCESS_TOKEN_STORAGE_KEY);
+      await SecureStore.deleteItemAsync(storageKey);
       return;
     }
 
-    await SecureStore.setItemAsync(ACCESS_TOKEN_STORAGE_KEY, token);
+    await SecureStore.setItemAsync(storageKey, token);
   } catch (error) {
-    console.warn('Unable to persist access token', error);
+    console.warn(`Unable to persist token for ${storageKey}`, error);
   }
 }
 
@@ -77,14 +78,26 @@ export function getAccessToken(): string | null {
   return accessToken;
 }
 
+export async function getRefreshToken(): Promise<string | null> {
+  const token = await readPersistedToken(REFRESH_TOKEN_STORAGE_KEY);
+  if (!isTokenValid(token)) {
+    if (token !== null) {
+      await writePersistedToken(REFRESH_TOKEN_STORAGE_KEY, null);
+    }
+    return null;
+  }
+
+  return token;
+}
+
 export async function hydrateAccessToken(): Promise<string | null> {
-  const token = await readPersistedAccessToken();
+  const token = await readPersistedToken(ACCESS_TOKEN_STORAGE_KEY);
   if (isTokenValid(token)) {
     accessToken = token;
   } else {
     accessToken = null;
     if (token !== null) {
-      await writePersistedAccessToken(null);
+      await writePersistedToken(ACCESS_TOKEN_STORAGE_KEY, null);
     }
   }
   return accessToken;
@@ -92,5 +105,17 @@ export async function hydrateAccessToken(): Promise<string | null> {
 
 export async function setAccessToken(token: string | null): Promise<void> {
   accessToken = token;
-  await writePersistedAccessToken(token);
+  await writePersistedToken(ACCESS_TOKEN_STORAGE_KEY, token);
+}
+
+export async function setAuthTokens(nextAccessToken: string | null, refreshToken: string | null): Promise<void> {
+  accessToken = nextAccessToken;
+  await Promise.all([
+    writePersistedToken(ACCESS_TOKEN_STORAGE_KEY, nextAccessToken),
+    writePersistedToken(REFRESH_TOKEN_STORAGE_KEY, refreshToken),
+  ]);
+}
+
+export async function clearAuthTokens(): Promise<void> {
+  await setAuthTokens(null, null);
 }
