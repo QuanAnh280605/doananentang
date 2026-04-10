@@ -5,172 +5,168 @@ import { ScrollView, View, useWindowDimensions } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
-type ShortcutItem = {
+type Shortcut = {
   icon: keyof typeof MaterialIcons.glyphMap;
   label: string;
-  tone: string;
 };
 
-type StoryItem = {
+type Story = {
   id: string;
-  name: string;
-  accent: string;
-  image: string;
+  title: string;
+  time: string;
+  fill: string;
+  initials: string;
 };
 
-type PostItem = {
+type Post = {
   id: string;
   author: string;
-  group: string;
   time: string;
   caption: string;
-  image: string;
-  stats: string;
+  reactions: string;
+  meta: string;
 };
 
-const shortcuts: ShortcutItem[] = [
-  { icon: 'smart-toy', label: 'Meta AI', tone: 'bg-violet-500' },
-  { icon: 'groups', label: 'Ban be', tone: 'bg-sky-500' },
-  { icon: 'space-dashboard', label: 'Bang dieu khien', tone: 'bg-indigo-500' },
-  { icon: 'history', label: 'Ky niem', tone: 'bg-cyan-500' },
-  { icon: 'bookmark', label: 'Da luu', tone: 'bg-pink-500' },
-  { icon: 'group-work', label: 'Nhom', tone: 'bg-blue-500' },
-  { icon: 'smart-display', label: 'Video', tone: 'bg-teal-500' },
+type Contact = {
+  name: string;
+  status: string;
+  initials: string;
+};
+
+type InboxItem = {
+  name: string;
+  message: string;
+  initials: string;
+  unread?: boolean;
+};
+
+const shortcuts: Shortcut[] = [
+  { icon: 'home-filled', label: 'Home' },
+  { icon: 'bookmark-border', label: 'Saved sets' },
+  { icon: 'autorenew', label: 'Circle updates' },
 ];
 
-const stories: StoryItem[] = [
-  { id: 'create', name: 'Tao tin', accent: 'bg-slate-200', image: 'bg-gradient-to-b from-slate-200 to-slate-400' },
-  { id: '1', name: 'Truong Tuan Tu', accent: 'bg-cyan-500', image: 'bg-gradient-to-b from-sky-100 to-sky-300' },
-  { id: '2', name: 'Day Gieng', accent: 'bg-sky-500', image: 'bg-gradient-to-b from-emerald-100 to-emerald-300' },
-  { id: '3', name: 'Tuan Anh', accent: 'bg-blue-500', image: 'bg-gradient-to-b from-amber-100 to-orange-300' },
-  { id: '4', name: 'Khanh Vy', accent: 'bg-fuchsia-500', image: 'bg-gradient-to-b from-fuchsia-100 to-violet-300' },
-  { id: '5', name: 'Nguyen Huu Tri', accent: 'bg-rose-500', image: 'bg-gradient-to-b from-rose-100 to-slate-300' },
+const stories: Story[] = [
+  { id: '1', title: 'Morning run club', time: '2h ago', fill: 'bg-[#66D575]', initials: 'MN' },
+  { id: '2', title: 'Desk setup refresh', time: '5h ago', fill: 'bg-[#874FFF]', initials: 'DS' },
+  { id: '3', title: 'Client moodboard', time: 'Yesterday', fill: 'bg-[#F24822]', initials: 'KM' },
 ];
 
-const posts: PostItem[] = [
+const posts: Post[] = [
   {
-    id: 'post-1',
-    author: 'J2TEAM Community',
-    group: 'Bao Nguyen',
-    time: '1 gio',
+    id: '1',
+    author: 'Lina Corbe',
+    time: '32 min ago',
     caption:
-      'Sau 4 nam ke tu nguoi choi Tran Dang Dang Khoa la nguoi thu 2 vuot qua cau 14, hom nay Nguyen Truong Giang tro thanh nguoi thu 3 lam duoc dieu do. Ban co theo doi gameshow toi qua khong?',
-    image: 'bg-gradient-to-br from-[#DDEAFF] via-[#BFD8FF] to-[#95BCFF]',
-    stats: '15K luot thich · 1.8K binh luan · 427 luot chia se',
+      'Wrapped an early prototype for the studio dashboard. The quieter version tested better than the busy one, so I pulled the motion back and kept the signal stronger.',
+    reactions: '384 reactions',
+    meta: '28 comments 6 shares',
   },
   {
-    id: 'post-2',
-    author: 'AI Engineering Community',
-    group: 'Quan tri vien',
-    time: '3 gio',
+    id: '2',
+    author: 'Rafi Mercer',
+    time: '1 hr ago',
     caption:
-      'Demo feed moi cho app mobile: top nav day du, story ngang va post card dang toi uu cho ca dien thoai lan tablet. Ban co muon bo sung khu vuc message nhanh o goc phai khong?',
-    image: 'bg-gradient-to-br from-[#E6F3FF] via-[#CBE3FF] to-[#B6F0D6]',
-    stats: '3.1K luot thich · 212 binh luan · 58 luot chia se',
+      'We cut the launch page into a lighter sequence and the handoff got noticeably faster. Posting the revised frame set for comments before lunch.',
+    reactions: '142 reactions',
+    meta: '17 comments 3 shares',
+  },
+  {
+    id: '3',
+    author: 'Aya Tran',
+    time: '3 hr ago',
+    caption:
+      'Collecting references for the May sprint. Drop one detail you think social products still get wrong: too much chrome, weak context, or noisy motion?',
+    reactions: '96 reactions',
+    meta: '54 comments 2 reposts',
   },
 ];
 
-function NavIcon({ name, active = false }: { name: keyof typeof MaterialIcons.glyphMap; active?: boolean }) {
+const contacts: Contact[] = [
+  { name: 'Ari Mendoza', status: 'Editing new campaign', initials: 'AM' },
+  { name: 'Nadia Elsner', status: 'Reviewing typography', initials: 'NE' },
+  { name: 'Jules Tate', status: 'In Riverside Studio', initials: 'JT' },
+  { name: 'Owen Ybarra', status: 'Exporting review clips', initials: 'OY' },
+];
+
+const inboxItems: InboxItem[] = [
+  { name: 'Rafi Mercer', message: 'Can you review the revised launch pacing?', initials: 'RM', unread: true },
+  { name: 'Aya Tran', message: 'Dropping sprint references in five minutes.', initials: 'AT' },
+  { name: 'Nadia Elsner', message: 'Shared fresh type comps for the thread.', initials: 'NE' },
+];
+
+const surfaceClass = 'rounded-[28px] border border-[#E4E8EE] bg-white';
+
+function Avatar({ initials, soft = false }: { initials: string; soft?: boolean }) {
   return (
-    <View
-      className={`h-11 w-11 items-center justify-center rounded-full ${active ? 'bg-[#E9F2FF]' : 'bg-[#EEF3FB]'}`}>
-      <MaterialIcons color={active ? '#1877F2' : '#475569'} name={name} size={22} />
+    <View className={`h-14 w-14 items-center justify-center rounded-[22px] ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`}>
+      <ThemedText className="text-base font-semibold tracking-[0.5px] text-slate-900">{initials}</ThemedText>
     </View>
   );
 }
 
-function ShortcutRow({ item }: { item: ShortcutItem }) {
+function ActionBubble({ icon, filled = false }: { icon: keyof typeof MaterialIcons.glyphMap; filled?: boolean }) {
   return (
-    <View className="flex-row items-center gap-3 rounded-2xl px-2 py-2">
-      <View className={`h-10 w-10 items-center justify-center rounded-full ${item.tone}`}>
-        <MaterialIcons color="#FFFFFF" name={item.icon} size={21} />
-      </View>
-      <ThemedText className="text-[15px] font-semibold text-slate-800">{item.label}</ThemedText>
+    <View className={`h-12 w-12 items-center justify-center rounded-[18px] ${filled ? 'bg-[#0A0A0A]' : 'bg-[#F7F8FA]'}`}>
+      <MaterialIcons color={filled ? '#FFFFFF' : '#666666'} name={icon} size={21} />
     </View>
   );
 }
 
-function StoryCard({ story, first }: { story: StoryItem; first?: boolean }) {
+function SectionCard({ title, rightLabel, children }: { title: string; rightLabel?: string; children: React.ReactNode }) {
   return (
-    <View
-      className={`h-48 overflow-hidden rounded-[18px] border border-[#D9E6FA] ${first ? 'w-28' : 'w-24'} ${story.image}`}>
-      <View className="flex-1 justify-between p-3">
-        <View className={`h-10 w-10 items-center justify-center rounded-full border-4 border-[#1877F2] ${story.accent}`}>
-          <MaterialIcons color="#FFFFFF" name={first ? 'add' : 'person'} size={first ? 22 : 18} />
-        </View>
-        <ThemedText className="text-sm font-semibold leading-5 text-slate-900">{story.name}</ThemedText>
+    <ThemedView className={`${surfaceClass} p-5`}>
+      <View className="flex-row items-center justify-between gap-3">
+        <ThemedText className="text-[22px] font-semibold text-slate-950">{title}</ThemedText>
+        {rightLabel ? <ThemedText className="text-sm text-slate-500">{rightLabel}</ThemedText> : null}
       </View>
-    </View>
-  );
-}
-
-function Composer() {
-  return (
-    <ThemedView className="rounded-[20px] border border-[#D9E6FA] bg-white p-4 shadow-sm shadow-slate-200">
-      <View className="flex-row items-center gap-3">
-        <View className="h-11 w-11 items-center justify-center rounded-full bg-slate-400">
-          <MaterialIcons color="#FFFFFF" name="person" size={24} />
-        </View>
-        <View className="flex-1 rounded-full bg-[#F1F5F9] px-4 py-3">
-          <ThemedText className="text-[15px] text-slate-500">Quan oi, ban dang nghi gi the?</ThemedText>
-        </View>
-        <View className="rounded-full bg-[#1877F2] px-5 py-3">
-          <ThemedText className="text-sm font-bold text-white">Lam moi</ThemedText>
-        </View>
-      </View>
-
-      <View className="mt-4 flex-row items-center justify-end gap-4 border-t border-[#E2E8F0] pt-3">
-        <MaterialIcons color="#F43F5E" name="videocam" size={22} />
-        <MaterialIcons color="#22C55E" name="collections" size={22} />
-        <MaterialIcons color="#FB7185" name="movie" size={22} />
-      </View>
+      <View className="mt-4 gap-3">{children}</View>
     </ThemedView>
   );
 }
 
-function PostCard({ post }: { post: PostItem }) {
+function ShortcutRow({ item }: { item: Shortcut }) {
   return (
-    <ThemedView className="overflow-hidden rounded-[20px] border border-[#D9E6FA] bg-white shadow-sm shadow-slate-200">
-      <View className="flex-row items-start justify-between gap-3 px-4 pb-3 pt-4">
-        <View className="flex-row gap-3">
-          <View className="h-11 w-11 items-center justify-center rounded-full bg-slate-500">
-            <MaterialIcons color="#FFFFFF" name="person" size={24} />
-          </View>
-          <View className="max-w-[78%]">
-            <ThemedText className="text-[17px] font-bold text-slate-900">{post.author}</ThemedText>
-            <ThemedText className="mt-1 text-sm text-slate-500">
-              {post.group} · {post.time}
-            </ThemedText>
-          </View>
-        </View>
+    <View className="flex-row items-center gap-4 rounded-[22px] bg-[#F7F8FA] px-4 py-4">
+      <View className="h-12 w-12 items-center justify-center rounded-[18px] bg-[#D9ECF8]">
+        <MaterialIcons color="#4A9FD8" name={item.icon} size={22} />
+      </View>
+      <ThemedText className="text-lg font-medium text-slate-900">{item.label}</ThemedText>
+    </View>
+  );
+}
 
-        <View className="flex-row gap-2">
-          <MaterialIcons color="#64748B" name="more-horiz" size={22} />
-          <MaterialIcons color="#64748B" name="close" size={22} />
+function StoryCard({ item }: { item: Story }) {
+  return (
+    <View className={`${item.fill} mr-4 w-[180px] overflow-hidden rounded-[28px] p-5`}>
+      <Avatar initials={item.initials} />
+      <View className="mt-24 gap-1">
+        <ThemedText className="text-lg font-semibold text-white">{item.title}</ThemedText>
+        <ThemedText className="text-sm text-white/80">{item.time}</ThemedText>
+      </View>
+    </View>
+  );
+}
+
+function ComposerCard() {
+  return (
+    <ThemedView className={`${surfaceClass} p-5`}>
+      <View className="flex-row items-center gap-4">
+        <Avatar initials="LC" soft />
+        <View className="flex-1 rounded-[24px] bg-[#F7F8FA] px-5 py-4">
+          <ThemedText className="text-base text-slate-500">Share a project update, a photo, or a thought</ThemedText>
         </View>
       </View>
 
-      <ThemedText className="px-4 pb-4 text-[15px] leading-6 text-slate-700">{post.caption}</ThemedText>
-
-      <View className={`h-72 items-center justify-center ${post.image}`}>
-        <View className="rounded-full bg-white/70 px-6 py-3">
-          <ThemedText className="text-lg font-bold text-slate-800">Facebook-style mock post</ThemedText>
-        </View>
-      </View>
-
-      <View className="px-4 pb-3 pt-3">
-        <ThemedText className="text-sm text-slate-500">{post.stats}</ThemedText>
-      </View>
-
-      <View className="flex-row border-t border-[#E2E8F0]">
+      <View className="mt-4 flex-row flex-wrap gap-3 border-t border-[#E4E8EE] pt-4">
         {[
-          ['thumb-up-off-alt', 'Thich'],
-          ['chat-bubble-outline', 'Binh luan'],
-          ['reply', 'Chia se'],
-        ].map(([icon, label]) => (
-          <View key={label} className="flex-1 flex-row items-center justify-center gap-2 px-2 py-3">
-            <MaterialIcons color="#64748B" name={icon as keyof typeof MaterialIcons.glyphMap} size={20} />
-            <ThemedText className="text-sm font-semibold text-slate-600">{label}</ThemedText>
+          ['videocam', 'Live', '#D05B5B'],
+          ['image', 'Photo', '#41A36D'],
+          ['edit-note', 'Write note', '#4A9FD8'],
+        ].map(([icon, label, color]) => (
+          <View key={label} className="min-w-[150px] flex-1 flex-row items-center justify-center gap-2 rounded-[20px] bg-[#F7F8FA] px-4 py-4">
+            <MaterialIcons color={color} name={icon as keyof typeof MaterialIcons.glyphMap} size={20} />
+            <ThemedText className="text-base font-medium text-slate-900">{label}</ThemedText>
           </View>
         ))}
       </View>
@@ -178,125 +174,219 @@ function PostCard({ post }: { post: PostItem }) {
   );
 }
 
-function SidebarCard({ title, children }: { title: string; children: React.ReactNode }) {
+function FeedPost({ item }: { item: Post }) {
   return (
-    <ThemedView className="rounded-[20px] border border-[#D9E6FA] bg-white p-4 shadow-sm shadow-slate-200">
-      <ThemedText className="text-lg font-bold text-slate-900">{title}</ThemedText>
-      <View className="mt-4 gap-3">{children}</View>
+    <ThemedView className={`${surfaceClass} p-5`}>
+      <View className="flex-row items-start justify-between gap-4">
+        <View className="flex-row items-center gap-4">
+          <Avatar initials={item.author.slice(0, 2).toUpperCase()} soft />
+          <View>
+            <ThemedText className="text-[21px] font-semibold text-slate-950">{item.author}</ThemedText>
+            <ThemedText className="text-sm text-slate-500">{item.time}</ThemedText>
+          </View>
+        </View>
+
+        <ActionBubble icon="more-horiz" />
+      </View>
+
+      <ThemedText className="mt-6 text-[16px] leading-7 text-slate-700">{item.caption}</ThemedText>
+
+      <View className="mt-5 h-[220px] rounded-[28px] bg-[#F7F8FA]" />
+
+      <View className="mt-4 flex-row items-center justify-between gap-3">
+        <ThemedText className="text-sm text-slate-500">{item.reactions}</ThemedText>
+        <ThemedText className="text-sm text-slate-500">{item.meta}</ThemedText>
+      </View>
+
+      <View className="mt-4 flex-row flex-wrap gap-3 border-t border-[#E4E8EE] pt-4">
+        {[
+          ['thumb-up-off-alt', 'Like'],
+          ['chat-bubble-outline', 'Comment'],
+          ['reply', 'Share'],
+        ].map(([icon, label]) => (
+          <View key={label} className="min-w-[140px] flex-1 flex-row items-center justify-center gap-2 rounded-[20px] bg-[#F7F8FA] px-4 py-4">
+            <MaterialIcons color="#666666" name={icon as keyof typeof MaterialIcons.glyphMap} size={20} />
+            <ThemedText className="text-base font-medium text-slate-900">{label}</ThemedText>
+          </View>
+        ))}
+      </View>
     </ThemedView>
+  );
+}
+
+function ContactRow({ item }: { item: Contact }) {
+  return (
+    <View className="flex-row items-center gap-4 rounded-[22px] bg-[#F7F8FA] px-4 py-4">
+      <Avatar initials={item.initials} soft />
+      <View className="flex-1">
+        <ThemedText className="text-lg font-medium text-slate-900">{item.name}</ThemedText>
+        <ThemedText className="text-sm text-slate-500">{item.status}</ThemedText>
+      </View>
+      <View className="h-3 w-3 rounded-full bg-[#6FC18A]" />
+    </View>
+  );
+}
+
+function MessengerRow({ item }: { item: InboxItem }) {
+  return (
+    <View className="flex-row items-center gap-4 rounded-[22px] bg-[#F7F8FA] px-4 py-4">
+      <Avatar initials={item.initials} soft />
+      <View className="flex-1 gap-1">
+        <ThemedText className="text-lg font-medium text-slate-900">{item.name}</ThemedText>
+        <ThemedText className="text-sm text-slate-500">{item.message}</ThemedText>
+      </View>
+      {item.unread ? <View className="h-3 w-3 rounded-full bg-[#4A9FD8]" /> : null}
+    </View>
+  );
+}
+
+function ProfileRail() {
+  return (
+    <View className="gap-4">
+      <ThemedText className="px-1 text-lg font-semibold text-slate-900">Shortcuts</ThemedText>
+      {shortcuts.map((item) => (
+        <ShortcutRow key={item.label} item={item} />
+      ))}
+
+      <ThemedView className={`${surfaceClass} overflow-hidden`}>
+        <View className="h-[180px] bg-[#EAF4FB]" />
+        <View className="px-5 pb-5">
+          <View className="-mt-8 flex-row justify-start">
+            <Avatar initials="LE" />
+          </View>
+
+          <ThemedText className="mt-4 text-[28px] font-semibold text-slate-950">Lena Evere</ThemedText>
+          <ThemedText className="mt-2 text-base leading-7 text-slate-600">
+            Leading product design at Northfeed, shaping calmer social tools for creative teams.
+          </ThemedText>
+
+          <View className="mt-5 flex-row gap-3">
+            <View className="flex-1 rounded-[22px] bg-[#F7F8FA] px-4 py-4">
+              <ThemedText className="text-sm text-slate-500">Followers</ThemedText>
+              <ThemedText className="mt-1 text-xl font-semibold text-slate-950">2.4k</ThemedText>
+            </View>
+            <View className="flex-1 rounded-[22px] bg-[#F7F8FA] px-4 py-4">
+              <ThemedText className="text-sm text-slate-500">Projects</ThemedText>
+              <ThemedText className="mt-1 text-xl font-semibold text-slate-950">14 live</ThemedText>
+            </View>
+          </View>
+
+          <View className="mt-5 flex-row gap-3">
+            <View className="flex-1 rounded-[22px] bg-[#0A0A0A] px-4 py-4">
+              <ThemedText className="text-center text-base font-medium text-white">View profile</ThemedText>
+            </View>
+            <View className="flex-1 rounded-[22px] bg-[#F7F8FA] px-4 py-4">
+              <ThemedText className="text-center text-base font-medium text-slate-900">Edit intro</ThemedText>
+            </View>
+          </View>
+        </View>
+      </ThemedView>
+    </View>
+  );
+}
+
+function RightRail() {
+  return (
+    <View className="gap-4">
+      <SectionCard title="Contacts" rightLabel="12 online">
+        {contacts.map((item) => (
+          <ContactRow key={item.name} item={item} />
+        ))}
+      </SectionCard>
+
+      <ThemedView className={`${surfaceClass} p-5`}>
+        <View className="flex-row items-center gap-3">
+          <View className="rounded-full bg-[#D9ECF8] px-3 py-2">
+            <ThemedText className="text-sm font-semibold text-slate-900">Tonight</ThemedText>
+          </View>
+        </View>
+        <ThemedText className="mt-4 text-[24px] font-semibold leading-8 text-slate-950">
+          Prototype review with motion notes
+        </ThemedText>
+        <ThemedText className="mt-3 text-base text-slate-500">18:30 - 19:15 | Riverside Studio 4</ThemedText>
+        <View className="mt-5 self-start rounded-[20px] bg-[#0A0A0A] px-5 py-4">
+          <ThemedText className="text-base font-medium text-white">View brief</ThemedText>
+        </View>
+      </ThemedView>
+
+      <SectionCard title="Messenger" rightLabel="3 unread">
+        {inboxItems.map((item) => (
+          <MessengerRow key={item.name} item={item} />
+        ))}
+
+        <View className="mt-2 rounded-[22px] bg-[#0A0A0A] px-5 py-4">
+          <ThemedText className="text-center text-base font-medium text-white">Open inbox</ThemedText>
+        </View>
+      </SectionCard>
+    </View>
   );
 }
 
 export default function HomeScreen() {
   const { width } = useWindowDimensions();
-  const isDesktop = width >= 1200;
-  const isTablet = width >= 860;
+  const isDesktop = width >= 1380;
+  const isTablet = width >= 960;
 
   return (
-    <ThemedView className="flex-1 bg-[#F4F8FF]">
+    <ThemedView className="flex-1 bg-[#EDF1F5]">
       <StatusBar style="dark" />
 
-      <View className="border-b border-[#D9E6FA] bg-white px-3 pb-3 pt-3 shadow-sm shadow-slate-200">
-        <View className="flex-row items-center justify-between gap-3">
-          <View className="flex-1 flex-row items-center gap-3">
-            <View className="h-11 w-11 items-center justify-center rounded-full bg-[#1877F2]">
-              <ThemedText className="text-[30px] font-bold lowercase text-white">f</ThemedText>
-            </View>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerClassName="pb-8">
+        <View className="mx-auto w-full max-w-[1720px] px-4 pb-6 pt-4 md:px-6">
+          <ThemedView className={`${surfaceClass} px-5 py-4`}>
+            <View className={`items-center gap-4 ${isTablet ? 'flex-row justify-between' : 'flex-col'}`}>
+              <View className={`items-center gap-4 ${isTablet ? 'flex-1 flex-row' : 'w-full flex-row'}`}>
+                <View className="flex-row items-center gap-3">
+                  <View className="h-12 w-12 items-center justify-center rounded-[18px] bg-[#4A9FD8]">
+                    <MaterialIcons color="#FFFFFF" name="filter-tilt-shift" size={22} />
+                  </View>
+                  <View>
+                    <ThemedText className="text-[26px] font-semibold tracking-[-0.5px] text-slate-950">Northfeed</ThemedText>
+                    <ThemedText className="text-sm text-slate-500">studio</ThemedText>
+                  </View>
+                </View>
 
-            <View className={`rounded-full bg-[#EEF3FB] px-4 py-3 ${isTablet ? 'max-w-[280px] flex-1' : 'flex-1'}`}>
-              <View className="flex-row items-center gap-2">
-                <MaterialIcons color="#9CA3AF" name="search" size={20} />
-                <ThemedText className="text-[15px] text-slate-500">Tim kiem tren Facebook</ThemedText>
+                <View className={`rounded-[22px] bg-[#F7F8FA] px-4 py-4 ${isTablet ? 'ml-6 max-w-[560px] flex-1' : 'w-full'}`}>
+                  <View className="flex-row items-center gap-3">
+                    <MaterialIcons color="#666666" name="search" size={20} />
+                    <ThemedText className="flex-1 text-base text-slate-500">Search people, notes, or screenshots</ThemedText>
+                  </View>
+                </View>
+              </View>
+
+              <View className="flex-row items-center gap-3">
+                <ActionBubble icon="mail-outline" />
+                <ActionBubble icon="notifications-none" />
+                <ActionBubble icon="apps" />
+                <Avatar initials="LE" />
               </View>
             </View>
-          </View>
+          </ThemedView>
 
-          {isTablet ? (
-            <View className="mx-4 flex-row items-center gap-4">
-              <NavIcon name="home-filled" active />
-              <NavIcon name="groups" />
-              <NavIcon name="smart-display" />
-              <NavIcon name="storefront" />
-              <NavIcon name="account-circle" />
+          <View className={`mt-4 gap-4 ${isDesktop ? 'flex-row items-start' : ''}`}>
+            <View className={isDesktop ? 'w-[350px]' : 'w-full'}>
+              <ProfileRail />
             </View>
-          ) : null}
 
-          <View className="flex-row items-center gap-2">
-            <NavIcon name="apps" />
-            <NavIcon name="chat" />
-            <NavIcon name="notifications" />
-            <NavIcon name="person" />
-          </View>
-        </View>
-      </View>
+            <View className={`${isDesktop ? 'flex-1' : 'w-full'} gap-4`}>
+              <ComposerCard />
 
-      <ScrollView className="flex-1" contentContainerClassName="mx-auto w-full max-w-[1580px] px-3 py-4" showsVerticalScrollIndicator={false}>
-        <View className={`gap-4 ${isDesktop ? 'flex-row items-start' : ''}`}>
-          {isDesktop ? (
-            <View className="w-[300px] gap-4">
-              <SidebarCard title="Nguyen Anh Quan">
-                {shortcuts.map((item) => (
-                  <ShortcutRow key={item.label} item={item} />
-                ))}
-              </SidebarCard>
-            </View>
-          ) : null}
-
-          <View className={`${isDesktop ? 'flex-1 max-w-[680px]' : 'w-full'} gap-4 self-stretch`}>
-            <Composer />
-
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3">
-              {stories.map((story, index) => (
-                <StoryCard key={story.id} story={story} first={index === 0} />
-              ))}
-            </ScrollView>
-
-            {posts.map((post) => (
-              <PostCard key={post.id} post={post} />
-            ))}
-          </View>
-
-          {isDesktop ? (
-            <View className="w-[320px] gap-4">
-              <SidebarCard title="Duoc tai tro">
-                <View className="rounded-[18px] bg-[#F8FBFF] p-4">
-                  <ThemedText className="text-xl font-bold text-slate-900">Coding Plan</ThemedText>
-                  <ThemedText className="mt-2 text-sm leading-6 text-slate-700">
-                    Cost-effective R&D power for sustainable growth.
-                  </ThemedText>
-                </View>
-                <View className="rounded-[18px] bg-[#E9F2FF] p-4">
-                  <ThemedText className="text-base font-semibold text-slate-800">Big 2026 Plans, Small Creative Team?</ThemedText>
-                </View>
-              </SidebarCard>
-
-              <SidebarCard title="Nguoi lien he">
-                {['Bao Nguyen', 'Khanh Vy', 'Truong Tuan', 'Tuan Anh'].map((name) => (
-                  <View key={name} className="flex-row items-center gap-3">
-                    <View className="h-10 w-10 items-center justify-center rounded-full bg-slate-500">
-                      <MaterialIcons color="#FFFFFF" name="person" size={22} />
-                    </View>
-                    <ThemedText className="text-[15px] font-medium text-slate-700">{name}</ThemedText>
-                  </View>
-                ))}
-              </SidebarCard>
-            </View>
-          ) : null}
-        </View>
-
-        {!isDesktop ? (
-          <View className="mt-4 gap-4">
-            <SidebarCard title="Loi tat cua ban">
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3">
-                {shortcuts.map((item) => (
-                  <View key={item.label} className="min-w-[150px] rounded-[18px] border border-[#D9E6FA] bg-white p-3">
-                    <ShortcutRow item={item} />
-                  </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="pr-4">
+                {stories.map((item) => (
+                  <StoryCard key={item.id} item={item} />
                 ))}
               </ScrollView>
-            </SidebarCard>
+
+              {posts.map((item) => (
+                <FeedPost key={item.id} item={item} />
+              ))}
+            </View>
+
+            <View className={isDesktop ? 'w-[360px]' : 'w-full'}>
+              <RightRail />
+            </View>
           </View>
-        ) : null}
+        </View>
       </ScrollView>
     </ThemedView>
   );

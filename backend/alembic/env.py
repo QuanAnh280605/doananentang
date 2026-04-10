@@ -7,7 +7,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import get_settings
 from app.models.base import Base
-from app.models import refresh_session, user  # noqa: F401
+from app.models import comment, follow, group, group_member, like, message, message_read, notification, post, post_media, refresh_session, story, user  # noqa: F401
 
 config = context.config
 
