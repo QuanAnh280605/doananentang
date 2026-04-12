@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, computed_field, field_validator, model_validator
 
 GenderValue = Literal['female', 'male', 'custom']
 
@@ -53,9 +53,19 @@ class UserCreate(UserBase):
 
 class UserRead(UserBase):
   id: int
+  bio: str | None = None
+  avatar_url: str | None = None
   email: EmailStr | None = None
   phone: str | None = None
   created_at: datetime
   updated_at: datetime
 
   model_config = ConfigDict(from_attributes=True)
+
+  @computed_field
+  @property
+  def full_name(self) -> str:
+    return ' '.join(part for part in [self.first_name, self.last_name] if part).strip()
+
+class UserUpdate(BaseModel):
+  bio: str | None = None

@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import CheckConstraint, Date, DateTime, String, func
+from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, String, Text, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -12,7 +12,12 @@ class User(Base):
     CheckConstraint('email IS NOT NULL OR phone IS NOT NULL', name='ck_users_email_or_phone'),
     CheckConstraint("gender IN ('female', 'male', 'custom')", name='ck_users_gender'),
   )
-
+  bio: Mapped[str | None] = mapped_column(Text(), nullable=True)
+  avatar_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
+  city: Mapped[str | None] = mapped_column(String(100), nullable=True)
+  country: Mapped[str | None] = mapped_column(String(100), nullable=True)
+  role: Mapped[str] = mapped_column(String(50), nullable=False, default='user', server_default='user')
+  is_active: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=True, server_default=text('true'))
   id: Mapped[int] = mapped_column(primary_key=True, index=True)
   email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
   phone: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True)
@@ -28,3 +33,7 @@ class User(Base):
     onupdate=func.now(),
     nullable=False,
   )
+
+  @property
+  def full_name(self) -> str:
+    return ' '.join(part for part in [self.first_name, self.last_name] if part).strip()
