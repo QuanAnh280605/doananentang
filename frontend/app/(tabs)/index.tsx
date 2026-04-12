@@ -1,7 +1,9 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ScrollView, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 
+import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
@@ -314,9 +316,11 @@ function RightRail() {
           <MessengerRow key={item.name} item={item} />
         ))}
 
-        <View className="mt-2 rounded-[22px] bg-[#0A0A0A] px-5 py-4">
-          <ThemedText className="text-center text-base font-medium text-white">Open inbox</ThemedText>
-        </View>
+        <Link asChild href="/(tabs)/inbox">
+          <Pressable className="mt-2 rounded-[22px] bg-[#0A0A0A] px-5 py-4 active:opacity-90">
+            <ThemedText className="text-center text-base font-medium text-white">Open inbox</ThemedText>
+          </Pressable>
+        </Link>
       </SectionCard>
     </View>
   );
@@ -333,35 +337,7 @@ export default function HomeScreen() {
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerClassName="pb-8">
         <View className="mx-auto w-full max-w-[1720px] px-4 pb-6 pt-4 md:px-6">
-          <ThemedView className={`${surfaceClass} px-5 py-4`}>
-            <View className={`items-center gap-4 ${isTablet ? 'flex-row justify-between' : 'flex-col'}`}>
-              <View className={`items-center gap-4 ${isTablet ? 'flex-1 flex-row' : 'w-full flex-row'}`}>
-                <View className="flex-row items-center gap-3">
-                  <View className="h-12 w-12 items-center justify-center rounded-[18px] bg-[#4A9FD8]">
-                    <MaterialIcons color="#FFFFFF" name="filter-tilt-shift" size={22} />
-                  </View>
-                  <View>
-                    <ThemedText className="text-[26px] font-semibold tracking-[-0.5px] text-slate-950">Northfeed</ThemedText>
-                    <ThemedText className="text-sm text-slate-500">studio</ThemedText>
-                  </View>
-                </View>
-
-                <View className={`rounded-[22px] bg-[#F7F8FA] px-4 py-4 ${isTablet ? 'ml-6 max-w-[560px] flex-1' : 'w-full'}`}>
-                  <View className="flex-row items-center gap-3">
-                    <MaterialIcons color="#666666" name="search" size={20} />
-                    <ThemedText className="flex-1 text-base text-slate-500">Search people, notes, or screenshots</ThemedText>
-                  </View>
-                </View>
-              </View>
-
-              <View className="flex-row items-center gap-3">
-                <ActionBubble icon="mail-outline" />
-                <ActionBubble icon="notifications-none" />
-                <ActionBubble icon="apps" />
-                <Avatar initials="LE" />
-              </View>
-            </View>
-          </ThemedView>
+          <AppTopNav isTablet={isTablet} />
 
           <View className={`mt-4 gap-4 ${isDesktop ? 'flex-row items-start' : ''}`}>
             <View className={isDesktop ? 'w-[350px]' : 'w-full'}>
