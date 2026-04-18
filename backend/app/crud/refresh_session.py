@@ -1,25 +1,23 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.models.refresh_session import RefreshSession
+from app.models.refresh_session import LoginSession
 
 
 def create_refresh_session(
   db: Session,
   *,
   user_id: int,
-  token_id: str,
-  token_hash: str,
+  refresh_token: str,
   expires_at: datetime,
   commit: bool = True,
-) -> RefreshSession:
-  session = RefreshSession(
+) -> LoginSession:
+  session = LoginSession(
     user_id=user_id,
-    token_id=token_id,
-    token_hash=token_hash,
-    expires_at=expires_at,
+    refresh_token=refresh_token,
+    expired_at=expires_at,
   )
   db.add(session)
   if commit:
@@ -28,23 +26,18 @@ def create_refresh_session(
   return session
 
 
-def get_refresh_session_by_token_id(db: Session, token_id: str) -> RefreshSession | None:
-  statement = select(RefreshSession).where(RefreshSession.token_id == token_id)
+def get_refresh_session_by_refresh_token(db: Session, refresh_token: str) -> LoginSession | None:
+  statement = select(LoginSession).where(LoginSession.refresh_token == refresh_token)
   return db.scalar(statement)
 
 
-def revoke_refresh_session(db: Session, token_id: str, *, now: datetime | None = None, commit: bool = True) -> bool:
-  revoked_at = now or datetime.now(timezone.utc)
-  statement = (
-    update(RefreshSession)
-    .where(
-      RefreshSession.token_id == token_id,
-      RefreshSession.revoked_at.is_(None),
-      RefreshSession.expires_at > revoked_at,
-    )
-    .values(revoked_at=revoked_at)
-    .execution_options(synchronize_session=False)
+def revoke_refresh_session(db: Session, refresh_token: str, *, now: datetime | None = None, commit: bool = True) -> bool:
+  current_time = now or datetime.now(timezone.utc)
+  statement = delete(LoginSession).where(
+    LoginSession.refresh_token == refresh_token,
+    LoginSession.expired_at > current_time,
   )
+  statement = statement.execution_options(synchronize_session=False)
   result = db.execute(statement)
   if commit:
     db.commit()
@@ -53,7 +46,7 @@ def revoke_refresh_session(db: Session, token_id: str, *, now: datetime | None =
 
 def delete_expired_refresh_sessions(db: Session, *, now: datetime | None = None) -> int:
   current_time = now or datetime.now(timezone.utc)
-  statement = delete(RefreshSession).where(RefreshSession.expires_at <= current_time)
+  statement = delete(LoginSession).where(LoginSession.expired_at <= current_time)
   statement = statement.execution_options(synchronize_session=False)
   result = db.execute(statement)
   db.commit()

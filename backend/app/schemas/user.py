@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, computed_field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, computed_field, field_validator
 
 GenderValue = Literal['female', 'male', 'custom']
 
@@ -22,9 +22,10 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-  email: EmailStr | None = None
+  email: EmailStr
   phone: str | None = None
   password: str
+  
 
   @field_validator('phone')
   @classmethod
@@ -44,18 +45,11 @@ class UserCreate(UserBase):
       raise ValueError('Password must be at least 8 characters')
     return value
 
-  @model_validator(mode='after')
-  def validate_contact(self) -> 'UserCreate':
-    if bool(self.email) == bool(self.phone):
-      raise ValueError('Provide exactly one of email or phone')
-    return self
-
-
 class UserRead(UserBase):
   id: int
   bio: str | None = None
   avatar_url: str | None = None
-  email: EmailStr | None = None
+  email: EmailStr
   phone: str | None = None
   created_at: datetime
   updated_at: datetime

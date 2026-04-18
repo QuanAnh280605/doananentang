@@ -1,17 +1,16 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, PrimaryKeyConstraint, func
+from sqlalchemy import DateTime, ForeignKey, PrimaryKeyConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
 from app.models.db_types import UUID_TYPE
 
 
-class Like(Base):
-  __tablename__ = 'likes'
+class PostViewer(Base):
+  __tablename__ = 'post_viewers'
   __table_args__ = (
     PrimaryKeyConstraint('post_id', 'user_id'),
-    Index('idx_likes_user_id', 'user_id'),
   )
 
   post_id: Mapped[int] = mapped_column(UUID_TYPE, ForeignKey('posts.id', ondelete='CASCADE'), nullable=False)

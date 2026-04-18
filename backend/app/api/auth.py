@@ -19,14 +19,13 @@ from app.core.security import (
   decode_refresh_token,
   decode_reset_token,
   hash_password,
-  hash_token,
   verify_password,
 )
-from app.crud.auth import create_user_from_register, get_authenticated_user
+from app.crud.auth import create_user_from_register, get_authenticated_user, get_user_for_token
 from app.crud.refresh_session import (
   create_refresh_session,
   delete_expired_refresh_sessions,
-  get_refresh_session_by_token_id,
+  get_refresh_session_by_refresh_token,
   revoke_refresh_session,
 )
 from app.crud.user import create_user, get_user_by_email, get_user_by_phone
@@ -58,8 +57,7 @@ def _build_auth_response(db: Session, user: User) -> AuthResponse:
   create_refresh_session(
     db,
     user_id=user.id,
-    token_id=token_id,
-    token_hash=hash_token(refresh_token),
+    refresh_token=refresh_token,
     expires_at=datetime.fromtimestamp(refresh_payload['exp'], tz=timezone.utc),
   )
   return AuthResponse(
@@ -121,18 +119,15 @@ def refresh_tokens(payload: RefreshTokenRequest, db: Session = Depends(get_db)) 
   except (jwt.InvalidTokenError, KeyError, TypeError, ValueError):
     raise _raise_invalid_credentials()
 
-  session = get_refresh_session_by_token_id(db, token_id)
-  if session is None or not hmac.compare_digest(session.token_hash, hash_token(payload.refresh_token)):
+  session = get_refresh_session_by_refresh_token(db, payload.refresh_token)
+  if session is None or not hmac.compare_digest(session.refresh_token, payload.refresh_token):
     raise _raise_invalid_credentials()
 
-  if not revoke_refresh_session(db, token_id, commit=False):
+  if not revoke_refresh_session(db, payload.refresh_token, commit=False):
     db.rollback()
     raise _raise_invalid_credentials()
 
-  if not subject.isdigit():
-    db.rollback()
-    raise _raise_invalid_credentials()
-  user = db.get(User, int(subject))
+  user = get_user_for_token(db, subject)
   if user is None:
     db.rollback()
     raise _raise_invalid_credentials()
@@ -143,8 +138,7 @@ def refresh_tokens(payload: RefreshTokenRequest, db: Session = Depends(get_db)) 
   create_refresh_session(
     db,
     user_id=user.id,
-    token_id=new_token_id,
-    token_hash=hash_token(refresh_token),
+    refresh_token=refresh_token,
     expires_at=datetime.fromtimestamp(refresh_payload['exp'], tz=timezone.utc),
     commit=False,
   )
@@ -165,10 +159,10 @@ def logout(payload: RefreshTokenRequest, db: Session = Depends(get_db)) -> None:
   except (jwt.InvalidTokenError, KeyError, TypeError, ValueError):
     raise _raise_invalid_credentials()
 
-  session = get_refresh_session_by_token_id(db, token_id)
-  if session is None or not hmac.compare_digest(session.token_hash, hash_token(payload.refresh_token)):
+  session = get_refresh_session_by_refresh_token(db, payload.refresh_token)
+  if session is None or not hmac.compare_digest(session.refresh_token, payload.refresh_token):
     raise _raise_invalid_credentials()
-  if not revoke_refresh_session(db, token_id):
+  if not revoke_refresh_session(db, payload.refresh_token):
     raise _raise_invalid_credentials()
   return None
 

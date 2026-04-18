@@ -7,7 +7,26 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import get_settings
 from app.models.base import Base
-from app.models import comment, follow, group, group_member, like, message, message_read, notification, post, post_media, refresh_session, story, user  # noqa: F401
+from app.models import (  # noqa: F401
+  comment,
+  follow,
+  group,
+  group_member,
+  like,
+  message,
+  message_media,
+  message_read,
+  notification,
+  post,
+  post_media,
+  post_report,
+  post_viewer,
+  refresh_session,
+  story,
+  story_view,
+  story_viewer_permission,
+  user,
+)
 
 config = context.config
 
