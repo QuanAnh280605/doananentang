@@ -124,8 +124,8 @@ export default function InboxScreen() {
   const [draftMessage, setDraftMessage] = useState('');
 
   const content = (
-    <ThemedView className="flex-1 px-2 py-2 sm:px-3">
-      <ThemedView className={`mx-auto w-full ${useViewportLayout ? 'max-w-none py-1' : 'max-w-7xl py-2'}`}>
+    <ThemedView className="flex-1">
+      <ThemedView className="mx-auto w-full max-w-[1720px] px-4 pb-6 pt-4 md:px-6">
         <AppTopNav isTablet={isTablet} searchPlaceholder="Search inbox threads, files, or people" />
 
         <View className={useViewportLayout ? 'flex-row items-stretch gap-4 mt-4' : 'gap-5'} style={useViewportLayout ? { height: viewportPanelHeight } : undefined}>

@@ -274,12 +274,14 @@ function ProfileRail() {
           </View>
 
           <View className="mt-5 flex-row gap-3">
-            <View className="flex-1 rounded-[22px] bg-[#0A0A0A] px-4 py-4">
-              <ThemedText className="text-center text-base font-medium text-white">View profile</ThemedText>
-            </View>
-            <View className="flex-1 rounded-[22px] bg-[#F7F8FA] px-4 py-4">
+            <Link href="/(tabs)/profile" asChild>
+              <Pressable className="flex-1 rounded-[22px] bg-[#0A0A0A] px-4 py-4 active:opacity-90">
+                <ThemedText className="text-center text-base font-medium text-white">View profile</ThemedText>
+              </Pressable>
+            </Link>
+            <Pressable className="flex-1 rounded-[22px] bg-[#F7F8FA] px-4 py-4 active:opacity-90">
               <ThemedText className="text-center text-base font-medium text-slate-900">Edit intro</ThemedText>
-            </View>
+            </Pressable>
           </View>
         </View>
       </ThemedView>
