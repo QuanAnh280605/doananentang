@@ -3,9 +3,12 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 
+import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { API_URL } from '@/lib/api';
 import { fetchCurrentUser, type AuthUser } from '@/lib/auth';
 
 type ProfileTab = 'posts' | 'about' | 'media';
@@ -32,6 +35,7 @@ type ProfileViewModel = {
   studio: string;
   location: string;
   website: string;
+  avatarUrl: string | null;
 };
 
 const surfaceClass = 'rounded-[28px] border border-[#E4E8EE] bg-white';
@@ -63,7 +67,7 @@ const recentPosts: RecentPost[] = [
     id: '1',
     time: 'Updated 12 min ago',
     body:
-      'Shared a revised review template for the motion pass. The goal is less ceremony, clearer decision points, and faster approval once the story is already obvious.',
+      'Thanh Trì quê ta ơi',
     accentClassName: 'bg-[#D9ECF8]',
   },
   {
@@ -76,41 +80,56 @@ const recentPosts: RecentPost[] = [
 ];
 
 function buildProfileViewModel(user: AuthUser | null): ProfileViewModel {
-  const firstName = user?.first_name?.trim() || 'Lena';
-  const lastName = user?.last_name?.trim() || 'Evere';
+  const firstName = user?.first_name?.trim() || '';
+  const lastName = user?.last_name?.trim() || '';
   const displayName = `${firstName} ${lastName}`.trim();
-  const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-  const emailHandle = user?.email ? user.email.replace(/^mailto:/, '') : 'northfeed.design/lena';
 
+  let initials = '';
+  if (firstName || lastName) {
+    initials = `${(firstName || '').charAt(0)}${(lastName || '').charAt(0)}`.toUpperCase();
+  }
+
+  const emailHandle = user?.email ? user.email.replace(/^mailto:/, '') : '';
+  const headline = user?.headline || '';
+  const intro = user?.bio || '';
+  const studio = user?.studio || '';
+  const location = user?.location || '';
+  const website = user?.website || emailHandle;
+  const avatarUrl = user?.avatar_url ? `${API_URL}${user.avatar_url}` : null;
   return {
     displayName,
-    initials: initials || 'LE',
-    headline: 'Design lead profile',
-    intro:
-      'Leading product design at Northfeed. Building calmer social tools, sharper review loops, and cleaner collaboration rituals.',
-    studio: 'Northfeed Studio',
-    location: 'Chicago, IL',
-    website: emailHandle,
+    initials: initials || 'N/A',
+    headline,
+    intro,
+    studio,
+    location,
+    website,
+    avatarUrl,
   };
 }
 
-function AvatarBlock({ initials, soft = false, size = 'large' }: { initials: string; soft?: boolean; size?: 'large' | 'small' }) {
+function AvatarBlock({ initials, soft = false, size = 'large', avatarUrl }: { initials: string; soft?: boolean; size?: 'large' | 'small', avatarUrl?: string | null }) {
   const containerClassName =
     size === 'large'
-      ? `h-[92px] w-[92px] rounded-[28px] ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`
-      : `h-14 w-14 rounded-[22px] ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`;
+      ? `h-[92px] w-[92px] rounded-[28px] overflow-hidden ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`
+      : `h-14 w-14 rounded-[22px] overflow-hidden ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`;
   const textClassName = size === 'large' ? 'text-[28px]' : 'text-base';
 
   return (
     <View className={`items-center justify-center ${containerClassName}`}>
-      <ThemedText className={`${textClassName} font-semibold tracking-[0.5px] text-slate-900`}>{initials}</ThemedText>
+      {avatarUrl ? (
+        <Image source={{ uri: avatarUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+      ) : (
+        <ThemedText className={`${textClassName} font-semibold tracking-[0.5px] text-slate-900`}>{initials}</ThemedText>
+      )}
     </View>
   );
 }
 
-function ActionButton({ icon, label, filled = false }: { icon: keyof typeof MaterialIcons.glyphMap; label: string; filled?: boolean }) {
+function ActionButton({ icon, label, filled = false, onPress }: { icon: keyof typeof MaterialIcons.glyphMap; label: string; filled?: boolean; onPress?: () => void }) {
   return (
     <Pressable
+      onPress={onPress}
       className={`min-w-[150px] flex-1 flex-row items-center justify-center gap-2 rounded-[20px] px-4 py-4 active:opacity-90 ${filled ? 'bg-[#0A0A0A]' : 'bg-[#F7F8FA]'}`}>
       <MaterialIcons color={filled ? '#FFFFFF' : '#0F172A'} name={icon} size={20} />
       <ThemedText className={`text-base font-medium ${filled ? 'text-white' : 'text-slate-900'}`}>{label}</ThemedText>
@@ -265,7 +284,7 @@ export default function ProfileScreen() {
               <View className="px-5 pb-5">
                 <View className="-mt-12 flex-row items-end justify-between gap-4">
                   <View className="flex-row items-end gap-4">
-                    <AvatarBlock initials={profile.initials} size="large" />
+                    <AvatarBlock initials={profile.initials} size="large" avatarUrl={profile.avatarUrl} />
                     <View className="pb-1">
                       <View className="self-start rounded-full bg-white/90 px-3 py-2">
                         <ThemedText className="text-sm font-semibold text-slate-700">{profile.headline}</ThemedText>
@@ -283,7 +302,7 @@ export default function ProfileScreen() {
                   <View className={`${isWide ? 'w-[360px]' : ''} gap-3`}>
                     {isOwnProfile ? (
                       <View className="flex-row flex-wrap gap-3">
-                        <ActionButton icon="edit" label="Edit profile" filled />
+                        <ActionButton icon="edit" label="Edit profile" filled onPress={() => router.push('/edit-profile')} />
                       </View>
                     ) : (
                       <View className="flex-row flex-wrap gap-3">
@@ -311,25 +330,34 @@ export default function ProfileScreen() {
             <View className={isWide ? 'flex-row items-start gap-4' : 'gap-4'}>
               <View className={isWide ? 'w-[320px] gap-4' : 'gap-4'}>
                 <SidebarCard title="Intro">
-                  <ThemedText className="text-base leading-7 text-slate-700">
-                    Design lead focused on calmer collaboration patterns, review systems, and fast-moving product rituals for distributed teams.
-                  </ThemedText>
+                  {/* Nếu có intro thì mới hiển thị khối Text này ra */}
+                  {profile.intro ? (
+                    <ThemedText className="text-base leading-7 text-slate-700">
+                      {profile.intro}
+                    </ThemedText>
+                  ) : null}
 
                   <View className="gap-3">
                     {[
-                      ['apartment', profile.studio],
-                      ['location-on', profile.location],
-                      ['language', profile.website],
-                    ].map(([icon, value]) => (
-                      <View key={value} className="flex-row items-center gap-3">
-                        <View className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA]">
-                          <MaterialIcons color="#64748B" name={icon as keyof typeof MaterialIcons.glyphMap} size={20} />
+                      { icon: 'apartment', value: profile.studio },
+                      { icon: 'location-on', value: profile.location },
+                      { icon: 'language', value: profile.website },
+                    ]
+                      /* Dòng cực kỳ quan trọng: Lọc bỏ ngay các mục có value rỗng */
+                      .filter((item) => !!item.value)
+                      .map((item) => (
+                        <View key={item.icon} className="flex-row items-center gap-3">
+                          <View className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA]">
+                            <MaterialIcons color="#64748B" name={item.icon as any} size={20} />
+                          </View>
+                          <ThemedText className="flex-1 text-base font-medium text-slate-800">
+                            {item.value}
+                          </ThemedText>
                         </View>
-                        <ThemedText className="flex-1 text-base font-medium text-slate-800">{value}</ThemedText>
-                      </View>
-                    ))}
+                      ))}
                   </View>
                 </SidebarCard>
+
 
                 <SidebarCard title="Featured media">
                   {featuredMedia.map((item) => (

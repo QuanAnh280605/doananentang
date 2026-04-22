@@ -12,6 +12,7 @@ class UserBase(BaseModel):
   birth_date: date | None = None
   gender: GenderValue
 
+
   @field_validator('first_name', 'last_name')
   @classmethod
   def validate_name(cls, value: str) -> str:
@@ -63,3 +64,9 @@ class UserRead(UserBase):
 
 class UserUpdate(BaseModel):
   bio: str | None = None
+  first_name: str | None = None
+  last_name: str | None = None
+  phone: str | None = None
+  birth_date: date | None = None
+  gender: GenderValue | None = None
+

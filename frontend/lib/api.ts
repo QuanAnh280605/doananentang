@@ -191,7 +191,9 @@ async function performRequest(path: string, init: RequestInit | undefined, token
   const headers = new Headers(init?.headers);
 
   headers.set('Accept', 'application/json');
-  headers.set('Content-Type', 'application/json');
+  if (!(init?.body instanceof FormData)) {
+    headers.set('Content-Type', 'application/json');
+  }
 
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
