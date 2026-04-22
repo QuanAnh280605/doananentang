@@ -1,3 +1,5 @@
+import type { Method } from 'axios';
+import axios from 'axios/dist/browser/axios.cjs';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { Platform } from 'react-native';
@@ -27,6 +29,14 @@ type ApiErrorPayload = {
 type TokenRefreshResponse = {
   access_token: string;
   refresh_token: string;
+};
+
+type ApiResponse = {
+  data: string;
+  headers: {
+    get(name: string): string | null;
+  };
+  status: number;
 };
 
 const REFRESH_EXCLUDED_PATH_PREFIXES = [
@@ -177,7 +187,7 @@ function canAttemptRefresh(path: string, hasCustomAuthorization: boolean): boole
   return !REFRESH_EXCLUDED_PATH_PREFIXES.some((prefix) => path.startsWith(prefix));
 }
 
-async function performRequest(path: string, init: RequestInit | undefined, token: string | null): Promise<Response> {
+async function performRequest(path: string, init: RequestInit | undefined, token: string | null): Promise<ApiResponse> {
   const headers = new Headers(init?.headers);
 
   headers.set('Accept', 'application/json');
@@ -187,10 +197,53 @@ async function performRequest(path: string, init: RequestInit | undefined, token
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  return fetch(`${API_URL}${path}`, {
-    ...init,
-    headers,
+  const requestHeaders: Record<string, string> = {};
+  headers.forEach((value, key) => {
+    requestHeaders[key] = value;
   });
+
+  const response = await axios.request<string>({
+    data: init?.body,
+    headers: requestHeaders,
+    method: init?.method as Method | undefined,
+    responseType: 'text',
+    signal: init?.signal,
+    transformResponse: [(value) => value],
+    url: `${API_URL}${path}`,
+    validateStatus: () => true,
+  });
+
+  return {
+    data: typeof response.data === 'string' ? response.data : '',
+    headers: {
+      get(name: string): string | null {
+        const headerValue = response.headers[name.toLowerCase()];
+        if (Array.isArray(headerValue)) {
+          return headerValue.join(', ');
+        }
+
+        return headerValue ?? null;
+      },
+    },
+    status: response.status,
+  };
+}
+
+function isSuccessfulStatus(status: number): boolean {
+  return status >= 200 && status < 300;
+}
+
+function readJsonBody<T>(response: ApiResponse): T | null {
+  const contentType = response.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json') || !response.data) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(response.data) as T;
+  } catch {
+    return null;
+  }
 }
 
 async function refreshAccessToken(): Promise<string | null> {
@@ -201,21 +254,26 @@ async function refreshAccessToken(): Promise<string | null> {
   }
 
   try {
-    const response = await fetch(`${API_URL}/api/auth/refresh`, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
+    const response = await performRequest(
+      '/api/auth/refresh',
+      {
+        body: JSON.stringify({ refresh_token: refreshToken }),
+        method: 'POST',
       },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-    });
+      null,
+    );
 
-    if (!response.ok) {
+    if (!isSuccessfulStatus(response.status)) {
       await clearAuthTokens();
       return null;
     }
 
-    const payload = (await response.json()) as TokenRefreshResponse;
+    const payload = readJsonBody<TokenRefreshResponse>(response);
+    if (!payload?.access_token || !payload.refresh_token) {
+      await clearAuthTokens();
+      return null;
+    }
+
     await setAuthTokens(payload.access_token, payload.refresh_token);
     return payload.access_token;
   } catch {
@@ -263,13 +321,12 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     }
   }
 
-  if (!response.ok) {
+  if (!isSuccessfulStatus(response.status)) {
     let payloadDetail: string | null = null;
-    try {
-      const payload = (await response.json()) as ApiErrorPayload;
+
+    const payload = readJsonBody<ApiErrorPayload>(response);
+    if (payload) {
       payloadDetail = formatApiErrorDetail(payload.detail);
-    } catch {
-      // Keep default message when body is not JSON.
     }
 
     if (response.status === 401 && (token || shouldRefresh)) {
@@ -290,7 +347,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     return undefined as T;
   }
 
-  return (await response.json()) as T;
+  return readJsonBody<T>(response) as T;
 }
 
 export type HealthResponse = {
