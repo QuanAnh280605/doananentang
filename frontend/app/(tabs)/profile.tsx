@@ -5,7 +5,6 @@ import { Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { API_URL } from '@/lib/api';
@@ -239,7 +238,6 @@ export default function ProfileScreen() {
   const { width, height } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const [user, setUser] = useState<AuthUser | null>(null);
-  const isTablet = width >= 768;
   const isWide = width >= 1180;
   const viewedProfileUserId = user?.id ?? null;
   const currentUserId = user?.id ?? null;
@@ -277,7 +275,16 @@ export default function ProfileScreen() {
       <ThemedView className="flex-1 bg-[#F8FAFC]" style={{ minHeight: height }}>
         <ScrollView bounces={false} className="flex-1" contentContainerClassName="pb-8">
           <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-4 md:px-6">
-            <AppTopNav isTablet={isTablet} searchPlaceholder="Search profile highlights, media, or posts" />
+            {/* Back header */}
+            <View className="flex-row items-center gap-3 rounded-[28px] border border-[#E4E8EE] bg-white px-5 py-4">
+              <Pressable
+                onPress={() => router.push('/')}
+                className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA] active:opacity-80"
+              >
+                <ThemedText className="text-lg">←</ThemedText>
+              </Pressable>
+              <ThemedText className="text-lg font-semibold text-slate-900">Profile</ThemedText>
+            </View>
 
             <ThemedView className={`${surfaceClass} overflow-hidden`}>
               <View className="h-[210px] bg-[#D9ECF8]" />

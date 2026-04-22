@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 
 import { Image } from 'expo-image';
-import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { API_URL } from '@/lib/api';
@@ -27,10 +26,6 @@ import {
 } from '@/lib/auth';
 
 const surfaceClass = 'rounded-[28px] border border-[#E4E8EE] bg-white';
-
-/* ------------------------------------------------------------------ */
-/*  Reusable sub-components                                           */
-/* ------------------------------------------------------------------ */
 
 function SectionCard({ children }: { children: React.ReactNode }) {
   return (
@@ -373,8 +368,13 @@ export default function EditProfileScreen() {
       <ThemedView className="flex-1 bg-[#F8FAFC]">
         <ScrollView bounces={false} className="flex-1" contentContainerClassName="pb-8">
           <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-4 md:px-6">
-            {/* Top nav (same as profile page) */}
-            <AppTopNav isTablet={isTablet} searchPlaceholder="Search settings" avatarInitials={initials} />
+            {/* Simple back header */}
+            <View className="flex-row items-center gap-3 rounded-[28px] border border-[#E4E8EE] bg-white px-5 py-4">
+              <Pressable onPress={() => router.back()} className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA] active:opacity-80">
+                <ThemedText className="text-lg">←</ThemedText>
+              </Pressable>
+              <ThemedText className="text-lg font-semibold text-slate-900">Edit-profile</ThemedText>
+            </View>
 
             {/* Main 2-col layout */}
             <View className={isWide ? 'flex-row items-start gap-6' : 'gap-6'}>
