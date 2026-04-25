@@ -10,7 +10,7 @@ class Settings(BaseSettings):
   app_port: int = 8000
   
   database_url: str = 'postgresql+psycopg://postgres:postgres@localhost:5433/doananentang'
-  cors_origins: str = 'http://localhost:8081,http://127.0.0.1:8081,http://localhost:19006,http://127.0.0.1:19006'
+  cors_origins: str = 'http://localhost:8081,http://127.0.0.1:8081,http://localhost:19006,http://127.0.0.1:19006,http://localhost:8082,http://127.0.0.1:8082,http://localhost:8080,http://127.0.0.1:8080'
 
   jwt_secret_key: str = 'dev-secret-key-change-me'
   jwt_algorithm: str = 'HS256'

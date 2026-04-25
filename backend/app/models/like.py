@@ -17,3 +17,15 @@ class Like(Base):
   post_id: Mapped[int] = mapped_column(UUID_TYPE, ForeignKey('posts.id', ondelete='CASCADE'), nullable=False)
   user_id: Mapped[int] = mapped_column(UUID_TYPE, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
   created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class CommentLike(Base):
+  __tablename__ = 'comment_likes'
+  __table_args__ = (
+    PrimaryKeyConstraint('comment_id', 'user_id'),
+    Index('idx_comment_likes_user_id', 'user_id'),
+  )
+
+  comment_id: Mapped[int] = mapped_column(UUID_TYPE, ForeignKey('comments.id', ondelete='CASCADE'), nullable=False)
+  user_id: Mapped[int] = mapped_column(UUID_TYPE, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+  created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
