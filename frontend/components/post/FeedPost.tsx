@@ -1,6 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Link } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Image, Modal, Pressable, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -33,16 +33,28 @@ export function FeedPost({ item }: { item: Post }) {
     const [count, setCount] = useState(item.like_count);
     const [loading, setLoading] = useState(false);
     const [isViewerVisible, setIsViewerVisible] = useState(false);
+    const [aspectRatio, setAspectRatio] = useState(1.5); // Mặc định 3:2
 
     const authorName = `${item.author.first_name} ${item.author.last_name}`;
     const initials = getInitials(item.author);
     const timeAgo = formatTime(item.created_at);
 
-    // Lấy URL ảnh đầu tiên nếu có media
-    const mediaUrl = item.media?.[0]?.file_url;
-    const firstMediaUrl = mediaUrl
-        ? (mediaUrl.startsWith('http') ? mediaUrl : `${API_URL}${mediaUrl}`)
+    const firstMediaUrl = item.media && item.media.length > 0
+        ? (item.media[0].file_url.startsWith('http')
+            ? item.media[0].file_url
+            : `${API_URL}${item.media[0].file_url}`)
         : null;
+
+    // Lấy kích thước thật của ảnh để resize khung linh hoạt
+    useEffect(() => {
+        if (firstMediaUrl) {
+            Image.getSize(firstMediaUrl, (width, height) => {
+                if (width && height) {
+                    setAspectRatio(width / height);
+                }
+            }, (err) => console.warn('Get image size error:', err));
+        }
+    }, [firstMediaUrl]);
 
     const handleToggleLike = async () => {
         if (loading) return;
@@ -92,8 +104,16 @@ export function FeedPost({ item }: { item: Post }) {
                     <Pressable onPress={() => setIsViewerVisible(true)} className="mt-5 active:opacity-95">
                         <Image
                             source={{ uri: firstMediaUrl }}
-                            className="h-[400px] w-full rounded-[28px]"
-                            resizeMode="cover"
+                            onLoad={(event) => {
+                                // Sửa lỗi destructure trên Web
+                                const source = event?.nativeEvent?.source;
+                                if (source?.width && source?.height) {
+                                    setAspectRatio(source.width / source.height);
+                                }
+                            }}
+                            style={{ aspectRatio, maxHeight: 800 }}
+                            className="w-full rounded-[28px]"
+                            resizeMode="contain"
                         />
                     </Pressable>
                 ) : null}
@@ -107,11 +127,11 @@ export function FeedPost({ item }: { item: Post }) {
                 onRequestClose={() => setIsViewerVisible(false)}
             >
                 <View className="flex-1 bg-black/90 justify-center items-center">
-                    <Pressable 
+                    <Pressable
                         className="absolute inset-0 z-0"
                         onPress={() => setIsViewerVisible(false)}
                     />
-                    <Pressable 
+                    <Pressable
                         className="absolute top-12 right-6 z-10 h-10 w-10 items-center justify-center rounded-full bg-white/20"
                         onPress={() => setIsViewerVisible(false)}
                     >
