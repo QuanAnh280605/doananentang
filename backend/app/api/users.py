@@ -56,17 +56,23 @@ def update_user_profile(
 ) -> UserRead:
   """Cập nhật thông tin hồ sơ"""
   update_data = payload.model_dump(exclude_unset=True)
+  # Đảm bảo lấy user từ session hiện tại để commit có tác dụng
+  db_user = db.query(User).filter(User.id == current_user.id).first()
+  if not db_user:
+      raise HTTPException(status_code=404, detail="User not found")
+      
+  print(f"DEBUG: Updating user {db_user.id} with data: {update_data}")
   for field, value in update_data.items():
-    setattr(current_user, field, value)
-
+    setattr(db_user, field, value)
+ 
   try:
     db.commit()
+    db.refresh(db_user)
   except IntegrityError as error:
     db.rollback()
     raise error
-
-  db.refresh(current_user)
-  return UserRead.model_validate(current_user)
+ 
+  return UserRead.model_validate(db_user)
 
 
 @router.patch('/me/avatar')

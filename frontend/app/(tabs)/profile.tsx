@@ -1,7 +1,7 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, TextInput, View, useWindowDimensions } from 'react-native';
 
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -9,7 +9,7 @@ import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { API_URL, fetchPosts } from '@/lib/api';
-import { fetchCurrentUser, type AuthUser } from '@/lib/auth';
+import { fetchCurrentUser, updateUserProfile, type AuthUser } from '@/lib/auth';
 import type { Post } from '@/lib/types';
 
 type ProfileTab = 'posts' | 'about' | 'media';
@@ -94,8 +94,9 @@ function buildProfileViewModel(user: AuthUser | null): ProfileViewModel {
   const headline = user?.headline || '';
   const intro = user?.bio || '';
   const studio = user?.studio || '';
-  const location = user?.location || '';
-  const website = user?.website || emailHandle;
+  const location = user?.city || '';
+  const website = user?.website || '';
+  const email = user?.email || '';
   const avatarUrl = user?.avatar_url ? `${API_URL}${user.avatar_url}` : null;
   return {
     displayName,
@@ -105,6 +106,7 @@ function buildProfileViewModel(user: AuthUser | null): ProfileViewModel {
     studio,
     location,
     website,
+    email,
     avatarUrl,
   };
 }
@@ -149,21 +151,22 @@ function ProfileTabButton({ active, icon, label, onPress }: { active: boolean; i
   );
 }
 
-function SectionTitle({ title, subtitle }: { title: string; subtitle?: string }) {
+function SectionTitle({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
   return (
     <View className="flex-row items-start justify-between gap-3">
       <View className="flex-1">
         <ThemedText className="text-[24px] font-semibold text-slate-950">{title}</ThemedText>
         {subtitle ? <ThemedText className="mt-1 text-sm text-slate-500">{subtitle}</ThemedText> : null}
       </View>
+      {action}
     </View>
   );
 }
 
-function SidebarCard({ title, children }: { title: string; children: ReactNode }) {
+function SidebarCard({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   return (
     <ThemedView className={`${surfaceClass} p-5`}>
-      <SectionTitle title={title} />
+      <SectionTitle title={title} action={action} />
       <View className="mt-5 gap-4">{children}</View>
     </ThemedView>
   );
@@ -240,6 +243,13 @@ export default function ProfileScreen() {
   const { width, height } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [isEditingIntro, setIsEditingIntro] = useState(false);
+  const [tempIntro, setTempIntro] = useState('');
+  const [tempHeadline, setTempHeadline] = useState('');
+  const [tempStudio, setTempStudio] = useState('');
+  const [tempCity, setTempCity] = useState('');
+  const [tempWebsite, setTempWebsite] = useState('');
+  const [isSavingIntro, setIsSavingIntro] = useState(false);
   const isWide = width >= 1180;
   const viewedProfileUserId = user?.id ?? null;
   const currentUserId = user?.id ?? null;
@@ -254,6 +264,13 @@ export default function ProfileScreen() {
 
         if (isMounted) {
           setUser(nextUser);
+          if (nextUser) {
+            setTempIntro(nextUser.bio || '');
+            setTempHeadline(nextUser.headline || '');
+            setTempStudio(nextUser.studio || '');
+            setTempCity(nextUser.city || '');
+            setTempWebsite(nextUser.website || '');
+          }
         }
       } catch {
         if (isMounted) {
@@ -291,10 +308,39 @@ export default function ProfileScreen() {
     return () => {
       isMounted = false;
     };
-  }, [user]);
+  }, []);
 
   const handleDeletePost = (postId: string) => {
     setPosts(current => current.filter(p => p.id !== postId));
+  };
+
+  const handleSaveIntro = async () => {
+    setIsSavingIntro(true);
+    try {
+      await updateUserProfile({
+        bio: tempIntro.trim() || null,
+        headline: tempHeadline.trim() || null,
+        studio: tempStudio.trim() || null,
+        city: tempCity.trim() || null,
+        website: tempWebsite.trim() || null,
+      });
+      const updatedUser = await fetchCurrentUser();
+      setUser(updatedUser);
+      setIsEditingIntro(false);
+    } catch (err) {
+      Alert.alert('Lỗi', 'Không thể cập nhật thông tin.');
+    } finally {
+      setIsSavingIntro(false);
+    }
+  };
+
+  const handleCancelIntro = () => {
+    setTempIntro(user?.bio || '');
+    setTempHeadline(user?.headline || '');
+    setTempStudio(user?.studio || '');
+    setTempCity(user?.city || '');
+    setTempWebsite(user?.website || '');
+    setIsEditingIntro(false);
   };
 
   const profile = useMemo(() => buildProfileViewModel(user), [user]);
@@ -323,17 +369,18 @@ export default function ProfileScreen() {
                   <View className="flex-row items-end gap-4">
                     <AvatarBlock initials={profile.initials} size="large" avatarUrl={profile.avatarUrl} />
                     <View className="pb-1">
-                      <View className="self-start rounded-full bg-white/90 px-3 py-2">
-                        <ThemedText className="text-sm font-semibold text-slate-700">{profile.headline}</ThemedText>
-                      </View>
+                      <ThemedText className="text-[24px] font-bold text-slate-950">{profile.displayName}</ThemedText>
                     </View>
                   </View>
                 </View>
 
                 <View className={`mt-5 gap-5 ${isWide ? 'flex-row items-start justify-between' : ''}`}>
                   <View className={isWide ? 'max-w-[760px] flex-1' : ''}>
-                    <ThemedText className="text-[34px] font-semibold leading-[42px] text-slate-950">{profile.displayName}</ThemedText>
-                    <ThemedText className="mt-3 max-w-3xl text-[16px] leading-7 text-slate-600">{profile.intro}</ThemedText>
+                    {profile.headline ? (
+                      <View className="self-start rounded-full bg-slate-100 px-3 py-1.5">
+                        <ThemedText className="text-sm font-semibold text-slate-700">{profile.headline}</ThemedText>
+                      </View>
+                    ) : null}
                   </View>
 
                   <View className={`${isWide ? 'w-[360px]' : ''} gap-3`}>
@@ -366,33 +413,122 @@ export default function ProfileScreen() {
 
             <View className={isWide ? 'flex-row items-start gap-4' : 'gap-4'}>
               <View className={isWide ? 'w-[320px] gap-4' : 'gap-4'}>
-                <SidebarCard title="Intro">
-                  {/* Nếu có intro thì mới hiển thị khối Text này ra */}
-                  {profile.intro ? (
-                    <ThemedText className="text-base leading-7 text-slate-700">
-                      {profile.intro}
-                    </ThemedText>
+                <SidebarCard 
+                  title="Intro"
+                  action={isOwnProfile && !isEditingIntro ? (
+                    <Pressable onPress={() => setIsEditingIntro(true)} className="active:opacity-60">
+                      <MaterialIcons name="edit" size={20} color="#64748B" />
+                    </Pressable>
                   ) : null}
+                >
+                  {isEditingIntro ? (
+                    <View className="gap-4">
+                      <View>
+                        <ThemedText className="mb-1 text-xs font-semibold text-slate-500">HEADLINE</ThemedText>
+                        <TextInput
+                          className="rounded-xl border border-slate-200 bg-[#F7F8FA] px-4 py-2.5 text-base text-slate-900"
+                          value={tempHeadline}
+                          onChangeText={setTempHeadline}
+                          placeholder="VD: Senior Product Designer"
+                        />
+                      </View>
 
-                  <View className="gap-3">
-                    {[
-                      { icon: 'apartment', value: profile.studio },
-                      { icon: 'location-on', value: profile.location },
-                      { icon: 'language', value: profile.website },
-                    ]
-                      /* Dòng cực kỳ quan trọng: Lọc bỏ ngay các mục có value rỗng */
-                      .filter((item) => !!item.value)
-                      .map((item) => (
-                        <View key={item.icon} className="flex-row items-center gap-3">
-                          <View className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA]">
-                            <MaterialIcons color="#64748B" name={item.icon as any} size={20} />
-                          </View>
-                          <ThemedText className="flex-1 text-base font-medium text-slate-800">
-                            {item.value}
-                          </ThemedText>
-                        </View>
-                      ))}
-                  </View>
+                      <View>
+                        <ThemedText className="mb-1 text-xs font-semibold text-slate-500">LOCATION</ThemedText>
+                        <TextInput
+                          className="rounded-xl border border-slate-200 bg-[#F7F8FA] px-4 py-2.5 text-base text-slate-900"
+                          value={tempCity}
+                          onChangeText={setTempCity}
+                          placeholder="VD: Hà Nội, VN"
+                        />
+                      </View>
+
+                      <View>
+                        <ThemedText className="mb-1 text-xs font-semibold text-slate-500">STUDIO / COMPANY</ThemedText>
+                        <TextInput
+                          className="rounded-xl border border-slate-200 bg-[#F7F8FA] px-4 py-2.5 text-base text-slate-900"
+                          value={tempStudio}
+                          onChangeText={setTempStudio}
+                          placeholder="VD: FPT Software"
+                        />
+                      </View>
+
+                      <View>
+                        <ThemedText className="mb-1 text-xs font-semibold text-slate-500">WEBSITE</ThemedText>
+                        <TextInput
+                          className="rounded-xl border border-slate-200 bg-[#F7F8FA] px-4 py-2.5 text-base text-slate-900"
+                          value={tempWebsite}
+                          onChangeText={setTempWebsite}
+                          placeholder="yoursite.com"
+                        />
+                      </View>
+
+                      <View>
+                        <ThemedText className="mb-1 text-xs font-semibold text-slate-500">BIO / INTRO</ThemedText>
+                        <TextInput
+                          className="rounded-xl border border-slate-200 bg-[#F7F8FA] px-4 py-3 text-base text-slate-900"
+                          multiline
+                          numberOfLines={4}
+                          value={tempIntro}
+                          onChangeText={setTempIntro}
+                          placeholder="Giới thiệu về bạn..."
+                          textAlignVertical="top"
+                        />
+                      </View>
+
+                      <View className="mt-2 flex-row gap-2">
+                        <Pressable 
+                          onPress={handleSaveIntro}
+                          disabled={isSavingIntro}
+                          className="flex-1 items-center rounded-full bg-slate-900 py-3 active:opacity-80 disabled:opacity-50"
+                        >
+                          {isSavingIntro ? (
+                            <ActivityIndicator size="small" color="#FFFFFF" />
+                          ) : (
+                            <ThemedText className="text-sm font-semibold text-white">Save All</ThemedText>
+                          )}
+                        </Pressable>
+                        <Pressable 
+                          onPress={handleCancelIntro}
+                          className="flex-1 items-center rounded-full bg-[#F7F8FA] py-3 active:opacity-80"
+                        >
+                          <ThemedText className="text-sm font-semibold text-slate-700">Cancel</ThemedText>
+                        </Pressable>
+                      </View>
+                    </View>
+                  ) : (
+                    <>
+                      {profile.intro ? (
+                        <ThemedText className="text-base leading-7 text-slate-700">
+                          {profile.intro}
+                        </ThemedText>
+                      ) : (
+                        <ThemedText className="text-base italic text-slate-400">
+                          Chưa có giới thiệu.
+                        </ThemedText>
+                      )}
+
+                      <View className="mt-4 gap-3">
+                        {[
+                          { icon: 'mail-outline', value: profile.email },
+                          { icon: 'apartment', value: profile.studio },
+                          { icon: 'location-on', value: profile.location },
+                          { icon: 'language', value: profile.website },
+                        ]
+                          .filter((item) => !!item.value)
+                          .map((item) => (
+                            <View key={item.icon} className="flex-row items-center gap-3">
+                              <View className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA]">
+                                <MaterialIcons name={item.icon as any} size={20} color="#64748B" />
+                              </View>
+                              <ThemedText className="flex-1 text-base font-medium text-slate-800" numberOfLines={1}>
+                                {item.value}
+                              </ThemedText>
+                            </View>
+                          ))}
+                      </View>
+                    </>
+                  )}
                 </SidebarCard>
 
 

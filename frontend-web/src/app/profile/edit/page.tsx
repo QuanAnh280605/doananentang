@@ -22,6 +22,7 @@ export default function EditProfilePage() {
   const [bio, setBio] = useState('');
   const [phone, setPhone] = useState('');
   const [gender, setGender] = useState<GenderValue>('female');
+  const [website, setWebsite] = useState('');
 
   // Password states
   const [currentPassword, setCurrentPassword] = useState('');
@@ -41,10 +42,10 @@ export default function EditProfilePage() {
           setUser(u);
           setFirstName(u.first_name || '');
           setLastName(u.last_name || '');
-          setPhone(u.phone || '');
-          setGender(u.gender || 'female');
-          // Since bio isn't in AuthUser by default, we just leave it empty if not provided by API
+          if (u.phone) setPhone(u.phone);
+          if (u.gender) setGender(u.gender as GenderValue);
           if ((u as any).bio) setBio((u as any).bio);
+          if ((u as any).website) setWebsite((u as any).website);
           
           if (u.avatar_url) {
             setAvatarPreview(u.avatar_url.startsWith('http') ? u.avatar_url : `${API_URL}${u.avatar_url}`);
@@ -111,6 +112,7 @@ export default function EditProfilePage() {
         last_name: lastName.trim(),
         bio: bio.trim() || null,
         phone: phone.trim() || null,
+        website: website.trim() || null,
         gender,
       });
 

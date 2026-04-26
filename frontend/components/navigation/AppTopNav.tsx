@@ -1,5 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { router } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -72,7 +73,9 @@ export function AppTopNav({
           <NavActionBubble icon="mail-outline" />
           <NavActionBubble icon="notifications-none" />
           <NavActionBubble icon="apps" />
-          <NavAvatar initials={avatarInitials} avatarUrl={avatarUrl} />
+          <Pressable onPress={() => router.push('/profile')} className="active:opacity-70">
+            <NavAvatar initials={avatarInitials} avatarUrl={avatarUrl} />
+          </Pressable>
         </View>
       </View>
     </ThemedView>

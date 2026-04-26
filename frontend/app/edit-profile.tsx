@@ -340,6 +340,7 @@ export default function EditProfileScreen() {
         last_name: lastName.trim(),
         bio: bio.trim() || null,
         phone: phone.trim() || null,
+        website: website.trim() || null,
         gender,
       });
 

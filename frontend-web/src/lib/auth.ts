@@ -11,6 +11,12 @@ export type AuthUser = {
   last_name: string;
   birth_date: string | null;
   gender: GenderValue;
+  bio: string | null;
+  avatar_url: string | null;
+  city: string | null;
+  headline: string | null;
+  studio: string | null;
+  website: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -184,6 +190,10 @@ export type UserUpdatePayload = {
   phone?: string | null;
   birth_date?: string | null;
   gender?: GenderValue;
+  headline?: string | null;
+  studio?: string | null;
+  city?: string | null;
+  website?: string | null;
 };
 
 export async function updateUserProfile(payload: UserUpdatePayload): Promise<AuthUser> {

@@ -15,7 +15,7 @@ export type AuthUser = {
   gender: GenderValue;
   bio: string | null;
   headline: string | null;
-  location: string | null;
+  city: string | null;
   website: string | null;
   studio: string | null;
   avatar_url: string | null;
@@ -201,7 +201,7 @@ export type UserUpdatePayload = {
   gender?: GenderValue;
   birth_date?: string | null;
   headline?: string | null;
-  location?: string | null;
+  city?: string | null;
   website?: string | null;
   studio?: string | null;
 };

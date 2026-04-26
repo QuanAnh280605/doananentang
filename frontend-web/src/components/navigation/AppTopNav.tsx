@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { ThemedText } from '@/components/ui/ThemedText';
 import { API_URL } from '@/lib/api';
 import type { AuthUser } from '@/lib/auth';
@@ -71,19 +72,21 @@ export function AppTopNav({
           <IconBubble>
             <span aria-hidden>⋮</span>
           </IconBubble>
-          {avatarUrl ? (
-            <img 
-              src={avatarUrl} 
-              alt="Avatar"
-              className="h-14 w-14 shrink-0 rounded-[22px] object-cover"
-            />
-          ) : (
-            <div className="flex h-14 w-14 items-center justify-center rounded-[22px] bg-[#EAF4FB]">
-              <ThemedText as="span" className="text-base font-semibold tracking-[0.5px] text-slate-900">
-                {initials}
-              </ThemedText>
-            </div>
-          )}
+          <Link href="/profile" className="hover:opacity-80 transition-opacity">
+            {avatarUrl ? (
+              <img 
+                src={avatarUrl} 
+                alt="Avatar"
+                className="h-14 w-14 shrink-0 rounded-[22px] object-cover"
+              />
+            ) : (
+              <div className="flex h-14 w-14 items-center justify-center rounded-[22px] bg-[#EAF4FB]">
+                <ThemedText as="span" className="text-base font-semibold tracking-[0.5px] text-slate-900">
+                  {initials}
+                </ThemedText>
+              </div>
+            )}
+          </Link>
         </div>
       </div>
     </div>
