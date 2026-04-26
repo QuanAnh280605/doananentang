@@ -3,6 +3,12 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
+      "@app/shared": [
+        "../packages/shared/src/index"
+      ],
+      "@app/shared/*": [
+        "../packages/shared/src/*"
+      ],
       "@/*": [
         "./*"
       ]

@@ -7,7 +7,7 @@ import jwt
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Request, Response, status
 
 from app.api.deps import get_current_user
 from app.core.config import get_settings
@@ -36,6 +36,39 @@ from app.services.email import send_email
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+settings = get_settings()
+
+
+def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
+  response.set_cookie(
+    key=settings.web_refresh_cookie_name,
+    value=refresh_token,
+    httponly=True,
+    secure=settings.web_refresh_cookie_secure,
+    samesite=settings.web_refresh_cookie_samesite,
+    domain=settings.web_refresh_cookie_domain,
+    path=settings.web_refresh_cookie_path,
+  )
+
+
+def _clear_refresh_cookie(response: Response) -> None:
+  response.delete_cookie(
+    key=settings.web_refresh_cookie_name,
+    domain=settings.web_refresh_cookie_domain,
+    path=settings.web_refresh_cookie_path,
+  )
+
+
+def _extract_refresh_token(request: Request, payload: RefreshTokenRequest | None) -> str:
+  body_refresh_token = payload.refresh_token if payload is not None else None
+  if body_refresh_token:
+    return body_refresh_token
+
+  cookie_refresh_token = request.cookies.get(settings.web_refresh_cookie_name)
+  if cookie_refresh_token:
+    return cookie_refresh_token
+
+  raise _raise_invalid_credentials()
 
 
 def _raise_for_duplicates(db: Session, *, email: str | None, phone: str | None) -> None:
@@ -80,7 +113,7 @@ def _create_conflict_exception(db: Session, *, email: str | None, phone: str | N
 
 
 @router.post('/register', response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
-def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> AuthResponse:
+def register(payload: RegisterRequest, response: Response, db: Session = Depends(get_db)) -> AuthResponse:
   try:
     user_payload = create_user_from_register(db, payload)
   except ValueError as error:
@@ -95,11 +128,13 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> AuthRes
       email=str(user_payload.email) if user_payload.email is not None else None,
       phone=user_payload.phone,
     ) from error
-  return _build_auth_response(db, user)
+  auth_response = _build_auth_response(db, user)
+  _set_refresh_cookie(response, auth_response.refresh_token)
+  return auth_response
 
 
 @router.post('/login', response_model=AuthResponse)
-def login(payload: LoginRequest, db: Session = Depends(get_db)) -> AuthResponse:
+def login(payload: LoginRequest, response: Response, db: Session = Depends(get_db)) -> AuthResponse:
   try:
     user = get_authenticated_user(db, payload)
   except ValueError as error:
@@ -107,23 +142,31 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> AuthResponse:
 
   if user is None or not verify_password(payload.password, user.hashed_password):
     raise _raise_invalid_credentials()
-  return _build_auth_response(db, user)
+  auth_response = _build_auth_response(db, user)
+  _set_refresh_cookie(response, auth_response.refresh_token)
+  return auth_response
 
 
 @router.post('/refresh', response_model=AuthResponse)
-def refresh_tokens(payload: RefreshTokenRequest, db: Session = Depends(get_db)) -> AuthResponse:
+def refresh_tokens(
+  request: Request,
+  response: Response,
+  payload: RefreshTokenRequest | None = Body(default=None),
+  db: Session = Depends(get_db),
+) -> AuthResponse:
+  refresh_token = _extract_refresh_token(request, payload)
+
   try:
-    token_payload = decode_refresh_token(payload.refresh_token)
-    token_id = str(token_payload['jti'])
+    token_payload = decode_refresh_token(refresh_token)
     subject = str(token_payload['sub'])
   except (jwt.InvalidTokenError, KeyError, TypeError, ValueError):
     raise _raise_invalid_credentials()
 
-  session = get_refresh_session_by_refresh_token(db, payload.refresh_token)
-  if session is None or not hmac.compare_digest(session.refresh_token, payload.refresh_token):
+  session = get_refresh_session_by_refresh_token(db, refresh_token)
+  if session is None or not hmac.compare_digest(session.refresh_token, refresh_token):
     raise _raise_invalid_credentials()
 
-  if not revoke_refresh_session(db, payload.refresh_token, commit=False):
+  if not revoke_refresh_session(db, refresh_token, commit=False):
     db.rollback()
     raise _raise_invalid_credentials()
 
@@ -144,26 +187,35 @@ def refresh_tokens(payload: RefreshTokenRequest, db: Session = Depends(get_db)) 
   )
   db.commit()
 
-  return AuthResponse(
+  auth_response = AuthResponse(
     access_token=create_access_token(str(user.id)),
     refresh_token=refresh_token,
     user=UserRead.model_validate(user),
   )
+  _set_refresh_cookie(response, auth_response.refresh_token)
+  return auth_response
 
 
 @router.post('/logout', status_code=status.HTTP_204_NO_CONTENT)
-def logout(payload: RefreshTokenRequest, db: Session = Depends(get_db)) -> None:
+def logout(
+  request: Request,
+  response: Response,
+  payload: RefreshTokenRequest | None = Body(default=None),
+  db: Session = Depends(get_db),
+) -> None:
+  refresh_token = _extract_refresh_token(request, payload)
+
   try:
-    token_payload = decode_refresh_token(payload.refresh_token)
-    token_id = str(token_payload['jti'])
+    decode_refresh_token(refresh_token)
   except (jwt.InvalidTokenError, KeyError, TypeError, ValueError):
     raise _raise_invalid_credentials()
 
-  session = get_refresh_session_by_refresh_token(db, payload.refresh_token)
-  if session is None or not hmac.compare_digest(session.refresh_token, payload.refresh_token):
+  session = get_refresh_session_by_refresh_token(db, refresh_token)
+  if session is None or not hmac.compare_digest(session.refresh_token, refresh_token):
     raise _raise_invalid_credentials()
-  if not revoke_refresh_session(db, payload.refresh_token):
+  if not revoke_refresh_session(db, refresh_token):
     raise _raise_invalid_credentials()
+  _clear_refresh_cookie(response)
   return None
 
 
