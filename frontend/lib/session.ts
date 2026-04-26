@@ -1,6 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
-import { jwtDecode } from 'jwt-decode';
 import { Platform } from 'react-native';
+
+import { isJwtTokenValid } from '@/lib/shared-auth';
 
 const ACCESS_TOKEN_STORAGE_KEY = 'auth.accessToken';
 const REFRESH_TOKEN_STORAGE_KEY = 'auth.refreshToken';
@@ -60,14 +61,7 @@ async function writePersistedToken(storageKey: string, token: string | null): Pr
 }
 
 function isTokenValid(token: string | null): boolean {
-  if (!token) return false;
-  try {
-    const decoded = jwtDecode<{ exp: number }>(token);
-    // JWT exp is in seconds, Date.now() is in milliseconds
-    return decoded.exp * 1000 > Date.now();
-  } catch {
-    return false;
-  }
+  return isJwtTokenValid(token);
 }
 
 export function getAccessToken(): string | null {

@@ -89,6 +89,7 @@ def list_posts(
   page_size: int = Query(10, ge=1, le=50, description="Số bài mỗi trang"),
   sort_by: Literal['created_at', 'updated_at'] = Query('created_at', description="Sắp xếp theo"),
   sort_order: Literal['asc', 'desc'] = Query('desc', description="Thứ tự sắp xếp"),
+  author_id: int | None = Query(None, description="Lọc bài viết theo ID tác giả"),
   db: Session = Depends(get_db),
   current_user: User | None = Depends(get_current_user_optional),
 ):
@@ -99,7 +100,8 @@ def list_posts(
     page_size=page_size, 
     sort_by=sort_by, 
     sort_order=sort_order,
-    current_user_id=current_user.id if current_user else None
+    current_user_id=current_user.id if current_user else None,
+    author_id=author_id
   )
   return result
 

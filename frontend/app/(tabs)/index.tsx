@@ -11,6 +11,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Avatar, surfaceClass } from '@/components/ui/core';
 import { fetchPosts } from '@/lib/api';
+import { fetchCurrentUser } from '@/lib/auth';
+import type { AuthUser } from '@/lib/auth';
 import type { Post } from '@/lib/types';
 
 type Shortcut = {
@@ -134,7 +136,15 @@ function MessengerRow({ item }: { item: InboxItem }) {
   );
 }
 
-function ProfileRail() {
+function ProfileRail({ currentUser }: { currentUser: AuthUser | null }) {
+  const initials = currentUser 
+    ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase()
+    : 'LE';
+  const fullName = currentUser 
+    ? `${currentUser.first_name} ${currentUser.last_name}` 
+    : 'Lena Evere';
+  const bio = currentUser?.bio || 'Leading product design at Northfeed, shaping calmer social tools for creative teams.';
+
   return (
     <View className="gap-4">
       <ThemedText className="px-1 text-lg font-semibold text-slate-900">Shortcuts</ThemedText>
@@ -146,12 +156,12 @@ function ProfileRail() {
         <View className="h-[180px] bg-[#EAF4FB]" />
         <View className="px-5 pb-5">
           <View className="-mt-8 flex-row justify-start">
-            <Avatar initials="LE" />
+            <Avatar initials={initials} avatarUrl={currentUser?.avatar_url} />
           </View>
 
-          <ThemedText className="mt-4 text-[28px] font-semibold text-slate-950">Lena Evere</ThemedText>
+          <ThemedText className="mt-4 text-[28px] font-semibold text-slate-950">{fullName}</ThemedText>
           <ThemedText className="mt-2 text-base leading-7 text-slate-600">
-            Leading product design at Northfeed, shaping calmer social tools for creative teams.
+            {bio}
           </ThemedText>
 
           <View className="mt-5 flex-row gap-3">
@@ -228,6 +238,11 @@ export default function HomeScreen() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+
+  useEffect(() => {
+    fetchCurrentUser().then(setCurrentUser).catch(() => {});
+  }, []);
 
   const loadPosts = useCallback(async () => {
     setLoading(true);
@@ -252,15 +267,19 @@ export default function HomeScreen() {
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerClassName="pb-8">
         <View className="mx-auto w-full max-w-[1720px] px-4 pb-6 pt-4 md:px-6">
-          <AppTopNav isTablet={isTablet} />
+          <AppTopNav 
+            isTablet={isTablet} 
+            avatarUrl={currentUser?.avatar_url}
+            avatarInitials={currentUser ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase() : 'LE'} 
+          />
 
           <View className={`mt-4 gap-4 ${isDesktop ? 'flex-row items-start' : ''}`}>
             <View className={isDesktop ? 'w-[350px]' : 'w-full'}>
-              <ProfileRail />
+              <ProfileRail currentUser={currentUser} />
             </View>
 
             <View className={`${isDesktop ? 'flex-1' : 'w-full'} gap-4`}>
-              <ComposerCard onPostCreated={loadPosts} />
+              <ComposerCard onPostCreated={loadPosts} currentUser={currentUser} />
 
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="pr-4">
                 {stories.map((item) => (

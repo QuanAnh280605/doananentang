@@ -2,20 +2,26 @@
 
 ## Phạm vi repo
 
-- Repo này có 2 ứng dụng: `frontend/` và `backend/`.
+- Repo này có 3 ứng dụng: `frontend/`, `frontend-web/` và `backend/`.
 - `frontend/` là Expo + React Native + Expo Router + TypeScript.
+- `frontend-web/` là Next.js App Router + TypeScript.
 - `backend/` là FastAPI + SQLAlchemy + Alembic + PostgreSQL + pytest.
 - Không có monorepo task runner ở root.
 - Chạy lệnh Node và Expo trong `frontend/`.
+- Chạy lệnh Node cho web trong `frontend-web/`.
 - Chạy lệnh Python, Alembic, pytest, Docker trong `backend/`.
 
 ## File nguồn cần ưu tiên đọc
 
 - Frontend scripts: `frontend/package.json`
+- Frontend-web scripts: `frontend-web/package.json`
 - Frontend TypeScript: `frontend/tsconfig.json`
+- Frontend-web TypeScript: `frontend-web/tsconfig.json`
 - Frontend ESLint: `frontend/eslint.config.js`
+- Frontend-web ESLint: `frontend-web/.eslintrc.json`
 - Frontend Expo config: `frontend/app.json`
 - Frontend route: `frontend/app/`
+- Frontend-web route: `frontend-web/app/`
 - Backend dependency: `backend/requirements.txt`
 - Backend app: `backend/app/`
 - Backend migration: `backend/alembic/`, `backend/alembic.ini`
@@ -48,6 +54,7 @@
 
 - Frontend dùng npm.
 - Cài frontend bằng `npm install` trong `frontend/`.
+- Cài frontend-web bằng `npm install` trong `frontend-web/`.
 - Backend dùng `requirements.txt`.
 - Thiết lập backend khuyến nghị:
 - `python3 -m venv .venv`
@@ -62,6 +69,13 @@
 - iOS: `npm run ios`
 - Web: `npm run web`
 - Reset scaffold: `npm run reset-project`
+- Lint: `npm run lint`
+
+## Lệnh chạy frontend-web
+
+- Dev server: `npm run dev`
+- Build: `npm run build`
+- Start production: `npm run start`
 - Lint: `npm run lint`
 
 ## Lệnh chạy backend
@@ -82,6 +96,7 @@
 - Frontend hiện không có script build chuẩn hóa trong `frontend/package.json`.
 - Frontend cũng chưa có `export`, `prebuild`, `eas build`, hay CI build script.
 - `frontend/app.json` có `expo.web.output = static` nhưng chưa có script export production.
+- Frontend-web có build chuẩn bằng Next.js: `npm run build` trong `frontend-web/`.
 - Backend không có bước build riêng ngoài việc build Docker image.
 - Nếu thêm build/release flow mới, cập nhật file này trong cùng thay đổi.
 
@@ -103,6 +118,7 @@
 ## Verify bắt buộc trước khi kết thúc
 
 - Nếu sửa frontend, luôn chạy `npm run lint` trong `frontend/`.
+- Nếu sửa frontend-web, luôn chạy `npm run lint` và `npm run build` trong `frontend-web/`.
 - Nếu sửa backend, luôn chạy `pytest` trong `backend/`.
 - Nếu đổi model hoặc migration backend, chạy `alembic upgrade head` hoặc nêu rõ vì sao không chạy được.
 - Nếu thêm test framework mới, chạy đúng test của framework đó.
@@ -116,6 +132,8 @@
 - Frontend: Expo Router 6
 - Frontend: TypeScript strict
 - Frontend: ESLint qua `eslint-config-expo`
+- Frontend-web: Next.js 15 + React 19
+- Frontend-web: TypeScript strict
 - Backend: FastAPI
 - Backend: SQLAlchemy 2.x
 - Backend: Alembic
@@ -125,6 +143,7 @@
 ## Kiến trúc hiện tại
 
 - Frontend route nằm trong `frontend/app/`.
+- Frontend-web route nằm trong `frontend-web/app/`.
 - Frontend layout route dùng `_layout.tsx`.
 - Frontend component dùng lại nằm trong `frontend/components/`.
 - Frontend hook nằm trong `frontend/hooks/`.

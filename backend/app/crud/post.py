@@ -68,11 +68,17 @@ def get_posts(
   sort_by: Literal['created_at', 'updated_at'] = 'created_at',
   sort_order: Literal['asc', 'desc'] = 'desc',
   current_user_id: int | None = None,
+  author_id: int | None = None,
 ) -> dict:
   """Lấy danh sách bài viết có phân trang + sắp xếp + stats"""
 
+  # Xây dựng query cơ bản
+  query = db.query(Post).filter(Post.is_deleted == False)
+  if author_id is not None:
+    query = query.filter(Post.author_id == author_id)
+
   # Tính tổng số bài viết (không bị xóa mềm)
-  total = db.query(func.count(Post.id)).filter(Post.is_deleted == False).scalar() or 0
+  total = query.with_entities(func.count(Post.id)).scalar() or 0
   total_pages = math.ceil(total / page_size) if total > 0 else 1
 
   # Xác định cột sắp xếp
@@ -81,9 +87,8 @@ def get_posts(
 
   # Query có eager load media + author
   items = (
-    db.query(Post)
+    query
     .options(joinedload(Post.media), joinedload(Post.author))
-    .filter(Post.is_deleted == False)
     .order_by(order)
     .offset((page - 1) * page_size)
     .limit(page_size)

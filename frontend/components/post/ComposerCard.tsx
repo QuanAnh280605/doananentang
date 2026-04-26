@@ -8,7 +8,9 @@ import { ThemedView } from '@/components/themed-view';
 import { Avatar, surfaceClass } from '@/components/ui/core';
 import { createPost, uploadPostMedia } from '@/lib/api';
 
-export function ComposerCard({ onPostCreated }: { onPostCreated?: () => void }) {
+import type { AuthUser } from '@/lib/auth';
+
+export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: () => void; currentUser?: AuthUser | null }) {
     const [text, setText] = useState('');
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [isFocused, setIsFocused] = useState(false);
@@ -55,10 +57,14 @@ export function ComposerCard({ onPostCreated }: { onPostCreated?: () => void }) 
 
     const canPost = text.trim().length > 0 || selectedImage;
 
+    const initials = currentUser 
+      ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase()
+      : 'LC';
+
     return (
         <ThemedView className={`${surfaceClass} p-5`}>
             <View className="flex-row items-start gap-4">
-                <Avatar initials="LC" soft />
+                <Avatar initials={initials} soft avatarUrl={currentUser?.avatar_url} />
                 <View className="flex-1">
                     <TextInput
                         className="rounded-[24px] bg-[#F7F8FA] px-5 py-4 text-base text-slate-900"

@@ -183,6 +183,16 @@ export async function resetPassword(payload: ResetPasswordRequest): Promise<Mess
   });
 }
 
+export async function changePassword(currentPassword: string, newPassword: string): Promise<MessageResponse> {
+  return apiFetch<MessageResponse>('/api/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({
+      current_password: currentPassword,
+      new_password: newPassword,
+    }),
+  });
+}
+
 export type UserUpdatePayload = {
   first_name?: string;
   last_name?: string;

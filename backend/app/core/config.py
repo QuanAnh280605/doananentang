@@ -10,7 +10,13 @@ class Settings(BaseSettings):
   app_port: int = 8000
   
   database_url: str = 'postgresql+psycopg://postgres:postgres@localhost:5433/doananentang'
-  cors_origins: str = 'http://localhost:8081,http://127.0.0.1:8081,http://localhost:19006,http://127.0.0.1:19006,http://localhost:8082,http://127.0.0.1:8082,http://localhost:8080,http://127.0.0.1:8080'
+  cors_origins: str = (
+    'http://localhost:3000,http://127.0.0.1:3000,'
+    'http://localhost:8081,http://127.0.0.1:8081,'
+    'http://localhost:19006,http://127.0.0.1:19006,'
+    'http://localhost:8082,http://127.0.0.1:8082,'
+    'http://localhost:8080,http://127.0.0.1:8080'
+  )
 
   jwt_secret_key: str = 'dev-secret-key-change-me'
   jwt_algorithm: str = 'HS256'
@@ -18,6 +24,11 @@ class Settings(BaseSettings):
   refresh_token_expire_days: int = 7
 
   frontend_base_url: str = 'http://localhost:8081'
+  web_refresh_cookie_name: str = 'refresh_token'
+  web_refresh_cookie_secure: bool = False
+  web_refresh_cookie_samesite: str = 'lax'
+  web_refresh_cookie_domain: str | None = None
+  web_refresh_cookie_path: str = '/'
 
   smtp_host: str = 'smtp.gmail.com'
   smtp_port: int = 587

@@ -21,6 +21,7 @@ import {
   fetchCurrentUser,
   updateUserProfile,
   uploadUserAvatar,
+  changePassword,
   type AuthUser,
   type GenderValue,
 } from '@/lib/auth';
@@ -305,6 +306,29 @@ export default function EditProfileScreen() {
       return;
     }
 
+    if (newPassword) {
+      if (!currentPassword) {
+        Alert.alert('Lỗi', 'Vui lòng nhập mật khẩu hiện tại để đổi mật khẩu');
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        Alert.alert('Lỗi', 'Mật khẩu xác nhận không khớp');
+        return;
+      }
+      if (newPassword.length < 8) {
+        Alert.alert('Lỗi', 'Mật khẩu mới phải có ít nhất 8 ký tự');
+        return;
+      }
+      if (!/[A-Z]/.test(newPassword)) {
+        Alert.alert('Lỗi', 'Mật khẩu phải chứa ít nhất một chữ in hoa');
+        return;
+      }
+      if (!/[0-9]/.test(newPassword)) {
+        Alert.alert('Lỗi', 'Mật khẩu phải chứa ít nhất một chữ số');
+        return;
+      }
+    }
+
     setIsSaving(true);
     try {
       if (avatarUri) {
@@ -318,6 +342,10 @@ export default function EditProfileScreen() {
         phone: phone.trim() || null,
         gender,
       });
+
+      if (newPassword) {
+        await changePassword(currentPassword, newPassword);
+      }
 
       Alert.alert('Thành công', 'Cập nhật hồ sơ thành công', [
         { text: 'OK', onPress: () => router.back() },
@@ -433,26 +461,21 @@ export default function EditProfileScreen() {
                     </ThemedText>
                   </View>
 
-                  {/* Display name + Username row */}
                   <View className={isTablet ? 'flex-row gap-4' : 'gap-4'}>
                     <View className="flex-1">
-                      <FieldLabel label="Display name" />
+                      <FieldLabel label="First name" />
                       <FieldInput
-                        value={displayName}
-                        onChangeText={(text) => {
-                          const parts = text.split(' ');
-                          setFirstName(parts[0] || '');
-                          setLastName(parts.slice(1).join(' ') || '');
-                        }}
-                        placeholder="Tên hiển thị"
+                        value={firstName}
+                        onChangeText={setFirstName}
+                        placeholder="Họ của bạn"
                       />
                     </View>
                     <View className="flex-1">
-                      <FieldLabel label="Username" />
+                      <FieldLabel label="Last name" />
                       <FieldInput
-                        value={user?.email ? `@${user.email.split('@')[0]}` : '@username'}
-                        editable={false}
-                        placeholder="@username"
+                        value={lastName}
+                        onChangeText={setLastName}
+                        placeholder="Tên của bạn"
                       />
                     </View>
                   </View>

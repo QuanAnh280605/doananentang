@@ -85,7 +85,7 @@ function CommentItem({
     return (
         <View className="gap-3">
             <View className="flex-row gap-3">
-                <Avatar initials={getCommentInitials(comment.author)} soft />
+                <Avatar initials={getCommentInitials(comment.author)} soft avatarUrl={comment.author.avatar_url} />
                 <View className="flex-1 rounded-2xl bg-[#F7F8FA] p-4">
                     <View className="mb-1 flex-row items-center justify-between">
                         <ThemedText className="font-semibold text-slate-900">

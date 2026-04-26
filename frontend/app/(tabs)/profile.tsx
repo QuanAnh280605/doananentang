@@ -5,10 +5,12 @@ import { Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { API_URL } from '@/lib/api';
+import { API_URL, fetchPosts } from '@/lib/api';
 import { fetchCurrentUser, type AuthUser } from '@/lib/auth';
+import type { Post } from '@/lib/types';
 
 type ProfileTab = 'posts' | 'about' | 'media';
 
@@ -267,6 +269,34 @@ export default function ProfileScreen() {
     };
   }, []);
 
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    let isMounted = true;
+    setLoadingPosts(true);
+
+    fetchPosts(1, 20, user.id)
+      .then((res) => {
+        if (isMounted) {
+          setPosts(res.items);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) setLoadingPosts(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
+
+  const handleDeletePost = (postId: string) => {
+    setPosts(current => current.filter(p => p.id !== postId));
+  };
+
   const profile = useMemo(() => buildProfileViewModel(user), [user]);
 
   return (
@@ -383,9 +413,15 @@ export default function ProfileScreen() {
                 {activeTab === 'posts' ? (
                   <View className="gap-4">
                     <ThemedText className="px-1 text-[28px] font-semibold text-slate-950">Recent posts</ThemedText>
-                    {recentPosts.map((post) => (
-                      <PostCard key={post.id} initials={profile.initials} post={post} />
-                    ))}
+                    {loadingPosts ? (
+                      <ThemedText className="text-slate-500 text-center py-4">Đang tải...</ThemedText>
+                    ) : posts.length === 0 ? (
+                      <ThemedText className="text-slate-500 text-center py-4">Chưa có bài viết nào.</ThemedText>
+                    ) : (
+                      posts.map((post) => (
+                        <FeedPost key={post.id} item={post} onDelete={handleDeletePost} />
+                      ))
+                    )}
                   </View>
                 ) : null}
 
