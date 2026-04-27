@@ -8,7 +8,7 @@ import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/ui/ThemedText';
 import { ComposerCard } from '@/components/post/ComposerCard';
 import { FeedPost } from '@/components/post/FeedPost';
-import { fetchPosts } from '@/lib/api';
+import { fetchPosts, API_URL } from '@/lib/api';
 import { fetchCurrentUser, type AuthUser } from '@/lib/auth';
 import { ROUTES } from '@/lib/routes';
 import type { Post } from '@/lib/types';
@@ -106,7 +106,11 @@ export function HomeFeed() {
                 <div className="px-5 pb-5">
                   <div className="-mt-8">
                     {currentUser?.avatar_url ? (
-                        <img src={currentUser.avatar_url} className="h-16 w-16 rounded-[22px] border-4 border-white shadow-sm object-cover" alt="Avatar" />
+                        <img 
+                          src={currentUser.avatar_url.startsWith('http') ? currentUser.avatar_url : `${API_URL}${currentUser.avatar_url}`} 
+                          className="h-16 w-16 rounded-[22px] border-4 border-white shadow-sm object-cover" 
+                          alt="Avatar" 
+                        />
                     ) : (
                         <div className="flex h-16 w-16 items-center justify-center rounded-[22px] border-4 border-white bg-[#EAF4FB] shadow-sm">
                             <ThemedText as="span" className="text-xl font-bold text-slate-950">{initials}</ThemedText>
