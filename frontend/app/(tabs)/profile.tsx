@@ -93,19 +93,14 @@ function buildProfileViewModel(user: AuthUser | null): ProfileViewModel {
   const emailHandle = user?.email ? user.email.replace(/^mailto:/, '') : '';
   const headline = user?.headline || '';
   const intro = user?.bio || '';
-  const studio = user?.studio || '';
   const location = user?.city || '';
-  const website = user?.website || '';
   const email = user?.email || '';
   const avatarUrl = user?.avatar_url ? `${API_URL}${user.avatar_url}` : null;
   return {
     displayName,
     initials: initials || 'N/A',
-    headline,
     intro,
-    studio,
     location,
-    website,
     email,
     avatarUrl,
   };
@@ -245,10 +240,7 @@ export default function ProfileScreen() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isEditingIntro, setIsEditingIntro] = useState(false);
   const [tempIntro, setTempIntro] = useState('');
-  const [tempHeadline, setTempHeadline] = useState('');
-  const [tempStudio, setTempStudio] = useState('');
   const [tempCity, setTempCity] = useState('');
-  const [tempWebsite, setTempWebsite] = useState('');
   const [isSavingIntro, setIsSavingIntro] = useState(false);
   const isWide = width >= 1180;
   const viewedProfileUserId = user?.id ?? null;
@@ -266,10 +258,7 @@ export default function ProfileScreen() {
           setUser(nextUser);
           if (nextUser) {
             setTempIntro(nextUser.bio || '');
-            setTempHeadline(nextUser.headline || '');
-            setTempStudio(nextUser.studio || '');
             setTempCity(nextUser.city || '');
-            setTempWebsite(nextUser.website || '');
           }
         }
       } catch {
@@ -319,10 +308,7 @@ export default function ProfileScreen() {
     try {
       await updateUserProfile({
         bio: tempIntro.trim() || null,
-        headline: tempHeadline.trim() || null,
-        studio: tempStudio.trim() || null,
         city: tempCity.trim() || null,
-        website: tempWebsite.trim() || null,
       });
       const updatedUser = await fetchCurrentUser();
       setUser(updatedUser);
@@ -336,10 +322,7 @@ export default function ProfileScreen() {
 
   const handleCancelIntro = () => {
     setTempIntro(user?.bio || '');
-    setTempHeadline(user?.headline || '');
-    setTempStudio(user?.studio || '');
     setTempCity(user?.city || '');
-    setTempWebsite(user?.website || '');
     setIsEditingIntro(false);
   };
 
@@ -376,11 +359,6 @@ export default function ProfileScreen() {
 
                 <View className={`mt-5 gap-5 ${isWide ? 'flex-row items-start justify-between' : ''}`}>
                   <View className={isWide ? 'max-w-[760px] flex-1' : ''}>
-                    {profile.headline ? (
-                      <View className="self-start rounded-full bg-slate-100 px-3 py-1.5">
-                        <ThemedText className="text-sm font-semibold text-slate-700">{profile.headline}</ThemedText>
-                      </View>
-                    ) : null}
                   </View>
 
                   <View className={`${isWide ? 'w-[360px]' : ''} gap-3`}>
@@ -424,42 +402,12 @@ export default function ProfileScreen() {
                   {isEditingIntro ? (
                     <View className="gap-4">
                       <View>
-                        <ThemedText className="mb-1 text-xs font-semibold text-slate-500">HEADLINE</ThemedText>
-                        <TextInput
-                          className="rounded-xl border border-slate-200 bg-[#F7F8FA] px-4 py-2.5 text-base text-slate-900"
-                          value={tempHeadline}
-                          onChangeText={setTempHeadline}
-                          placeholder="VD: Senior Product Designer"
-                        />
-                      </View>
-
-                      <View>
                         <ThemedText className="mb-1 text-xs font-semibold text-slate-500">LOCATION</ThemedText>
                         <TextInput
                           className="rounded-xl border border-slate-200 bg-[#F7F8FA] px-4 py-2.5 text-base text-slate-900"
                           value={tempCity}
                           onChangeText={setTempCity}
                           placeholder="VD: Hà Nội, VN"
-                        />
-                      </View>
-
-                      <View>
-                        <ThemedText className="mb-1 text-xs font-semibold text-slate-500">STUDIO / COMPANY</ThemedText>
-                        <TextInput
-                          className="rounded-xl border border-slate-200 bg-[#F7F8FA] px-4 py-2.5 text-base text-slate-900"
-                          value={tempStudio}
-                          onChangeText={setTempStudio}
-                          placeholder="VD: FPT Software"
-                        />
-                      </View>
-
-                      <View>
-                        <ThemedText className="mb-1 text-xs font-semibold text-slate-500">WEBSITE</ThemedText>
-                        <TextInput
-                          className="rounded-xl border border-slate-200 bg-[#F7F8FA] px-4 py-2.5 text-base text-slate-900"
-                          value={tempWebsite}
-                          onChangeText={setTempWebsite}
-                          placeholder="yoursite.com"
                         />
                       </View>
 
@@ -511,9 +459,7 @@ export default function ProfileScreen() {
                       <View className="mt-4 gap-3">
                         {[
                           { icon: 'mail-outline', value: profile.email },
-                          { icon: 'apartment', value: profile.studio },
                           { icon: 'location-on', value: profile.location },
-                          { icon: 'language', value: profile.website },
                         ]
                           .filter((item) => !!item.value)
                           .map((item) => (

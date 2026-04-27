@@ -39,11 +39,8 @@ function buildProfileViewModel(user: AuthUser | null) {
   return {
     displayName,
     initials: initials || 'N/A',
-    headline: user?.headline || '',
     intro: user?.bio || '',
-    studio: user?.studio || '',
     location: user?.city || '',
-    website: user?.website || '',
     email: user?.email || '',
     avatarUrl,
   };
@@ -58,10 +55,7 @@ export function ProfileView() {
   const [loadingPosts, setLoadingPosts] = useState(true);
   const [isEditingIntro, setIsEditingIntro] = useState(false);
   const [tempIntro, setTempIntro] = useState('');
-  const [tempHeadline, setTempHeadline] = useState('');
-  const [tempStudio, setTempStudio] = useState('');
   const [tempCity, setTempCity] = useState('');
-  const [tempWebsite, setTempWebsite] = useState('');
   const [isSavingIntro, setIsSavingIntro] = useState(false);
 
   useEffect(() => {
@@ -73,10 +67,7 @@ export function ProfileView() {
           setUser(nextUser);
           if (nextUser) {
             setTempIntro(nextUser.bio || '');
-            setTempHeadline(nextUser.headline || '');
-            setTempStudio(nextUser.studio || '');
             setTempCity(nextUser.city || '');
-            setTempWebsite(nextUser.website || '');
             setLoadingPosts(true);
             fetchPosts(1, 20, nextUser.id)
               .then((res) => {
@@ -115,10 +106,7 @@ export function ProfileView() {
     try {
       const payload = {
         bio: tempIntro.trim() || null,
-        headline: tempHeadline.trim() || null,
-        studio: tempStudio.trim() || null,
         city: tempCity.trim() || null,
-        website: tempWebsite.trim() || null,
       };
       console.log('DEBUG: Sending profile update:', payload);
       await updateUserProfile(payload);
@@ -135,10 +123,7 @@ export function ProfileView() {
 
   const handleCancelIntro = () => {
     setTempIntro(user?.bio || '');
-    setTempHeadline(user?.headline || '');
-    setTempStudio(user?.studio || '');
     setTempCity(user?.city || '');
-    setTempWebsite(user?.website || '');
     setIsEditingIntro(false);
   };
 
@@ -178,11 +163,6 @@ export function ProfileView() {
               </div>
               <div className="mt-5 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                 <div className="xl:max-w-[760px] xl:flex-1">
-                  {profile.headline ? (
-                    <div className="inline-block rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
-                      {profile.headline}
-                    </div>
-                  ) : null}
                 </div>
                 <Link href="/profile/edit" className="rounded-[20px] bg-[#0A0A0A] px-4 py-4 text-base font-medium text-white text-center">Edit profile</Link>
               </div>
@@ -210,16 +190,6 @@ export function ProfileView() {
                 {isEditingIntro ? (
                   <div className="space-y-4">
                     <div>
-                      <ThemedText className="mb-1 block text-xs font-semibold text-slate-500">HEADLINE</ThemedText>
-                      <input
-                        type="text"
-                        className="w-full rounded-xl border border-slate-200 bg-[#F7F8FA] px-4 py-2.5 text-base text-slate-900 outline-none focus:border-slate-400"
-                        value={tempHeadline}
-                        onChange={(e) => setTempHeadline(e.target.value)}
-                        placeholder="VD: Senior Product Designer"
-                      />
-                    </div>
-                    <div>
                       <ThemedText className="mb-1 block text-xs font-semibold text-slate-500">LOCATION</ThemedText>
                       <input
                         type="text"
@@ -227,26 +197,6 @@ export function ProfileView() {
                         value={tempCity}
                         onChange={(e) => setTempCity(e.target.value)}
                         placeholder="VD: Hà Nội, VN"
-                      />
-                    </div>
-                    <div>
-                      <ThemedText className="mb-1 block text-xs font-semibold text-slate-500">STUDIO / COMPANY</ThemedText>
-                      <input
-                        type="text"
-                        className="w-full rounded-xl border border-slate-200 bg-[#F7F8FA] px-4 py-2.5 text-base text-slate-900 outline-none focus:border-slate-400"
-                        value={tempStudio}
-                        onChange={(e) => setTempStudio(e.target.value)}
-                        placeholder="VD: FPT Software"
-                      />
-                    </div>
-                    <div>
-                      <ThemedText className="mb-1 block text-xs font-semibold text-slate-500">WEBSITE</ThemedText>
-                      <input
-                        type="text"
-                        className="w-full rounded-xl border border-slate-200 bg-[#F7F8FA] px-4 py-2.5 text-base text-slate-900 outline-none focus:border-slate-400"
-                        value={tempWebsite}
-                        onChange={(e) => setTempWebsite(e.target.value)}
-                        placeholder="yoursite.com"
                       />
                     </div>
                     <div>
@@ -285,9 +235,7 @@ export function ProfileView() {
                     <div className="mt-4 space-y-3">
                       {[
                         { icon: 'mail', value: profile.email },
-                        { icon: 'apartment', value: profile.studio },
                         { icon: 'location_on', value: profile.location },
-                        { icon: 'language', value: profile.website },
                       ].filter(item => !!item.value).map((item) => (
                         <div key={item.icon} className="flex items-center gap-3">
                           <div className="flex h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA]">

@@ -57,9 +57,6 @@ class UserRead(UserBase):
   email: EmailStr
   phone: str | None = None
   city: str | None = None
-  headline: str | None = None
-  studio: str | None = None
-  website: str | None = None
   created_at: datetime
   updated_at: datetime
 
@@ -78,7 +75,4 @@ class UserUpdate(BaseModel):
   birth_date: date | None = None
   gender: GenderValue | None = None
   city: str | None = None
-  headline: str | None = None
-  studio: str | None = None
-  website: str | None = None
 

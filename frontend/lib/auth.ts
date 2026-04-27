@@ -14,10 +14,7 @@ export type AuthUser = {
   birth_date: string | null;
   gender: GenderValue;
   bio: string | null;
-  headline: string | null;
   city: string | null;
-  website: string | null;
-  studio: string | null;
   avatar_url: string | null;
   created_at: string;
   updated_at: string;
@@ -200,10 +197,7 @@ export type UserUpdatePayload = {
   phone?: string | null;
   gender?: GenderValue;
   birth_date?: string | null;
-  headline?: string | null;
   city?: string | null;
-  website?: string | null;
-  studio?: string | null;
 };
 
 export async function updateUserProfile(payload: UserUpdatePayload): Promise<AuthUser> {
