@@ -6,7 +6,7 @@ import { ProtectedPage } from '@/components/app/ProtectedPage';
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/ui/ThemedText';
 import { ROUTES } from '@/lib/routes';
-import { fetchPostDetail, fetchPostComments, createComment, deleteComment, likeComment, unlikeComment, deletePost, API_URL } from '@/lib/api';
+import { fetchPostDetail, fetchPostComments, createComment, deleteComment, likeComment, unlikeComment, deletePost, likePost, unlikePost, API_URL } from '@/lib/api';
 import { fetchCurrentUser, type AuthUser } from '@/lib/auth';
 import type { Post, Comment } from '@/lib/types';
 import Link from 'next/link';
@@ -151,6 +151,10 @@ export default function PostDetailPage() {
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  
+  const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [togglingLike, setTogglingLike] = useState(false);
 
   useEffect(() => {
     if (!postId) return;
@@ -166,6 +170,10 @@ export default function PostDetailPage() {
         setCurrentUser(userRes);
         setPost(postRes);
         setComments(commentsRes);
+        if (postRes) {
+          setLiked(postRes.is_liked);
+          setLikeCount(postRes.like_count);
+        }
         setLoading(false);
       }
     });
@@ -199,6 +207,37 @@ export default function PostDetailPage() {
       setComments(updatedComments);
     } catch (err) {
       alert('Xóa bình luận thất bại');
+    }
+  };
+
+  const handleToggleLike = async () => {
+    if (togglingLike || !postId) return;
+    setTogglingLike(true);
+    try {
+      const result = liked
+        ? await unlikePost(postId as string)
+        : await likePost(postId as string);
+      setLiked(result.liked);
+      setLikeCount(result.like_count);
+    } catch {
+      setLiked(!liked);
+      setLikeCount(liked ? likeCount - 1 : likeCount + 1);
+    } finally {
+      setTogglingLike(false);
+    }
+  };
+
+  const handleShare = async () => {
+    const shareUrl = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `Bài viết từ Northfeed`, url: shareUrl });
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        alert("Đã copy link bài viết!");
+      }
+    } catch (error) {
+      console.warn(error);
     }
   };
 
@@ -295,6 +334,49 @@ export default function PostDetailPage() {
               </div>
             )}
 
+            {/* Post Stats */}
+            <div className="mt-6 flex items-center justify-between border-b border-[#E4E8EE] pb-4">
+              <div className="flex items-center gap-2">
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#4A9FD8] text-white">
+                  <span className="material-icons text-[14px]">thumb_up</span>
+                </div>
+                <ThemedText as="p" className="text-sm font-medium text-slate-600">
+                  {likeCount > 0 ? `${likeCount} lượt thích` : 'Chưa có lượt thích'}
+                </ThemedText>
+              </div>
+              <ThemedText as="p" className="text-sm font-medium text-slate-500">
+                {comments.length} bình luận
+              </ThemedText>
+            </div>
+
+            {/* Post Actions */}
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                onClick={handleToggleLike}
+                disabled={togglingLike}
+                className={`flex flex-1 min-w-[130px] items-center justify-center gap-2 rounded-[20px] px-4 py-4 transition-colors ${liked ? 'bg-[#EAF4FB] text-[#4A9FD8]' : 'bg-[#F7F8FA] text-slate-600 hover:bg-slate-100'}`}
+              >
+                <span className="material-icons text-[20px]">{liked ? 'thumb_up' : 'thumb_up_off_alt'}</span>
+                <span className="text-base font-medium">{liked ? 'Liked' : 'Like'}</span>
+              </button>
+
+              <button 
+                onClick={() => document.getElementById('comment-input')?.focus()}
+                className="flex flex-1 min-w-[130px] items-center justify-center gap-2 rounded-[20px] bg-[#F7F8FA] px-4 py-4 text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <span className="material-icons text-[20px]">chat_bubble_outline</span>
+                <span className="text-base font-medium">Comment</span>
+              </button>
+
+              <button 
+                onClick={handleShare}
+                className="flex flex-1 min-w-[130px] items-center justify-center gap-2 rounded-[20px] bg-[#F7F8FA] px-4 py-4 text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <span className="material-icons text-[20px]">reply</span>
+                <span className="text-base font-medium">Share</span>
+              </button>
+            </div>
+
             {/* Comment Section */}
             <div className="mt-10 border-t border-[#E4E8EE] pt-8">
               <div className="flex items-center justify-between mb-6">
@@ -339,6 +421,7 @@ export default function PostDetailPage() {
                 <div className="flex gap-4 items-end">
                   <div className="flex-1">
                     <textarea 
+                      id="comment-input"
                       value={commentInput}
                       onChange={(e) => setCommentInput(e.target.value)}
                       placeholder={replyTo ? "Viết câu trả lời..." : "Viết bình luận của bạn..."}

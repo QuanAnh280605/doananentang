@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { createPost, uploadPostMedia } from '@/lib/api';
+import { createPost, uploadPostMedia, API_URL } from '@/lib/api';
 import type { AuthUser } from '@/lib/auth';
 import { ThemedText } from '@/components/ui/ThemedText';
 
@@ -56,7 +56,9 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
       ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase()
       : 'LC';
 
-    const avatarUrl = currentUser?.avatar_url;
+    const avatarUrl = currentUser?.avatar_url 
+        ? (currentUser.avatar_url.startsWith('http') ? currentUser.avatar_url : `${API_URL}${currentUser.avatar_url}`)
+        : null;
 
     return (
         <section className="rounded-[28px] border border-[#E4E8EE] bg-white p-5">
