@@ -242,7 +242,7 @@ export default function EditProfileScreen() {
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
 
   // Contact fields (UI-only for now)
-  const [website, setWebsite] = useState('');
+  const [city, setCity] = useState('');
 
   // Visibility toggles (UI-only for now)
   const [showRole, setShowRole] = useState(true);
@@ -265,7 +265,7 @@ export default function EditProfileScreen() {
           setBio(u.bio || '');
           setPhone(u.phone || '');
           setGender(u.gender || 'custom');
-          setWebsite(u.website || '');
+          setCity(u.city || '');
         }
       } catch {
         Alert.alert('Lỗi', 'Không thể tải thông tin cá nhân');
@@ -340,7 +340,7 @@ export default function EditProfileScreen() {
         last_name: lastName.trim(),
         bio: bio.trim() || null,
         phone: phone.trim() || null,
-        website: website.trim() || null,
+        city: city.trim() || null,
         gender,
       });
 
@@ -496,7 +496,7 @@ export default function EditProfileScreen() {
 
                 {/* ======= Contact and links ======= */}
                 <SectionCard>
-                  <SectionHeader title="Contact and links" />
+                  <SectionHeader title="Contact and location" />
                   <View className={isTablet ? 'flex-row gap-4' : 'gap-4'}>
                     <View className="flex-1">
                       <FieldLabel label="Email" />
@@ -507,11 +507,11 @@ export default function EditProfileScreen() {
                       />
                     </View>
                     <View className="flex-1">
-                      <FieldLabel label="Website" />
+                      <FieldLabel label="Location (City)" />
                       <FieldInput
-                        value={website}
-                        onChangeText={setWebsite}
-                        placeholder="yoursite.com"
+                        value={city}
+                        onChangeText={setCity}
+                        placeholder="Hà Nội, VN"
                       />
                     </View>
                   </View>

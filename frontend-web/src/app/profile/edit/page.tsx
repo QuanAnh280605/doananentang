@@ -22,7 +22,7 @@ export default function EditProfilePage() {
   const [bio, setBio] = useState('');
   const [phone, setPhone] = useState('');
   const [gender, setGender] = useState<GenderValue>('female');
-  const [website, setWebsite] = useState('');
+  const [city, setCity] = useState('');
 
   // Password states
   const [currentPassword, setCurrentPassword] = useState('');
@@ -45,7 +45,7 @@ export default function EditProfilePage() {
           if (u.phone) setPhone(u.phone);
           if (u.gender) setGender(u.gender as GenderValue);
           if ((u as any).bio) setBio((u as any).bio);
-          if ((u as any).website) setWebsite((u as any).website);
+          if (u.city) setCity(u.city);
           
           if (u.avatar_url) {
             setAvatarPreview(u.avatar_url.startsWith('http') ? u.avatar_url : `${API_URL}${u.avatar_url}`);
@@ -112,7 +112,7 @@ export default function EditProfilePage() {
         last_name: lastName.trim(),
         bio: bio.trim() || null,
         phone: phone.trim() || null,
-        website: website.trim() || null,
+        city: city.trim() || null,
         gender,
       });
 
@@ -215,6 +215,14 @@ export default function EditProfilePage() {
                       <option value="female">Female</option>
                       <option value="custom">Custom</option>
                     </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700">Location (City)</label>
+                    <input 
+                      className="w-full rounded-xl border border-[#E4E8EE] px-4 py-3 outline-none focus:border-blue-500 text-slate-900"
+                      value={city} onChange={(e) => setCity(e.target.value)}
+                      placeholder="Hà Nội, VN"
+                    />
                   </div>
                   <div className="space-y-2 sm:col-span-2">
                     <label className="text-sm font-medium text-slate-700">Bio</label>
