@@ -270,15 +270,21 @@ export default function PostDetailPage() {
     <ProtectedPage>
       <main className="min-h-screen bg-[#EDF1F5] pb-12">
         <div className="mx-auto w-full max-w-[860px] px-4 pb-6 pt-4 md:px-6">
-          <AppTopNav currentUser={currentUser} />
-          
-          <button 
-            onClick={() => router.back()} 
-            className="mb-4 mt-6 flex items-center gap-2 font-semibold text-slate-500 hover:text-slate-900 transition-colors"
-          >
-            <span className="material-icons">arrow_back</span>
-            Quay lại
-          </button>
+          {/* Back header - Premium Sticky Style */}
+          <div className="sticky top-4 z-30 mb-6 flex items-center justify-between gap-3 rounded-[28px] border border-[#E4E8EE] bg-white/80 px-5 py-4 shadow-sm backdrop-blur-md">
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => router.back()} 
+                className="flex h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA] text-slate-900 hover:bg-slate-100 transition-colors"
+              >
+                <span className="material-icons">arrow_back</span>
+              </button>
+              <div className="flex flex-col">
+                <ThemedText as="h1" className="text-base font-bold text-slate-950">Bài viết</ThemedText>
+                <ThemedText as="span" className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Chi tiết nội dung</ThemedText>
+              </div>
+            </div>
+          </div>
 
           <section className={`${surfaceClass} p-6 shadow-sm`}>
             {/* Post Header */}
@@ -290,6 +296,7 @@ export default function PostDetailPage() {
                   <ThemedText as="p" className="text-sm font-medium text-slate-500">{formatTime(post.created_at)}</ThemedText>
                 </div>
               </div>
+
               <div className="relative">
                 <button 
                   onClick={() => setShowMenu(!showMenu)} 

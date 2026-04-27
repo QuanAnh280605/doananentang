@@ -13,10 +13,10 @@ import type { Post } from '@/lib/types';
 
 type ProfileTab = 'posts' | 'about' | 'media';
 
-const tabs: { key: ProfileTab; label: string }[] = [
-  { key: 'posts', label: 'Posts' },
-  { key: 'about', label: 'About' },
-  { key: 'media', label: 'Media' },
+const tabs: { key: ProfileTab; label: string; icon: string }[] = [
+  { key: 'posts', label: 'Posts', icon: 'grid_view' },
+  { key: 'about', label: 'About', icon: 'person_outline' },
+  { key: 'media', label: 'Media', icon: 'photo_library' },
 ];
 
 const featuredMedia = [
@@ -144,7 +144,17 @@ export function ProfileView() {
     <ProtectedPage>
       <main className="min-h-screen bg-[#F8FAFC] pb-8">
         <div className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-4 md:px-6">
-          <AppTopNav searchPlaceholder="Search profile highlights, media, or posts" />
+          {/* Back header */}
+          <div className="mt-4 flex items-center gap-3 rounded-[28px] border border-[#E4E8EE] bg-white px-5 py-4">
+            <Link 
+              href="/" 
+              className="flex h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA] text-slate-900 hover:bg-slate-100 transition-colors"
+            >
+              <span className="material-icons">arrow_back</span>
+            </Link>
+            <ThemedText as="h1" className="text-lg font-semibold text-slate-900">Profile</ThemedText>
+          </div>
+
           <section className={`${surfaceClass} mt-4 overflow-hidden`}>
             <div className="h-[210px] bg-[#D9ECF8]" />
             <div className="px-5 pb-5">
@@ -158,7 +168,7 @@ export function ProfileView() {
                     )}
                   </div>
                   <div className="pb-1">
-                    <ThemedText as="h1" className="text-[28px] font-bold text-slate-950">{profile.displayName}</ThemedText>
+                    <ThemedText as="h1" className="text-[24px] font-bold text-slate-950">{profile.displayName}</ThemedText>
                   </div>
                 </div>
               </div>
@@ -175,10 +185,11 @@ export function ProfileView() {
                 {tabs.map((tab) => (
                   <button 
                     key={tab.key} 
-                    className={`min-w-[112px] rounded-[20px] px-4 py-4 text-base font-medium transition-colors ${activeTab === tab.key ? 'bg-[#0A0A0A] !text-white' : 'bg-[#F7F8FA] text-slate-900 hover:bg-slate-200'}`} 
+                    className={`flex min-w-[112px] items-center justify-center gap-2 rounded-[20px] px-6 py-4 text-base font-medium transition-colors ${activeTab === tab.key ? 'bg-[#0A0A0A] !text-white' : 'bg-[#F7F8FA] text-slate-900 hover:bg-slate-200'}`} 
                     onClick={() => setActiveTab(tab.key)} 
                     type="button"
                   >
+                    <span className="material-icons text-[20px]">{tab.icon}</span>
                     {tab.label}
                   </button>
                 ))}

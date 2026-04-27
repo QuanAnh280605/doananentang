@@ -367,8 +367,6 @@ export default function EditProfilePage() {
     <ProtectedPage>
       <main className="min-h-screen bg-[#F8FAFC] pb-8">
         <div className="mx-auto w-full max-w-[1720px] space-y-4 px-4 pb-6 pt-4 md:px-6">
-          <AppTopNav />
-
           {/* Back header */}
           <div className="flex items-center gap-3 rounded-[28px] border border-[#E4E8EE] bg-white px-5 py-4">
             <button
