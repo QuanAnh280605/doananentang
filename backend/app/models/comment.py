@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Text, func, text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
 from app.models.db_types import UUID_TYPE, uuid_pk
@@ -27,6 +27,28 @@ class Comment(Base):
   is_deleted: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False, server_default=text('false'))
   created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
   updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+  # Quan hệ N-1: Comment -> User (tác giả bình luận)
+  author: Mapped["User"] = relationship(
+      "User",
+      foreign_keys=[author_id],
+      lazy="joined",
+  )
+
+  # Quan hệ N-1: Comment -> Comment (parent)
+  parent: Mapped["Comment | None"] = relationship(
+      "Comment",
+      remote_side=[id],
+      back_populates="replies",
+  )
+
+  # Quan hệ 1-N: Comment -> Comment (replies)
+  replies: Mapped[list["Comment"]] = relationship(
+      "Comment",
+      back_populates="parent",
+      lazy="selectin",
+      cascade="all, delete-orphan",
+  )
 
   @property
   def comment_id(self) -> int:

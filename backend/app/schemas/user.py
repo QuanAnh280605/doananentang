@@ -12,6 +12,7 @@ class UserBase(BaseModel):
   birth_date: date | None = None
   gender: GenderValue
 
+
   @field_validator('first_name', 'last_name')
   @classmethod
   def validate_name(cls, value: str) -> str:
@@ -43,6 +44,10 @@ class UserCreate(UserBase):
   def validate_password(cls, value: str) -> str:
     if len(value) < 8:
       raise ValueError('Password must be at least 8 characters')
+    if not any(char.isupper() for char in value):
+      raise ValueError('Password must contain at least one uppercase letter')
+    if not any(char.isdigit() for char in value):
+      raise ValueError('Password must contain at least one number')
     return value
 
 class UserRead(UserBase):
@@ -51,6 +56,7 @@ class UserRead(UserBase):
   avatar_url: str | None = None
   email: EmailStr
   phone: str | None = None
+  city: str | None = None
   created_at: datetime
   updated_at: datetime
 
@@ -63,3 +69,10 @@ class UserRead(UserBase):
 
 class UserUpdate(BaseModel):
   bio: str | None = None
+  first_name: str | None = None
+  last_name: str | None = None
+  phone: str | None = None
+  birth_date: date | None = None
+  gender: GenderValue | None = None
+  city: str | None = None
+

@@ -1,4 +1,4 @@
-import { apiFetch } from '@/lib/api';
+import { apiFetch, API_URL } from '@/lib/api';
 import { clearAuthTokens, getRefreshToken, setAuthTokens } from '@/lib/session';
 
 export type GenderValue = 'female' | 'male' | 'custom';
@@ -11,6 +11,9 @@ export type AuthUser = {
   last_name: string;
   birth_date: string | null;
   gender: GenderValue;
+  bio: string | null;
+  avatar_url: string | null;
+  city: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -175,4 +178,51 @@ export async function resetPassword(payload: ResetPasswordRequest): Promise<Mess
   return apiFetch<MessageResponse>(`/api/auth/reset-password?${params}`, {
     method: 'POST',
   });
+}
+
+export type UserUpdatePayload = {
+  first_name?: string;
+  last_name?: string;
+  bio?: string | null;
+  phone?: string | null;
+  birth_date?: string | null;
+  gender?: GenderValue;
+  city?: string | null;
+};
+
+export async function updateUserProfile(payload: UserUpdatePayload): Promise<AuthUser> {
+  return apiFetch<AuthUser>('/api/users/me', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<MessageResponse> {
+  return apiFetch<MessageResponse>('/api/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({
+      current_password: currentPassword,
+      new_password: newPassword,
+    }),
+  });
+}
+
+export async function uploadUserAvatar(file: File): Promise<{ message: string; avatar_url: string }> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  // apiFetch needs custom handling for FormData so we override content-type
+  const response = await fetch(`${API_URL}/api/users/me/avatar`, {
+    method: 'PATCH',
+    body: formData,
+    headers: {
+      'Authorization': `Bearer ${await getAccessToken()}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to upload avatar');
+  }
+
+  return response.json();
 }

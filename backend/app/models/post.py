@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, Text, func, text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
 from app.models.db_enums import VisibilityLevel, visibility_level_enum
@@ -27,6 +27,21 @@ class Post(Base):
   is_deleted: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False, server_default=text('false'))
   created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
   updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+  # Quan hệ 1-N: Post -> PostMedia
+  media: Mapped[list["PostMedia"]] = relationship(
+      "PostMedia", 
+      backref="post", 
+      cascade="all, delete-orphan",
+      order_by="PostMedia.display_order"
+  )
+
+  # Quan hệ N-1: Post -> User (tác giả)
+  author: Mapped["User"] = relationship(
+      "User",
+      foreign_keys=[author_id],
+      lazy="joined",
+  )
 
   @property
   def post_id(self) -> int:

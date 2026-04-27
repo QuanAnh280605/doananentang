@@ -2,7 +2,7 @@ from app.models.comment import Comment
 from app.models.follow import Follow
 from app.models.group import Chat, Group
 from app.models.group_member import ChatMember, GroupMember
-from app.models.like import Like
+from app.models.like import CommentLike, Like
 from app.models.message import Message
 from app.models.message_media import MessageMedia
 from app.models.message_read import MessageRead, MessageStatus
@@ -21,6 +21,7 @@ __all__ = [
   'Chat',
   'ChatMember',
   'Comment',
+  'CommentLike',
   'Follow',
   'Group',
   'GroupMember',

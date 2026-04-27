@@ -1,11 +1,15 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 import { ProtectedPage } from '@/components/app/ProtectedPage';
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/ui/ThemedText';
+import { fetchPosts, deletePost, API_URL } from '@/lib/api';
+import { fetchCurrentUser, type AuthUser } from '@/lib/auth';
 import { ROUTES } from '@/lib/routes';
+import type { Post } from '@/lib/types';
 
 const shortcuts = [
   { label: 'Home', mark: 'H' },
@@ -19,35 +23,7 @@ const stories = [
   { id: '3', title: 'Client moodboard', time: 'Yesterday', fill: 'bg-[#F24822]', initials: 'KM' },
 ];
 
-const posts = [
-  {
-    id: '1',
-    author: 'Lina Corbe',
-    time: '32 min ago',
-    caption:
-      'Wrapped an early prototype for the studio dashboard. The quieter version tested better than the busy one, so I pulled the motion back and kept the signal stronger.',
-    reactions: '384 reactions',
-    meta: '28 comments 6 shares',
-  },
-  {
-    id: '2',
-    author: 'Rafi Mercer',
-    time: '1 hr ago',
-    caption:
-      'We cut the launch page into a lighter sequence and the handoff got noticeably faster. Posting the revised frame set for comments before lunch.',
-    reactions: '142 reactions',
-    meta: '17 comments 3 shares',
-  },
-  {
-    id: '3',
-    author: 'Aya Tran',
-    time: '3 hr ago',
-    caption:
-      'Collecting references for the May sprint. Drop one detail you think social products still get wrong: too much chrome, weak context, or noisy motion?',
-    reactions: '96 reactions',
-    meta: '54 comments 2 reposts',
-  },
-];
+
 
 const contacts = [
   { name: 'Ari Mendoza', status: 'Editing new campaign', initials: 'AM' },
@@ -64,9 +40,19 @@ const inboxItems = [
 
 const surfaceClass = 'rounded-[28px] border border-[#E4E8EE] bg-white';
 
-function Avatar({ initials, soft = false }: { initials: string; soft?: boolean }) {
+function Avatar({ initials, soft = false, avatarUrl }: { initials: string; soft?: boolean; avatarUrl?: string | null }) {
+  if (avatarUrl) {
+    const uri = avatarUrl.startsWith('http') ? avatarUrl : `${API_URL}${avatarUrl}`;
+    return (
+      <img 
+        src={uri} 
+        alt="Avatar"
+        className="h-14 w-14 shrink-0 rounded-[22px] object-cover"
+      />
+    );
+  }
   return (
-    <div className={`flex h-14 w-14 items-center justify-center rounded-[22px] ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`}>
+    <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-[22px] ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`}>
       <ThemedText as="span" className="text-base font-semibold tracking-[0.5px] text-slate-900">
         {initials}
       </ThemedText>
@@ -89,11 +75,56 @@ function SectionCard({ title, rightLabel, children }: { title: string; rightLabe
 }
 
 export function HomeFeed() {
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    
+    fetchCurrentUser()
+      .then(user => { if (mounted) setCurrentUser(user); })
+      .catch(() => {});
+
+    fetchPosts(1, 10)
+      .then((res) => {
+        if (mounted && res) {
+          setPosts(res.items || []);
+        }
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleDeletePost = async (postId: string) => {
+    if (!confirm('Bạn có chắc muốn xóa bài viết này?')) return;
+    try {
+      await deletePost(postId);
+      setPosts(current => current.filter(p => p.id !== postId));
+    } catch (err) {
+      alert('Không thể xóa bài viết. Vui lòng thử lại.');
+    }
+  };
+
+  // Format time helper
+  const formatTime = (isoStr: string) => {
+    const diff = Date.now() - new Date(isoStr).getTime();
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 1) return 'Vừa xong';
+    if (minutes < 60) return `${minutes} phút trước`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} giờ trước`;
+    return `${Math.floor(hours / 24)} ngày trước`;
+  };
   return (
     <ProtectedPage>
       <main className="min-h-screen bg-[#EDF1F5] pb-8">
         <div className="mx-auto w-full max-w-[1720px] px-4 pb-6 pt-4 md:px-6">
-          <AppTopNav />
+          <AppTopNav currentUser={currentUser} />
 
           <div className="mt-4 grid gap-4 xl:grid-cols-[350px_minmax(0,1fr)_360px]">
             <div className="space-y-4">
@@ -168,33 +199,67 @@ export function HomeFeed() {
                 ))}
               </div>
 
-              {posts.map((item) => (
-                <section key={item.id} className={`${surfaceClass} p-5`}>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                      <Avatar initials={item.author.slice(0, 2).toUpperCase()} soft />
-                      <div>
-                        <ThemedText as="h2" className="text-[21px] font-semibold text-slate-950">{item.author}</ThemedText>
-                        <ThemedText as="p" className="text-sm text-slate-500">{item.time}</ThemedText>
+              {loading ? (
+                <div className="flex justify-center p-8"><ThemedText as="p">Loading...</ThemedText></div>
+              ) : posts.length === 0 ? (
+                <div className="flex justify-center p-8"><ThemedText as="p">No posts yet.</ThemedText></div>
+              ) : (
+                posts.map((item) => {
+                  const authorName = `${item.author.first_name} ${item.author.last_name}`;
+                  const initials = `${item.author.first_name?.[0] || ''}${item.author.last_name?.[0] || ''}`.toUpperCase();
+                  const firstMediaUrl = item.media && item.media.length > 0
+                    ? (item.media[0].file_url.startsWith('http') ? item.media[0].file_url : `${API_URL}${item.media[0].file_url}`)
+                    : null;
+
+                  const isAuthor = currentUser?.id.toString() === String(item.author_id) || currentUser?.id.toString() === String(item.author?.id);
+
+                  return (
+                    <section key={item.id} className={`${surfaceClass} p-5`}>
+                      <div className="flex items-start justify-between gap-4">
+                        <Link href="/profile" className="flex items-center gap-4 hover:opacity-80 transition-opacity">
+                          <Avatar initials={initials} soft avatarUrl={item.author.avatar_url} />
+                          <div>
+                            <ThemedText as="h2" className="text-[21px] font-semibold text-slate-950">{authorName}</ThemedText>
+                            <ThemedText as="p" className="text-sm text-slate-500">{formatTime(item.created_at)}</ThemedText>
+                          </div>
+                        </Link>
+                        {isAuthor ? (
+                          <button onClick={() => handleDeletePost(item.id)} className="flex h-10 px-4 items-center justify-center rounded-[14px] bg-red-50 text-red-500 font-medium">Xóa</button>
+                        ) : (
+                          <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#F7F8FA] text-[#666666]">•••</div>
+                        )}
                       </div>
-                    </div>
-                    <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#F7F8FA] text-[#666666]">•••</div>
-                  </div>
-                  <ThemedText as="p" className="mt-6 text-[16px] leading-7 text-slate-700">{item.caption}</ThemedText>
-                  <div className="mt-5 h-[220px] rounded-[28px] bg-[#F7F8FA]" />
-                  <div className="mt-4 flex items-center justify-between gap-3">
-                    <ThemedText as="p" className="text-sm text-slate-500">{item.reactions}</ThemedText>
-                    <ThemedText as="p" className="text-sm text-slate-500">{item.meta}</ThemedText>
-                  </div>
-                  <div className="mt-4 grid gap-3 border-t border-[#E4E8EE] pt-4 md:grid-cols-3">
-                    {['Like', 'Comment', 'Share'].map((label) => (
-                      <div key={label} className="flex items-center justify-center rounded-[20px] bg-[#F7F8FA] px-4 py-4">
-                        <ThemedText as="p" className="text-base font-medium text-slate-900">{label}</ThemedText>
+                      <ThemedText as="p" className="mt-6 text-[16px] leading-7 text-slate-700">{item.content}</ThemedText>
+
+                      {firstMediaUrl && (
+                        <div className="mt-5 overflow-hidden rounded-[28px] bg-[#F7F8FA]">
+                          <img
+                            src={firstMediaUrl}
+                            alt="Post media"
+                            style={{ width: '100%', maxHeight: '800px', objectFit: 'contain' }}
+                          />
+                        </div>
+                      )}
+
+                      <div className="mt-4 flex items-center justify-between gap-3">
+                        <ThemedText as="p" className="text-sm text-slate-500">{item.like_count} reactions</ThemedText>
+                        <ThemedText as="p" className="text-sm text-slate-500">{item.comment_count} comments</ThemedText>
                       </div>
-                    ))}
-                  </div>
-                </section>
-              ))}
+                      <div className="mt-4 grid gap-3 border-t border-[#E4E8EE] pt-4 md:grid-cols-3">
+                        <div className={`flex items-center justify-center rounded-[20px] px-4 py-4 cursor-pointer ${item.is_liked ? 'bg-red-50 text-red-500' : 'bg-[#F7F8FA] text-slate-900'}`}>
+                          <ThemedText as="p" className="text-base font-medium">Like</ThemedText>
+                        </div>
+                        <Link href={`/post/${item.id}`} className="flex items-center justify-center rounded-[20px] bg-[#F7F8FA] px-4 py-4 cursor-pointer">
+                          <ThemedText as="p" className="text-base font-medium text-slate-900">Comment</ThemedText>
+                        </Link>
+                        <div className="flex items-center justify-center rounded-[20px] bg-[#F7F8FA] px-4 py-4 cursor-pointer">
+                          <ThemedText as="p" className="text-base font-medium text-slate-900">Share</ThemedText>
+                        </div>
+                      </div>
+                    </section>
+                  );
+                })
+              )}
             </div>
 
             <div className="space-y-4">

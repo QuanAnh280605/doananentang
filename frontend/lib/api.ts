@@ -1,5 +1,5 @@
 import type { Method } from 'axios';
-import axios from 'axios/dist/browser/axios.cjs';
+import axios from 'axios';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { Platform } from 'react-native';
@@ -20,9 +20,10 @@ import {
   hydrateAccessToken,
   setAuthTokens,
 } from '@/lib/session';
+import type { Comment, LikeStatus, PaginatedPosts, Post } from '@/lib/types';
 
 const FALLBACK_PORT = '8000';
-const LOCALHOST_API_URL = `http://localhost:${FALLBACK_PORT}`;
+const LOCALHOST_API_URL = `http://127.0.0.1:${FALLBACK_PORT}`;
 
 export type { ApiUrlSource };
 
@@ -108,6 +109,16 @@ function resolveApiConfig(): ApiConfig {
     }
   }
 
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      return {
+        url: `http://${hostname}:${FALLBACK_PORT}`,
+        source: 'fallback',
+      };
+    }
+  }
+
   return {
     url: LOCALHOST_API_URL,
     source: 'fallback',
@@ -131,7 +142,9 @@ async function performRequest(path: string, init: RequestInit | undefined, token
   const headers = new Headers(init?.headers);
 
   headers.set('Accept', 'application/json');
-  headers.set('Content-Type', 'application/json');
+  if (!(init?.body instanceof FormData)) {
+    headers.set('Content-Type', 'application/json');
+  }
 
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
@@ -296,4 +309,99 @@ export type HealthResponse = {
 
 export function fetchHealth(): Promise<HealthResponse> {
   return apiFetch<HealthResponse>('/api/health');
+}
+
+// ─── Posts API ────────────────────────────────────────────────
+
+export function fetchPosts(page = 1, pageSize = 10, authorId?: string | number): Promise<PaginatedPosts> {
+  let url = `/api/posts?page=${page}&page_size=${pageSize}&sort_order=desc`;
+  if (authorId) {
+    url += `&author_id=${authorId}`;
+  }
+  return apiFetch<PaginatedPosts>(url);
+}
+
+export function fetchPostDetail(postId: string): Promise<Post> {
+  return apiFetch<Post>(`/api/posts/${postId}`);
+}
+
+export function createPost(content: string, mediaUrls: string[] = []): Promise<Post> {
+  return apiFetch<Post>('/api/posts', {
+    method: 'POST',
+    body: JSON.stringify({
+      content,
+      media_urls: mediaUrls,
+    }),
+  });
+}
+
+export function deletePost(postId: string): Promise<void> {
+  return apiFetch<void>(`/api/posts/${postId}`, { method: 'DELETE' });
+}
+
+export async function uploadPostMedia(uri: string): Promise<{ data: string[] }> {
+  const formData = new FormData();
+  const filename = uri.split('/').pop() || 'image.jpg';
+  const match = /\.(\w+)$/.exec(filename);
+  const ext = match ? match[1] : 'jpg';
+  const mimeType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+
+  if (Platform.OS === 'web') {
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    formData.append('files', new File([blob], filename, { type: mimeType }));
+  } else {
+    formData.append('files', {
+      uri,
+      name: filename,
+      type: mimeType,
+    } as any);
+  }
+
+  return apiFetch<{ data: string[] }>('/api/posts/upload-media', {
+    method: 'POST',
+    body: formData,
+  });
+}
+
+// ─── Likes API ───────────────────────────────────────────────
+
+export function likePost(postId: string): Promise<LikeStatus> {
+  return apiFetch<LikeStatus>(`/api/posts/${postId}/like`, { method: 'POST' });
+}
+
+export function unlikePost(postId: string): Promise<LikeStatus> {
+  return apiFetch<LikeStatus>(`/api/posts/${postId}/like`, { method: 'DELETE' });
+}
+
+// ─── Comments API ────────────────────────────────────────────
+
+export function fetchComments(postId: string): Promise<Comment[]> {
+  return apiFetch<Comment[]>(`/api/comments/post/${postId}`);
+}
+
+export function createComment(postId: string, content: string, parentCommentId?: string): Promise<Comment> {
+  return apiFetch<Comment>(`/api/comments/post/${postId}`, {
+    method: 'POST',
+    body: JSON.stringify({
+      content,
+      parent_comment_id: parentCommentId ?? null,
+    }),
+  });
+}
+
+export function deleteComment(commentId: string): Promise<void> {
+  return apiFetch<void>(`/api/comments/${commentId}`, { method: 'DELETE' });
+}
+
+export function likeComment(commentId: string): Promise<{ is_liked: boolean; like_count: number }> {
+  return apiFetch<{ is_liked: boolean; like_count: number }>(`/api/comments/${commentId}/like`, {
+    method: 'POST',
+  });
+}
+
+export function unlikeComment(commentId: string): Promise<{ is_liked: boolean; like_count: number }> {
+  return apiFetch<{ is_liked: boolean; like_count: number }>(`/api/comments/${commentId}/like`, {
+    method: 'DELETE',
+  });
 }

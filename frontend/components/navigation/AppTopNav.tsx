@@ -1,5 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { router } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -8,9 +9,23 @@ type AppTopNavProps = {
   isTablet: boolean;
   searchPlaceholder?: string;
   avatarInitials?: string;
+  avatarUrl?: string | null;
 };
 
-function NavAvatar({ initials }: { initials: string }) {
+import { Image } from 'react-native';
+import { API_URL } from '@/lib/api';
+
+function NavAvatar({ initials, avatarUrl }: { initials: string; avatarUrl?: string | null }) {
+  if (avatarUrl) {
+    const uri = avatarUrl.startsWith('http') ? avatarUrl : `${API_URL}${avatarUrl}`;
+    return (
+      <Image 
+        source={{ uri }} 
+        className="h-14 w-14 rounded-[22px]" 
+        style={{ width: 56, height: 56, borderRadius: 22 }}
+      />
+    );
+  }
   return (
     <View className="h-14 w-14 items-center justify-center rounded-[22px] bg-[#EAF4FB]">
       <ThemedText className="text-base font-semibold tracking-[0.5px] text-slate-900">{initials}</ThemedText>
@@ -30,6 +45,7 @@ export function AppTopNav({
   isTablet,
   searchPlaceholder = 'Search people, notes, or screenshots',
   avatarInitials = 'LE',
+  avatarUrl,
 }: AppTopNavProps) {
   return (
     <ThemedView className="rounded-[28px] border border-[#E4E8EE] bg-white px-5 py-4">
@@ -57,7 +73,9 @@ export function AppTopNav({
           <NavActionBubble icon="mail-outline" />
           <NavActionBubble icon="notifications-none" />
           <NavActionBubble icon="apps" />
-          <NavAvatar initials={avatarInitials} />
+          <Pressable onPress={() => router.push('/profile')} className="active:opacity-70">
+            <NavAvatar initials={avatarInitials} avatarUrl={avatarUrl} />
+          </Pressable>
         </View>
       </View>
     </ThemedView>

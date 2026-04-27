@@ -30,3 +30,18 @@ def get_current_user(
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid credentials')
 
   return user
+
+
+def get_current_user_optional(
+  credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+  db: Session = Depends(get_db),
+) -> User | None:
+  if credentials is None or credentials.scheme.lower() != 'bearer':
+    return None
+
+  try:
+    payload = decode_access_token(credentials.credentials)
+    subject = str(payload.get('sub', ''))
+    return get_user_for_token(db, subject)
+  except InvalidTokenError:
+    return None

@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 import { apiFetch } from '@/lib/api';
 import { clearAuthTokens, getAccessToken, getRefreshToken, setAuthTokens } from '@/lib/session';
 
@@ -11,6 +13,9 @@ export type AuthUser = {
   last_name: string;
   birth_date: string | null;
   gender: GenderValue;
+  bio: string | null;
+  city: string | null;
+  avatar_url: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -172,5 +177,59 @@ export async function resetPassword(payload: ResetPasswordRequest): Promise<Mess
 
   return apiFetch<MessageResponse>(`/api/auth/reset-password?${params}`, {
     method: 'POST',
+  });
+}
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<MessageResponse> {
+  return apiFetch<MessageResponse>('/api/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({
+      current_password: currentPassword,
+      new_password: newPassword,
+    }),
+  });
+}
+
+export type UserUpdatePayload = {
+  first_name?: string;
+  last_name?: string;
+  bio?: string | null;
+  phone?: string | null;
+  gender?: GenderValue;
+  birth_date?: string | null;
+  city?: string | null;
+};
+
+export async function updateUserProfile(payload: UserUpdatePayload): Promise<AuthUser> {
+  return apiFetch<AuthUser>('/api/users/me', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function uploadUserAvatar(uri: string): Promise<{ message: string; avatar_url: string }> {
+  const formData = new FormData();
+  const filename = uri.split('/').pop() || 'avatar.jpg';
+  const match = /\.(\w+)$/.exec(filename);
+  const ext = match ? match[1] : 'jpg';
+  const mimeType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+
+  if (Platform.OS === 'web') {
+    // Web: fetch the blob from the data-URI / object-URL and append as a real File
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    formData.append('file', new File([blob], filename, { type: mimeType }));
+  } else {
+    // Native (iOS / Android): pass the RN-style object
+    formData.append('file', {
+      uri,
+      name: filename,
+      type: mimeType,
+    } as any);
+  }
+
+  return apiFetch<{ message: string; avatar_url: string }>('/api/users/me/avatar', {
+    method: 'PATCH',
+    body: formData,
   });
 }

@@ -42,18 +42,12 @@ def list_users_endpoint(db: Session = Depends(get_db)) -> list[UserRead]:
   return [UserRead.model_validate(user) for user in users]
 
 
-@router.get('/{user_id}', response_model=UserRead)
-def get_user_endpoint(user_id: int, db: Session = Depends(get_db)) -> UserRead:
-  user = get_user_by_id(db, user_id)
-  if user is None:
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found')
-
-  return UserRead.model_validate(user)
-
 @router.get('/me', response_model=UserRead)
 def get_current_user_profile(current_user: User = Depends(get_current_user)) -> UserRead:
   """Lấy thông tin của chính mình (đã đăng nhập)"""
   return UserRead.model_validate(current_user)
+
+
 @router.patch('/me', response_model=UserRead)
 def update_user_profile(
   payload: UserUpdate,
@@ -62,18 +56,26 @@ def update_user_profile(
 ) -> UserRead:
   """Cập nhật thông tin hồ sơ"""
   update_data = payload.model_dump(exclude_unset=True)
-  if 'bio' in update_data:
-    current_user.bio = update_data['bio']
-
+  # Đảm bảo lấy user từ session hiện tại để commit có tác dụng
+  db_user = db.query(User).filter(User.id == current_user.id).first()
+  if not db_user:
+      raise HTTPException(status_code=404, detail="User not found")
+      
+  print(f"DEBUG: Updating user {db_user.id} with data: {update_data}")
+  for field, value in update_data.items():
+    setattr(db_user, field, value)
+ 
   try:
     db.commit()
+    db.refresh(db_user)
   except IntegrityError as error:
     db.rollback()
     raise error
+ 
+  return UserRead.model_validate(db_user)
 
-  db.refresh(current_user)
-  return UserRead.model_validate(current_user)
-@router.post('/me/avatar')
+
+@router.patch('/me/avatar')
 def upload_avatar(
   file: UploadFile = File(...),
   current_user: User = Depends(get_current_user),
@@ -100,3 +102,12 @@ def upload_avatar(
   db.refresh(current_user)
   
   return {"message": "Tải ảnh lên thành công", "avatar_url": avatar_url}
+
+
+@router.get('/{user_id}', response_model=UserRead)
+def get_user_endpoint(user_id: int, db: Session = Depends(get_db)) -> UserRead:
+  user = get_user_by_id(db, user_id)
+  if user is None:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found')
+
+  return UserRead.model_validate(user)

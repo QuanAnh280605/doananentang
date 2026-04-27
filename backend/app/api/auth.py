@@ -30,7 +30,7 @@ from app.crud.refresh_session import (
 )
 from app.crud.user import create_user, get_user_by_email, get_user_by_phone
 from app.models.user import User
-from app.schemas.auth import AuthResponse, LoginRequest, RefreshTokenRequest, RegisterRequest
+from app.schemas.auth import AuthResponse, ChangePasswordRequest, LoginRequest, RefreshTokenRequest, RegisterRequest
 from app.schemas.user import UserRead
 from app.services.email import send_email
 
@@ -268,3 +268,16 @@ def reset_password(token: str, password: str, db: Session = Depends(get_db)):
     user.hashed_password = hash_password(password)
     db.commit()
     return {"message": "Password reset successfully"}
+
+@router.post("/change-password")
+def change_password(
+  payload: ChangePasswordRequest,
+  current_user: User = Depends(get_current_user),
+  db: Session = Depends(get_db)
+):
+    if not verify_password(payload.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Mật khẩu hiện tại không đúng')
+    
+    current_user.hashed_password = hash_password(payload.new_password)
+    db.commit()
+    return {"message": "Đổi mật khẩu thành công"}

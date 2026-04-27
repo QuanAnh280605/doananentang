@@ -1,8 +1,12 @@
+import Link from 'next/link';
 import { ThemedText } from '@/components/ui/ThemedText';
+import { API_URL } from '@/lib/api';
+import type { AuthUser } from '@/lib/auth';
 
 type AppTopNavProps = {
   searchPlaceholder?: string;
   avatarInitials?: string;
+  currentUser?: AuthUser | null;
 };
 
 function IconBubble({ children }: { children: React.ReactNode }) {
@@ -20,7 +24,16 @@ function NavIcon({ children }: { children: React.ReactNode }) {
 export function AppTopNav({
   searchPlaceholder = 'Search people, notes, or screenshots',
   avatarInitials = 'LE',
+  currentUser,
 }: AppTopNavProps) {
+  const initials = currentUser 
+    ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase()
+    : avatarInitials;
+    
+  const avatarUrl = currentUser?.avatar_url 
+    ? (currentUser.avatar_url.startsWith('http') ? currentUser.avatar_url : `${API_URL}${currentUser.avatar_url}`)
+    : null;
+
   return (
     <div className="rounded-[28px] border border-[#E4E8EE] bg-white px-5 py-4">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -59,11 +72,21 @@ export function AppTopNav({
           <IconBubble>
             <span aria-hidden>⋮</span>
           </IconBubble>
-          <div className="flex h-14 w-14 items-center justify-center rounded-[22px] bg-[#EAF4FB]">
-            <ThemedText as="span" className="text-base font-semibold tracking-[0.5px] text-slate-900">
-              {avatarInitials}
-            </ThemedText>
-          </div>
+          <Link href="/profile" className="hover:opacity-80 transition-opacity">
+            {avatarUrl ? (
+              <img 
+                src={avatarUrl} 
+                alt="Avatar"
+                className="h-14 w-14 shrink-0 rounded-[22px] object-cover"
+              />
+            ) : (
+              <div className="flex h-14 w-14 items-center justify-center rounded-[22px] bg-[#EAF4FB]">
+                <ThemedText as="span" className="text-base font-semibold tracking-[0.5px] text-slate-900">
+                  {initials}
+                </ThemedText>
+              </div>
+            )}
+          </Link>
         </div>
       </div>
     </div>

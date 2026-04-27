@@ -234,3 +234,57 @@ export type HealthResponse = {
 export function fetchHealth(): Promise<HealthResponse> {
   return apiFetch<HealthResponse>('/api/health');
 }
+
+import type { PaginatedPosts, Post, LikeStatus } from './types';
+
+export function fetchPosts(page = 1, pageSize = 10, authorId?: string | number): Promise<PaginatedPosts> {
+  let url = `/api/posts?page=${page}&page_size=${pageSize}&sort_order=desc`;
+  if (authorId) {
+    url += `&author_id=${authorId}`;
+  }
+  return apiFetch<PaginatedPosts>(url);
+}
+
+export function fetchPostDetail(postId: string): Promise<Post> {
+  return apiFetch<Post>(`/api/posts/${postId}`);
+}
+
+export function likePost(postId: string): Promise<LikeStatus> {
+  return apiFetch<LikeStatus>(`/api/posts/${postId}/like`, { method: 'POST' });
+}
+
+export function unlikePost(postId: string): Promise<LikeStatus> {
+  return apiFetch<LikeStatus>(`/api/posts/${postId}/like`, { method: 'DELETE' });
+}
+
+export function deletePost(postId: string): Promise<void> {
+  return apiFetch<void>(`/api/posts/${postId}`, { method: 'DELETE' });
+}
+
+import type { Comment } from './types';
+
+export function fetchPostComments(postId: string): Promise<Comment[]> {
+  return apiFetch<Comment[]>(`/api/posts/${postId}/comments`);
+}
+
+export function createComment(postId: string, content: string, parentCommentId: string | null = null): Promise<Comment> {
+  return apiFetch<Comment>(`/api/posts/${postId}/comments`, {
+    method: 'POST',
+    body: JSON.stringify({
+      content,
+      parent_comment_id: parentCommentId,
+    }),
+  });
+}
+
+export function deleteComment(commentId: string): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>(`/api/comments/${commentId}`, { method: 'DELETE' });
+}
+
+export function likeComment(commentId: string): Promise<{ liked: boolean; like_count: number }> {
+  return apiFetch<{ liked: boolean; like_count: number }>(`/api/comments/${commentId}/like`, { method: 'POST' });
+}
+
+export function unlikeComment(commentId: string): Promise<{ liked: boolean; like_count: number }> {
+  return apiFetch<{ liked: boolean; like_count: number }>(`/api/comments/${commentId}/like`, { method: 'DELETE' });
+}

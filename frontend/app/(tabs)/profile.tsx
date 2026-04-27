@@ -1,12 +1,16 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, TextInput, View, useWindowDimensions } from 'react-native';
 
-import { AppTopNav } from '@/components/navigation/AppTopNav';
+import { Image } from 'expo-image';
+import { router } from 'expo-router';
+import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { fetchCurrentUser, type AuthUser } from '@/lib/auth';
+import { API_URL, fetchPosts } from '@/lib/api';
+import { fetchCurrentUser, updateUserProfile, type AuthUser } from '@/lib/auth';
+import type { Post } from '@/lib/types';
 
 type ProfileTab = 'posts' | 'about' | 'media';
 
@@ -32,6 +36,7 @@ type ProfileViewModel = {
   studio: string;
   location: string;
   website: string;
+  avatarUrl: string | null;
 };
 
 const surfaceClass = 'rounded-[28px] border border-[#E4E8EE] bg-white';
@@ -63,7 +68,7 @@ const recentPosts: RecentPost[] = [
     id: '1',
     time: 'Updated 12 min ago',
     body:
-      'Shared a revised review template for the motion pass. The goal is less ceremony, clearer decision points, and faster approval once the story is already obvious.',
+      'Thanh Trì quê ta ơi',
     accentClassName: 'bg-[#D9ECF8]',
   },
   {
@@ -76,41 +81,53 @@ const recentPosts: RecentPost[] = [
 ];
 
 function buildProfileViewModel(user: AuthUser | null): ProfileViewModel {
-  const firstName = user?.first_name?.trim() || 'Lena';
-  const lastName = user?.last_name?.trim() || 'Evere';
+  const firstName = user?.first_name?.trim() || '';
+  const lastName = user?.last_name?.trim() || '';
   const displayName = `${firstName} ${lastName}`.trim();
-  const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-  const emailHandle = user?.email ? user.email.replace(/^mailto:/, '') : 'northfeed.design/lena';
 
+  let initials = '';
+  if (firstName || lastName) {
+    initials = `${(firstName || '').charAt(0)}${(lastName || '').charAt(0)}`.toUpperCase();
+  }
+
+  const emailHandle = user?.email ? user.email.replace(/^mailto:/, '') : '';
+  const headline = user?.headline || '';
+  const intro = user?.bio || '';
+  const location = user?.city || '';
+  const email = user?.email || '';
+  const avatarUrl = user?.avatar_url ? `${API_URL}${user.avatar_url}` : null;
   return {
     displayName,
-    initials: initials || 'LE',
-    headline: 'Design lead profile',
-    intro:
-      'Leading product design at Northfeed. Building calmer social tools, sharper review loops, and cleaner collaboration rituals.',
-    studio: 'Northfeed Studio',
-    location: 'Chicago, IL',
-    website: emailHandle,
+    initials: initials || 'N/A',
+    intro,
+    location,
+    email,
+    avatarUrl,
   };
 }
 
-function AvatarBlock({ initials, soft = false, size = 'large' }: { initials: string; soft?: boolean; size?: 'large' | 'small' }) {
+function AvatarBlock({ initials, soft = false, size = 'large', avatarUrl }: { initials: string; soft?: boolean; size?: 'large' | 'small', avatarUrl?: string | null }) {
   const containerClassName =
     size === 'large'
-      ? `h-[92px] w-[92px] rounded-[28px] ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`
-      : `h-14 w-14 rounded-[22px] ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`;
+      ? `h-[92px] w-[92px] rounded-[28px] overflow-hidden ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`
+      : `h-14 w-14 rounded-[22px] overflow-hidden ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`;
   const textClassName = size === 'large' ? 'text-[28px]' : 'text-base';
 
   return (
     <View className={`items-center justify-center ${containerClassName}`}>
-      <ThemedText className={`${textClassName} font-semibold tracking-[0.5px] text-slate-900`}>{initials}</ThemedText>
+      {avatarUrl ? (
+        <Image source={{ uri: avatarUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+      ) : (
+        <ThemedText className={`${textClassName} font-semibold tracking-[0.5px] text-slate-900`}>{initials}</ThemedText>
+      )}
     </View>
   );
 }
 
-function ActionButton({ icon, label, filled = false }: { icon: keyof typeof MaterialIcons.glyphMap; label: string; filled?: boolean }) {
+function ActionButton({ icon, label, filled = false, onPress }: { icon: keyof typeof MaterialIcons.glyphMap; label: string; filled?: boolean; onPress?: () => void }) {
   return (
     <Pressable
+      onPress={onPress}
       className={`min-w-[150px] flex-1 flex-row items-center justify-center gap-2 rounded-[20px] px-4 py-4 active:opacity-90 ${filled ? 'bg-[#0A0A0A]' : 'bg-[#F7F8FA]'}`}>
       <MaterialIcons color={filled ? '#FFFFFF' : '#0F172A'} name={icon} size={20} />
       <ThemedText className={`text-base font-medium ${filled ? 'text-white' : 'text-slate-900'}`}>{label}</ThemedText>
@@ -129,21 +146,22 @@ function ProfileTabButton({ active, icon, label, onPress }: { active: boolean; i
   );
 }
 
-function SectionTitle({ title, subtitle }: { title: string; subtitle?: string }) {
+function SectionTitle({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
   return (
     <View className="flex-row items-start justify-between gap-3">
       <View className="flex-1">
         <ThemedText className="text-[24px] font-semibold text-slate-950">{title}</ThemedText>
         {subtitle ? <ThemedText className="mt-1 text-sm text-slate-500">{subtitle}</ThemedText> : null}
       </View>
+      {action}
     </View>
   );
 }
 
-function SidebarCard({ title, children }: { title: string; children: ReactNode }) {
+function SidebarCard({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   return (
     <ThemedView className={`${surfaceClass} p-5`}>
-      <SectionTitle title={title} />
+      <SectionTitle title={title} action={action} />
       <View className="mt-5 gap-4">{children}</View>
     </ThemedView>
   );
@@ -220,7 +238,10 @@ export default function ProfileScreen() {
   const { width, height } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const [user, setUser] = useState<AuthUser | null>(null);
-  const isTablet = width >= 768;
+  const [isEditingIntro, setIsEditingIntro] = useState(false);
+  const [tempIntro, setTempIntro] = useState('');
+  const [tempCity, setTempCity] = useState('');
+  const [isSavingIntro, setIsSavingIntro] = useState(false);
   const isWide = width >= 1180;
   const viewedProfileUserId = user?.id ?? null;
   const currentUserId = user?.id ?? null;
@@ -235,6 +256,10 @@ export default function ProfileScreen() {
 
         if (isMounted) {
           setUser(nextUser);
+          if (nextUser) {
+            setTempIntro(nextUser.bio || '');
+            setTempCity(nextUser.city || '');
+          }
         }
       } catch {
         if (isMounted) {
@@ -250,6 +275,57 @@ export default function ProfileScreen() {
     };
   }, []);
 
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    let isMounted = true;
+    setLoadingPosts(true);
+
+    fetchPosts(1, 20, user.id)
+      .then((res) => {
+        if (isMounted) {
+          setPosts(res.items);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) setLoadingPosts(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleDeletePost = (postId: string) => {
+    setPosts(current => current.filter(p => p.id !== postId));
+  };
+
+  const handleSaveIntro = async () => {
+    setIsSavingIntro(true);
+    try {
+      await updateUserProfile({
+        bio: tempIntro.trim() || null,
+        city: tempCity.trim() || null,
+      });
+      const updatedUser = await fetchCurrentUser();
+      setUser(updatedUser);
+      setIsEditingIntro(false);
+    } catch (err) {
+      Alert.alert('Lỗi', 'Không thể cập nhật thông tin.');
+    } finally {
+      setIsSavingIntro(false);
+    }
+  };
+
+  const handleCancelIntro = () => {
+    setTempIntro(user?.bio || '');
+    setTempCity(user?.city || '');
+    setIsEditingIntro(false);
+  };
+
   const profile = useMemo(() => buildProfileViewModel(user), [user]);
 
   return (
@@ -258,32 +334,37 @@ export default function ProfileScreen() {
       <ThemedView className="flex-1 bg-[#F8FAFC]" style={{ minHeight: height }}>
         <ScrollView bounces={false} className="flex-1" contentContainerClassName="pb-8">
           <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-4 md:px-6">
-            <AppTopNav isTablet={isTablet} searchPlaceholder="Search profile highlights, media, or posts" />
+            {/* Back header */}
+            <View className="flex-row items-center gap-3 rounded-[28px] border border-[#E4E8EE] bg-white px-5 py-4">
+              <Pressable
+                onPress={() => router.push('/')}
+                className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA] active:opacity-80"
+              >
+                <ThemedText className="text-lg">←</ThemedText>
+              </Pressable>
+              <ThemedText className="text-lg font-semibold text-slate-900">Profile</ThemedText>
+            </View>
 
             <ThemedView className={`${surfaceClass} overflow-hidden`}>
               <View className="h-[210px] bg-[#D9ECF8]" />
               <View className="px-5 pb-5">
                 <View className="-mt-12 flex-row items-end justify-between gap-4">
                   <View className="flex-row items-end gap-4">
-                    <AvatarBlock initials={profile.initials} size="large" />
+                    <AvatarBlock initials={profile.initials} size="large" avatarUrl={profile.avatarUrl} />
                     <View className="pb-1">
-                      <View className="self-start rounded-full bg-white/90 px-3 py-2">
-                        <ThemedText className="text-sm font-semibold text-slate-700">{profile.headline}</ThemedText>
-                      </View>
+                      <ThemedText className="text-[24px] font-bold text-slate-950">{profile.displayName}</ThemedText>
                     </View>
                   </View>
                 </View>
 
                 <View className={`mt-5 gap-5 ${isWide ? 'flex-row items-start justify-between' : ''}`}>
                   <View className={isWide ? 'max-w-[760px] flex-1' : ''}>
-                    <ThemedText className="text-[34px] font-semibold leading-[42px] text-slate-950">{profile.displayName}</ThemedText>
-                    <ThemedText className="mt-3 max-w-3xl text-[16px] leading-7 text-slate-600">{profile.intro}</ThemedText>
                   </View>
 
                   <View className={`${isWide ? 'w-[360px]' : ''} gap-3`}>
                     {isOwnProfile ? (
                       <View className="flex-row flex-wrap gap-3">
-                        <ActionButton icon="edit" label="Edit profile" filled />
+                        <ActionButton icon="edit" label="Edit profile" filled onPress={() => router.push('/edit-profile')} />
                       </View>
                     ) : (
                       <View className="flex-row flex-wrap gap-3">
@@ -310,26 +391,92 @@ export default function ProfileScreen() {
 
             <View className={isWide ? 'flex-row items-start gap-4' : 'gap-4'}>
               <View className={isWide ? 'w-[320px] gap-4' : 'gap-4'}>
-                <SidebarCard title="Intro">
-                  <ThemedText className="text-base leading-7 text-slate-700">
-                    Design lead focused on calmer collaboration patterns, review systems, and fast-moving product rituals for distributed teams.
-                  </ThemedText>
-
-                  <View className="gap-3">
-                    {[
-                      ['apartment', profile.studio],
-                      ['location-on', profile.location],
-                      ['language', profile.website],
-                    ].map(([icon, value]) => (
-                      <View key={value} className="flex-row items-center gap-3">
-                        <View className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA]">
-                          <MaterialIcons color="#64748B" name={icon as keyof typeof MaterialIcons.glyphMap} size={20} />
-                        </View>
-                        <ThemedText className="flex-1 text-base font-medium text-slate-800">{value}</ThemedText>
+                <SidebarCard 
+                  title="Intro"
+                  action={isOwnProfile && !isEditingIntro ? (
+                    <Pressable onPress={() => setIsEditingIntro(true)} className="active:opacity-60">
+                      <MaterialIcons name="edit" size={20} color="#64748B" />
+                    </Pressable>
+                  ) : null}
+                >
+                  {isEditingIntro ? (
+                    <View className="gap-4">
+                      <View>
+                        <ThemedText className="mb-1 text-xs font-semibold text-slate-500">LOCATION</ThemedText>
+                        <TextInput
+                          className="rounded-xl border border-slate-200 bg-[#F7F8FA] px-4 py-2.5 text-base text-slate-900"
+                          value={tempCity}
+                          onChangeText={setTempCity}
+                          placeholder="VD: Hà Nội, VN"
+                        />
                       </View>
-                    ))}
-                  </View>
+
+                      <View>
+                        <ThemedText className="mb-1 text-xs font-semibold text-slate-500">BIO / INTRO</ThemedText>
+                        <TextInput
+                          className="rounded-xl border border-slate-200 bg-[#F7F8FA] px-4 py-3 text-base text-slate-900"
+                          multiline
+                          numberOfLines={4}
+                          value={tempIntro}
+                          onChangeText={setTempIntro}
+                          placeholder="Giới thiệu về bạn..."
+                          textAlignVertical="top"
+                        />
+                      </View>
+
+                      <View className="mt-2 flex-row gap-2">
+                        <Pressable 
+                          onPress={handleSaveIntro}
+                          disabled={isSavingIntro}
+                          className="flex-1 items-center rounded-full bg-slate-900 py-3 active:opacity-80 disabled:opacity-50"
+                        >
+                          {isSavingIntro ? (
+                            <ActivityIndicator size="small" color="#FFFFFF" />
+                          ) : (
+                            <ThemedText className="text-sm font-semibold text-white">Save All</ThemedText>
+                          )}
+                        </Pressable>
+                        <Pressable 
+                          onPress={handleCancelIntro}
+                          className="flex-1 items-center rounded-full bg-[#F7F8FA] py-3 active:opacity-80"
+                        >
+                          <ThemedText className="text-sm font-semibold text-slate-700">Cancel</ThemedText>
+                        </Pressable>
+                      </View>
+                    </View>
+                  ) : (
+                    <>
+                      {profile.intro ? (
+                        <ThemedText className="text-base leading-7 text-slate-700">
+                          {profile.intro}
+                        </ThemedText>
+                      ) : (
+                        <ThemedText className="text-base italic text-slate-400">
+                          Chưa có giới thiệu.
+                        </ThemedText>
+                      )}
+
+                      <View className="mt-4 gap-3">
+                        {[
+                          { icon: 'mail-outline', value: profile.email },
+                          { icon: 'location-on', value: profile.location },
+                        ]
+                          .filter((item) => !!item.value)
+                          .map((item) => (
+                            <View key={item.icon} className="flex-row items-center gap-3">
+                              <View className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA]">
+                                <MaterialIcons name={item.icon as any} size={20} color="#64748B" />
+                              </View>
+                              <ThemedText className="flex-1 text-base font-medium text-slate-800" numberOfLines={1}>
+                                {item.value}
+                              </ThemedText>
+                            </View>
+                          ))}
+                      </View>
+                    </>
+                  )}
                 </SidebarCard>
+
 
                 <SidebarCard title="Featured media">
                   {featuredMedia.map((item) => (
@@ -348,9 +495,15 @@ export default function ProfileScreen() {
                 {activeTab === 'posts' ? (
                   <View className="gap-4">
                     <ThemedText className="px-1 text-[28px] font-semibold text-slate-950">Recent posts</ThemedText>
-                    {recentPosts.map((post) => (
-                      <PostCard key={post.id} initials={profile.initials} post={post} />
-                    ))}
+                    {loadingPosts ? (
+                      <ThemedText className="text-slate-500 text-center py-4">Đang tải...</ThemedText>
+                    ) : posts.length === 0 ? (
+                      <ThemedText className="text-slate-500 text-center py-4">Chưa có bài viết nào.</ThemedText>
+                    ) : (
+                      posts.map((post) => (
+                        <FeedPost key={post.id} item={post} onDelete={handleDeletePost} />
+                      ))
+                    )}
                   </View>
                 ) : null}
 
