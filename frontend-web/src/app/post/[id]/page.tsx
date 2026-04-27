@@ -9,6 +9,7 @@ import { ROUTES } from '@/lib/routes';
 import { fetchPostDetail, fetchPostComments, createComment, deleteComment, likeComment, unlikeComment, deletePost, API_URL } from '@/lib/api';
 import { fetchCurrentUser, type AuthUser } from '@/lib/auth';
 import type { Post, Comment } from '@/lib/types';
+import Link from 'next/link';
 
 const surfaceClass = 'rounded-[28px] border border-[#E4E8EE] bg-white';
 
@@ -22,19 +23,19 @@ function formatTime(isoStr: string) {
   return `${Math.floor(hours / 24)} ngày trước`;
 }
 
-function Avatar({ initials, avatarUrl }: { initials: string; avatarUrl?: string | null }) {
+function Avatar({ initials, avatarUrl, size = 'h-10 w-10' }: { initials: string; avatarUrl?: string | null; size?: string }) {
   if (avatarUrl) {
     const uri = avatarUrl.startsWith('http') ? avatarUrl : `${API_URL}${avatarUrl}`;
     return (
       <img 
         src={uri} 
         alt="Avatar"
-        className="h-10 w-10 shrink-0 rounded-[14px] object-cover"
+        className={`${size} shrink-0 rounded-[14px] object-cover`}
       />
     );
   }
   return (
-    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] bg-[#EAF4FB]">
+    <div className={`flex ${size} shrink-0 items-center justify-center rounded-[14px] bg-[#EAF4FB]`}>
       <ThemedText as="span" className="text-sm font-semibold tracking-[0.5px] text-slate-900">
         {initials}
       </ThemedText>
@@ -42,7 +43,7 @@ function Avatar({ initials, avatarUrl }: { initials: string; avatarUrl?: string 
   );
 }
 
-function CommentThread({ 
+function CommentItem({ 
   comment, 
   currentUser, 
   postAuthorId, 
@@ -52,7 +53,7 @@ function CommentThread({
   comment: Comment; 
   currentUser: AuthUser | null;
   postAuthorId: string;
-  onReply: (parentId: string) => void;
+  onReply: (comment: Comment) => void;
   onDelete: (commentId: string) => void;
 }) {
   const [isLiked, setIsLiked] = useState(comment.is_liked);
@@ -90,22 +91,38 @@ function CommentThread({
           </div>
           <div className="mt-2 flex items-center gap-4 px-2">
             <ThemedText as="p" className="text-xs text-slate-500">{formatTime(comment.created_at)}</ThemedText>
-            <button onClick={handleLike} className={`text-xs font-medium ${isLiked ? 'text-red-500' : 'text-slate-600'}`}>
-              {likeCount > 0 ? `${likeCount} ` : ''}Thích
+            <button 
+              onClick={handleLike} 
+              className={`flex items-center gap-1 text-xs font-bold ${isLiked ? 'text-[#4A9FD8]' : 'text-slate-500'} hover:opacity-70 transition-opacity`}
+            >
+              <span className="material-icons text-[14px]">{isLiked ? 'thumb_up' : 'thumb_up_off_alt'}</span>
+              {likeCount > 0 && <span>{likeCount}</span>}
+              <span>Thích</span>
             </button>
-            <button onClick={() => onReply(comment.id)} className="text-xs font-medium text-slate-600">Trả lời</button>
+            <button 
+              onClick={() => onReply(comment)} 
+              className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:opacity-70 transition-opacity"
+            >
+              <span className="material-icons text-[14px]">reply</span>
+              Trả lời
+            </button>
             {canDelete && (
-              <button onClick={() => onDelete(comment.id)} className="text-xs font-medium text-red-500">Xóa</button>
+              <button 
+                onClick={() => onDelete(comment.id)} 
+                className="flex items-center gap-1 text-xs font-bold text-red-400 hover:text-red-600 transition-colors"
+              >
+                <span className="material-icons text-[14px]">delete_outline</span>
+                Xóa
+              </button>
             )}
           </div>
         </div>
       </div>
       
-      {/* Recursively render replies */}
       {comment.replies && comment.replies.length > 0 && (
-        <div className="ml-10 border-l-2 border-[#E4E8EE] pl-4">
+        <div className="ml-5 border-l-2 border-[#E4E8EE] pl-5">
           {comment.replies.map(reply => (
-            <CommentThread 
+            <CommentItem 
               key={reply.id} 
               comment={reply} 
               currentUser={currentUser} 
@@ -131,8 +148,9 @@ export default function PostDetailPage() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
 
   const [commentInput, setCommentInput] = useState('');
-  const [replyToId, setReplyToId] = useState<string | null>(null);
+  const [replyTo, setReplyTo] = useState<Comment | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
   useEffect(() => {
     if (!postId) return;
@@ -160,13 +178,12 @@ export default function PostDetailPage() {
     
     setIsSubmitting(true);
     try {
-      const newComment = await createComment(postId, commentInput.trim(), replyToId);
+      await createComment(postId, commentInput.trim(), replyTo?.id || null);
       
-      // Rough UI update: re-fetch comments to easily construct the tree
       const updatedComments = await fetchPostComments(postId);
       setComments(updatedComments);
       setCommentInput('');
-      setReplyToId(null);
+      setReplyTo(null);
     } catch (err) {
       alert('Không thể gửi bình luận');
     } finally {
@@ -185,18 +202,23 @@ export default function PostDetailPage() {
     }
   };
 
-  const handleDeletePost = async () => {
-    if (!postId || !confirm('Bạn có chắc muốn xóa bài viết này?')) return;
-    try {
-      await deletePost(postId as string);
-      router.push(ROUTES.home);
-    } catch (err) {
-      alert('Không thể xóa bài viết');
-    }
-  };
-
-  if (loading) return <ProtectedPage><div className="p-8 text-center">Loading...</div></ProtectedPage>;
-  if (!post) return <ProtectedPage><div className="p-8 text-center">Post not found</div></ProtectedPage>;
+  if (loading) return (
+    <ProtectedPage>
+      <div className="flex h-screen items-center justify-center bg-[#EDF1F5]">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#4A9FD8] border-t-transparent" />
+      </div>
+    </ProtectedPage>
+  );
+  
+  if (!post) return (
+    <ProtectedPage>
+      <div className="flex h-screen flex-col items-center justify-center bg-[#EDF1F5] gap-4">
+        <span className="material-icons text-slate-300 text-[64px]">error_outline</span>
+        <ThemedText as="p" className="text-xl font-semibold text-slate-900">Không tìm thấy bài viết</ThemedText>
+        <Link href={ROUTES.home} className="rounded-2xl bg-[#0A0A0A] px-6 py-3 text-white font-medium">Quay lại trang chủ</Link>
+      </div>
+    </ProtectedPage>
+  );
 
   const authorName = `${post.author.first_name} ${post.author.last_name}`;
   const initials = `${post.author.first_name?.[0] || ''}${post.author.last_name?.[0] || ''}`.toUpperCase();
@@ -207,85 +229,135 @@ export default function PostDetailPage() {
 
   return (
     <ProtectedPage>
-      <main className="min-h-screen bg-[#EDF1F5] pb-8">
-        <div className="mx-auto w-full max-w-[800px] px-4 pb-6 pt-4 md:px-6">
+      <main className="min-h-screen bg-[#EDF1F5] pb-12">
+        <div className="mx-auto w-full max-w-[860px] px-4 pb-6 pt-4 md:px-6">
           <AppTopNav currentUser={currentUser} />
           
-          <button onClick={() => router.back()} className="mb-4 mt-2 font-medium text-slate-500">
-            ← Quay lại
+          <button 
+            onClick={() => router.back()} 
+            className="mb-4 mt-6 flex items-center gap-2 font-semibold text-slate-500 hover:text-slate-900 transition-colors"
+          >
+            <span className="material-icons">arrow_back</span>
+            Quay lại
           </button>
 
-          <section className={`${surfaceClass} p-5`}>
+          <section className={`${surfaceClass} p-6 shadow-sm`}>
+            {/* Post Header */}
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-4">
-                <Avatar initials={initials} avatarUrl={post.author.avatar_url} />
+                <Avatar size="h-14 w-14" initials={initials} avatarUrl={post.author.avatar_url} />
                 <div>
-                  <ThemedText as="h2" className="text-[21px] font-semibold text-slate-950">{authorName}</ThemedText>
-                  <ThemedText as="p" className="text-sm text-slate-500">{formatTime(post.created_at)}</ThemedText>
+                  <ThemedText as="h2" className="text-[22px] font-bold text-slate-950">{authorName}</ThemedText>
+                  <ThemedText as="p" className="text-sm font-medium text-slate-500">{formatTime(post.created_at)}</ThemedText>
                 </div>
               </div>
-              {isAuthor && (
-                <button onClick={handleDeletePost} className="flex h-10 px-4 items-center justify-center rounded-[14px] bg-red-50 text-red-500 font-medium">Xóa bài</button>
-              )}
+              <div className="relative">
+                <button 
+                  onClick={() => setShowMenu(!showMenu)} 
+                  className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#F7F8FA] text-[#666666] hover:bg-slate-100 transition-colors"
+                >
+                  <span className="material-icons">{showMenu ? 'close' : 'more_horiz'}</span>
+                </button>
+                
+                {showMenu && (
+                  <div className="absolute right-0 top-14 z-20 w-48 overflow-hidden rounded-[20px] border border-[#E4E8EE] bg-white shadow-xl">
+                    {isAuthor && (
+                      <button 
+                        onClick={async () => {
+                          if (confirm('Xóa bài viết này?')) {
+                            await deletePost(post.id);
+                            router.push(ROUTES.home);
+                          }
+                        }} 
+                        className="w-full px-5 py-4 text-left font-medium text-red-500 hover:bg-red-50 transition-colors"
+                      >
+                        Xóa bài viết
+                      </button>
+                    )}
+                    <button onClick={() => setShowMenu(false)} className="w-full px-5 py-4 text-left font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+                      Báo cáo
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
             
-            <ThemedText as="p" className="mt-6 text-[16px] leading-7 text-slate-700">{post.content}</ThemedText>
+            {/* Post Content */}
+            <ThemedText as="p" className="mt-8 text-[18px] leading-8 text-slate-800">{post.content}</ThemedText>
             
             {firstMediaUrl && (
-              <div className="mt-5 overflow-hidden rounded-[28px] bg-[#F7F8FA]">
+              <div className="mt-6 overflow-hidden rounded-[28px] bg-[#F7F8FA]">
                 <img 
                   src={firstMediaUrl} 
                   alt="Post media" 
-                  style={{ width: '100%', maxHeight: '800px', objectFit: 'contain' }}
+                  className="h-auto max-h-[800px] w-full object-contain"
                 />
               </div>
             )}
 
-            <div className="mt-6 border-t border-[#E4E8EE] pt-6">
-              <ThemedText as="h3" className="text-lg font-semibold text-slate-900 mb-4">Bình luận ({comments.length})</ThemedText>
+            {/* Comment Section */}
+            <div className="mt-10 border-t border-[#E4E8EE] pt-8">
+              <div className="flex items-center justify-between mb-6">
+                <ThemedText as="h3" className="text-[22px] font-bold text-slate-900">
+                  Bình luận ({comments.length})
+                </ThemedText>
+              </div>
               
               {/* Comment List */}
-              <div className="mb-8">
+              <div className="space-y-2 mb-10">
                 {comments.length === 0 ? (
-                  <ThemedText as="p" className="text-slate-500 text-center py-4">Chưa có bình luận nào. Hãy là người đầu tiên!</ThemedText>
+                  <div className="flex flex-col items-center justify-center py-12 gap-4">
+                    <span className="material-icons text-slate-200 text-[48px]">chat_bubble_outline</span>
+                    <ThemedText as="p" className="text-slate-500 font-medium">Chưa có bình luận nào. Hãy là người đầu tiên!</ThemedText>
+                  </div>
                 ) : (
                   comments.map(c => (
-                    <CommentThread 
+                    <CommentItem 
                       key={c.id} 
                       comment={c} 
                       currentUser={currentUser} 
                       postAuthorId={post.author_id}
-                      onReply={(id) => setReplyToId(id)}
+                      onReply={(comment) => setReplyTo(comment)}
                       onDelete={handleDeleteComment}
                     />
                   ))
                 )}
               </div>
 
-              {/* Comment Input */}
-              <div className="flex gap-3 items-start mt-4 bg-[#F7F8FA] p-4 rounded-[20px]">
-                <div className="flex-1">
-                  {replyToId && (
-                    <div className="mb-2 flex items-center justify-between bg-[#EAF4FB] px-3 py-1 rounded-lg">
-                      <ThemedText as="span" className="text-xs text-[#4A9FD8]">Đang trả lời một bình luận</ThemedText>
-                      <button onClick={() => setReplyToId(null)} className="text-xs font-bold text-slate-500">✕</button>
-                    </div>
-                  )}
-                  <textarea 
-                    value={commentInput}
-                    onChange={(e) => setCommentInput(e.target.value)}
-                    placeholder="Viết bình luận của bạn..."
-                    className="w-full bg-transparent outline-none resize-none min-h-[40px] text-slate-900"
-                    rows={2}
-                  />
+              {/* Sticky Comment Input */}
+              <div className="sticky bottom-4 z-10 flex flex-col gap-3 bg-white border border-[#E4E8EE] p-4 rounded-[24px] shadow-lg">
+                {replyTo && (
+                  <div className="flex items-center justify-between bg-[#EAF4FB] px-4 py-2 rounded-xl">
+                    <ThemedText as="span" className="text-sm font-semibold text-[#4A9FD8]">
+                      Đang trả lời {replyTo.author.first_name}
+                    </ThemedText>
+                    <button onClick={() => setReplyTo(null)} className="text-slate-400 hover:text-slate-600">
+                      <span className="material-icons text-[18px]">close</span>
+                    </button>
+                  </div>
+                )}
+                <div className="flex gap-4 items-end">
+                  <div className="flex-1">
+                    <textarea 
+                      value={commentInput}
+                      onChange={(e) => setCommentInput(e.target.value)}
+                      placeholder={replyTo ? "Viết câu trả lời..." : "Viết bình luận của bạn..."}
+                      className="w-full bg-[#F7F8FA] rounded-2xl px-5 py-4 outline-none resize-none min-h-[56px] text-slate-900 placeholder:text-slate-400"
+                      rows={commentInput.split('\n').length > 3 ? 4 : 2}
+                    />
+                  </div>
+                  <button 
+                    onClick={handlePostComment}
+                    disabled={isSubmitting || !commentInput.trim()}
+                    className={`flex h-14 w-14 items-center justify-center rounded-[20px] bg-[#0A0A0A] text-white transition-all ${isSubmitting || !commentInput.trim() ? 'opacity-50' : 'hover:bg-slate-800'}`}
+                  >
+                    {isSubmitting ? (
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    ) : (
+                      <span className="material-icons">send</span>
+                    )}
+                  </button>
                 </div>
-                <button 
-                  onClick={handlePostComment}
-                  disabled={isSubmitting || !commentInput.trim()}
-                  className="rounded-full bg-[#0A0A0A] px-4 py-2 font-medium text-white disabled:opacity-50"
-                >
-                  Gửi
-                </button>
               </div>
             </div>
           </section>

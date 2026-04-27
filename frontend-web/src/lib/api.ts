@@ -73,7 +73,9 @@ async function performRequest(path: string, init: RequestInit | undefined, token
   const headers = new Headers(init?.headers);
 
   headers.set('Accept', 'application/json');
-  headers.set('Content-Type', 'application/json');
+  if (!(init?.body instanceof FormData)) {
+    headers.set('Content-Type', 'application/json');
+  }
 
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
@@ -261,14 +263,34 @@ export function deletePost(postId: string): Promise<void> {
   return apiFetch<void>(`/api/posts/${postId}`, { method: 'DELETE' });
 }
 
+export function createPost(content: string, mediaUrls: string[] = []): Promise<Post> {
+  return apiFetch<Post>('/api/posts', {
+    method: 'POST',
+    body: JSON.stringify({
+      content,
+      media_urls: mediaUrls,
+    }),
+  });
+}
+
+export async function uploadPostMedia(file: File): Promise<{ data: string[] }> {
+  const formData = new FormData();
+  formData.append('files', file);
+
+  return apiFetch<{ data: string[] }>('/api/posts/upload-media', {
+    method: 'POST',
+    body: formData,
+  });
+}
+
 import type { Comment } from './types';
 
 export function fetchPostComments(postId: string): Promise<Comment[]> {
-  return apiFetch<Comment[]>(`/api/posts/${postId}/comments`);
+  return apiFetch<Comment[]>(`/api/comments/post/${postId}`);
 }
 
 export function createComment(postId: string, content: string, parentCommentId: string | null = null): Promise<Comment> {
-  return apiFetch<Comment>(`/api/posts/${postId}/comments`, {
+  return apiFetch<Comment>(`/api/comments/post/${postId}`, {
     method: 'POST',
     body: JSON.stringify({
       content,
