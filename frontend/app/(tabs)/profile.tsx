@@ -31,11 +31,9 @@ type RecentPost = {
 type ProfileViewModel = {
   displayName: string;
   initials: string;
-  headline: string;
   intro: string;
-  studio: string;
   location: string;
-  website: string;
+  email: string;
   avatarUrl: string | null;
 };
 
@@ -91,7 +89,6 @@ function buildProfileViewModel(user: AuthUser | null): ProfileViewModel {
   }
 
   const emailHandle = user?.email ? user.email.replace(/^mailto:/, '') : '';
-  const headline = user?.headline || '';
   const intro = user?.bio || '';
   const location = user?.city || '';
   const email = user?.email || '';
@@ -206,7 +203,7 @@ function AboutPanel({ profile }: { profile: ProfileViewModel }) {
           <ThemedText className="text-base leading-7 text-slate-700">{profile.intro}</ThemedText>
         </View>
         <View className="flex-row flex-wrap gap-3">
-          {[profile.studio, profile.location, profile.website].map((item) => (
+          {[profile.location].filter(Boolean).map((item) => (
             <View key={item} className="rounded-full bg-[#F7F8FA] px-4 py-3">
               <ThemedText className="text-sm font-medium text-slate-700">{item}</ThemedText>
             </View>

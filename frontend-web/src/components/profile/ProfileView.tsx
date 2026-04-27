@@ -7,6 +7,7 @@ import { ProtectedPage } from '@/components/app/ProtectedPage';
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/ui/ThemedText';
 import { fetchCurrentUser, updateUserProfile, type AuthUser } from '@/lib/auth';
+import { FeedPost } from '@/components/post/FeedPost';
 import { fetchPosts, deletePost, API_URL } from '@/lib/api';
 import type { Post } from '@/lib/types';
 
@@ -162,12 +163,25 @@ export function ProfileView() {
                 </div>
               </div>
               <div className="mt-5 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-                <div className="xl:max-w-[760px] xl:flex-1">
-                </div>
-                <Link href="/profile/edit" className="rounded-[20px] bg-[#0A0A0A] px-4 py-4 text-base font-medium text-white text-center">Edit profile</Link>
+                <div className="xl:max-w-[760px] xl:flex-1" />
+                <Link 
+                  href="/profile/edit" 
+                  className="inline-flex min-w-[140px] items-center justify-center rounded-[22px] bg-[#0A0A0A] px-6 py-4 text-base font-medium !text-white hover:bg-slate-800 transition-colors"
+                >
+                  Edit profile
+                </Link>
               </div>
               <div className="mt-6 flex flex-wrap gap-3">
-                {tabs.map((tab) => <button key={tab.key} className={`min-w-[112px] rounded-[20px] px-4 py-4 text-base font-medium ${activeTab === tab.key ? 'bg-[#0A0A0A] text-white' : 'bg-[#F7F8FA] text-slate-900'}`} onClick={() => setActiveTab(tab.key)} type="button">{tab.label}</button>)}
+                {tabs.map((tab) => (
+                  <button 
+                    key={tab.key} 
+                    className={`min-w-[112px] rounded-[20px] px-4 py-4 text-base font-medium transition-colors ${activeTab === tab.key ? 'bg-[#0A0A0A] !text-white' : 'bg-[#F7F8FA] text-slate-900 hover:bg-slate-200'}`} 
+                    onClick={() => setActiveTab(tab.key)} 
+                    type="button"
+                  >
+                    {tab.label}
+                  </button>
+                ))}
               </div>
             </div>
           </section>
@@ -260,58 +274,21 @@ export function ProfileView() {
                 <div className="space-y-4">
                   <ThemedText as="h2" className="px-1 text-[28px] font-semibold text-slate-950">Recent posts</ThemedText>
                   {loadingPosts ? (
-                    <div className="flex justify-center p-8"><ThemedText as="p">Loading...</ThemedText></div>
+                    <div className="flex flex-col items-center justify-center p-12 space-y-4">
+                      <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#4A9FD8] border-t-transparent" />
+                      <ThemedText as="p" className="text-slate-500">Đang tải bài viết...</ThemedText>
+                    </div>
                   ) : posts.length === 0 ? (
-                    <div className="flex justify-center p-8"><ThemedText as="p">No posts yet.</ThemedText></div>
+                    <div className="flex flex-col items-center justify-center p-12 bg-white rounded-[28px] border border-[#E4E8EE]">
+                      <span className="material-icons text-slate-300 text-[48px]">article</span>
+                      <ThemedText as="p" className="mt-4 text-slate-500 font-medium">Chưa có bài viết nào</ThemedText>
+                    </div>
                   ) : (
-                    posts.map((item) => {
-                      const authorName = `${item.author.first_name} ${item.author.last_name}`;
-                      const initials = `${item.author.first_name?.[0] || ''}${item.author.last_name?.[0] || ''}`.toUpperCase();
-                      const firstMediaUrl = item.media && item.media.length > 0
-                        ? (item.media[0].file_url.startsWith('http') ? item.media[0].file_url : `${API_URL}${item.media[0].file_url}`)
-                        : null;
-
-                      return (
-                        <section key={item.id} className={`${surfaceClass} p-5`}>
-                          <div className="flex items-start justify-between gap-4">
-                            <Link href="/profile" className="flex items-center gap-4 hover:opacity-80 transition-opacity">
-                              {item.author.avatar_url ? (
-                                <img 
-                                  src={item.author.avatar_url.startsWith('http') ? item.author.avatar_url : `${API_URL}${item.author.avatar_url}`}
-                                  alt="Avatar"
-                                  className="h-14 w-14 shrink-0 rounded-[22px] object-cover"
-                                />
-                              ) : (
-                                <div className="flex h-14 w-14 items-center justify-center rounded-[22px] bg-[#D9ECF8] text-base font-semibold tracking-[0.5px] text-slate-900">{initials}</div>
-                              )}
-                              <div>
-                                <ThemedText as="h2" className="text-[21px] font-semibold text-slate-950">{authorName}</ThemedText>
-                                <ThemedText as="p" className="text-sm text-slate-500">{formatTime(item.created_at)}</ThemedText>
-                              </div>
-                            </Link>
-                            <button onClick={() => handleDeletePost(item.id)} className="flex h-10 px-4 items-center justify-center rounded-[14px] bg-red-50 text-red-500 font-medium">Xóa</button>
-                          </div>
-                          
-                          <Link href={`/post/${item.id}`} className="block hover:opacity-80 transition-opacity">
-                            <ThemedText as="p" className="mt-6 text-[16px] leading-7 text-slate-700">{item.content}</ThemedText>
-                            {firstMediaUrl && (
-                              <div className="mt-5 overflow-hidden rounded-[28px] bg-[#F7F8FA]">
-                                <img
-                                  src={firstMediaUrl}
-                                  alt="Post media"
-                                  style={{ width: '100%', maxHeight: '800px', objectFit: 'contain' }}
-                                />
-                              </div>
-                            )}
-                          </Link>
-
-                          <div className="mt-4 flex items-center justify-between gap-3">
-                            <ThemedText as="p" className="text-sm text-slate-500">{item.like_count} reactions</ThemedText>
-                            <ThemedText as="p" className="text-sm text-slate-500">{item.comment_count} comments</ThemedText>
-                          </div>
-                        </section>
-                      );
-                    })
+                    <div className="space-y-4">
+                      {posts.map((item) => (
+                        <FeedPost key={item.id} item={item} currentUser={user} />
+                      ))}
+                    </div>
                   )}
                 </div>
               ) : null}
@@ -320,7 +297,16 @@ export function ProfileView() {
                 <section className={`${surfaceClass} p-5`}>
                   <ThemedText as="h2" className="text-[24px] font-semibold text-slate-950">About</ThemedText>
                   <ThemedText as="p" className="mt-1 text-sm text-slate-500">Calm collaboration, sharper reviews, cleaner systems</ThemedText>
-                  <div className="mt-5 space-y-4"><div className="rounded-[24px] bg-[#F7F8FA] px-4 py-4"><ThemedText as="p" className="text-base leading-7 text-slate-700">{profile.intro}</ThemedText></div><div className="flex flex-wrap gap-3">{[profile.studio, profile.location, profile.website].map((item) => <div key={item} className="rounded-full bg-[#F7F8FA] px-4 py-3 text-sm font-medium text-slate-700">{item}</div>)}</div></div>
+                  <div className="mt-5 space-y-4">
+                    <div className="rounded-[24px] bg-[#F7F8FA] px-4 py-4">
+                      <ThemedText as="p" className="text-base leading-7 text-slate-700">{profile.intro || 'Chưa có giới thiệu.'}</ThemedText>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      {[profile.location].filter(Boolean).map((item) => (
+                        <div key={item} className="rounded-full bg-[#F7F8FA] px-4 py-3 text-sm font-medium text-slate-700">{item}</div>
+                      ))}
+                    </div>
+                  </div>
                 </section>
               ) : null}
 
