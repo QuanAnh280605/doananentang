@@ -29,11 +29,12 @@ export default function RootLayout({
     <html
       lang="vi"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <head>
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
       </head>
-      <body className="min-h-full bg-[var(--background)] text-[var(--foreground)]">
+      <body suppressHydrationWarning className="min-h-full bg-[var(--background)] text-[var(--foreground)]">
         <AppProviders>{children}</AppProviders>
       </body>
     </html>

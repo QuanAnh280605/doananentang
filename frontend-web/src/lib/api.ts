@@ -61,6 +61,20 @@ const apiConfig = resolveApiConfig();
 export const API_URL = apiConfig.url;
 export const API_URL_SOURCE = apiConfig.source;
 
+/**
+ * Normalize avatar URL from backend.
+ * Old records store relative paths like "/static/avatars/file.jpg".
+ * New records store full URLs. This ensures we always return a usable URL.
+ */
+export function resolveAvatarUrl(avatarUrl: string | null | undefined): string | null {
+  if (!avatarUrl) return null;
+  if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
+    return avatarUrl;
+  }
+  // Relative path — prefix with backend base URL
+  return `${API_URL}${avatarUrl}`;
+}
+
 function canAttemptRefresh(path: string, hasCustomAuthorization: boolean): boolean {
   if (hasCustomAuthorization) {
     return false;

@@ -1,27 +1,31 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { Pressable, View } from 'react-native';
+import { Pressable, View , Image} from 'react-native';
 import { router } from 'expo-router';
 
+import { useGlobalSearch } from '@/components/search/GlobalSearchProvider';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { SearchInput } from '@/components/ui/SearchInput';
+
+import { API_URL } from '@/lib/api';
 
 type AppTopNavProps = {
   isTablet: boolean;
   searchPlaceholder?: string;
   avatarInitials?: string;
+  searchValue?: string;
+  onSearchChange?: (value: string) => void;
   avatarUrl?: string | null;
-};
 
-import { Image } from 'react-native';
-import { API_URL } from '@/lib/api';
+};
 
 function NavAvatar({ initials, avatarUrl }: { initials: string; avatarUrl?: string | null }) {
   if (avatarUrl) {
     const uri = avatarUrl.startsWith('http') ? avatarUrl : `${API_URL}${avatarUrl}`;
     return (
-      <Image 
-        source={{ uri }} 
-        className="h-14 w-14 rounded-[22px]" 
+      <Image
+        source={{ uri }}
+        className="h-14 w-14 rounded-[22px]"
         style={{ width: 56, height: 56, borderRadius: 22 }}
       />
     );
@@ -46,7 +50,28 @@ export function AppTopNav({
   searchPlaceholder = 'Search people, notes, or screenshots',
   avatarInitials = 'LE',
   avatarUrl,
+  searchValue,
+  onSearchChange,
 }: AppTopNavProps) {
+  const globalSearch = useGlobalSearch();
+  const isControlled = typeof onSearchChange === 'function';
+  const resolvedSearchValue = isControlled ? (searchValue ?? '') : globalSearch.query;
+
+  const handleSearchChange = (value: string) => {
+    if (isControlled) {
+      onSearchChange(value);
+      return;
+    }
+
+    globalSearch.setQuery(value);
+  };
+
+  const handleSearchFocus = () => {
+    if (!isControlled) {
+      globalSearch.open();
+    }
+  };
+
   return (
     <ThemedView className="rounded-[28px] border border-[#E4E8EE] bg-white px-5 py-4">
       <View className={`items-center gap-4 ${isTablet ? 'flex-row justify-between' : 'flex-col'}`}>
@@ -61,12 +86,13 @@ export function AppTopNav({
             </View>
           </View>
 
-          <View className={`rounded-[22px] bg-[#F7F8FA] px-4 py-4 ${isTablet ? 'ml-6 max-w-[560px] flex-1' : 'w-full'}`}>
-            <View className="flex-row items-center gap-3">
-              <MaterialIcons color="#666666" name="search" size={20} />
-              <ThemedText className="flex-1 text-base text-slate-500">{searchPlaceholder}</ThemedText>
-            </View>
-          </View>
+          <SearchInput
+            className={isTablet ? 'ml-6 max-w-[560px] flex-1' : 'w-full'}
+            onChangeText={handleSearchChange}
+            onFocus={handleSearchFocus}
+            placeholder={searchPlaceholder}
+            value={resolvedSearchValue}
+          />
         </View>
 
         <View className="flex-row items-center gap-3">

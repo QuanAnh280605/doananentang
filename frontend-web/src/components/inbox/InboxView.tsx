@@ -7,13 +7,15 @@ import { InboxListItem, type InboxListItemData } from '@/components/inbox/InboxL
 import { MessageBubble, type MessageBubbleData } from '@/components/inbox/MessageBubble';
 import { ProfilePanelStat, type ProfilePanelStatData } from '@/components/inbox/ProfilePanelStat';
 import { AppTopNav } from '@/components/navigation/AppTopNav';
+import { SearchInput } from '@/components/ui/SearchInput';
 import { ThemedText } from '@/components/ui/ThemedText';
+import { ROUTES } from '@/lib/routes';
 
 const threads: InboxListItemData[] = [
-  { id: '1', name: 'Lena Evere', preview: 'Updated the final review deck and moved three comments into the handoff.', time: '09:24', initials: 'LE', active: true, unread: 2 },
-  { id: '2', name: 'Aya Tran', preview: 'I left the typography notes in the thread for round two.', time: '08:10', initials: 'AT' },
-  { id: '3', name: 'Rafi Mercer', preview: 'Need one more pass on the motion pacing before sign-off.', time: 'Yesterday', initials: 'RM' },
-  { id: '4', name: 'Nadia Elsner', preview: 'Profile rail content is ready whenever you want to swap copy.', time: 'Yesterday', initials: 'NE' },
+  { id: '1', name: 'Lena Evere', preview: 'Updated the final review deck and moved three comments into the handoff.', time: '09:24', initials: 'LE', bio: 'Leads launch reviews and keeps the team aligned on calmer product details.', active: true, unread: 2 },
+  { id: '2', name: 'Aya Tran', preview: 'I left the typography notes in the thread for round two.', time: '08:10', initials: 'AT', bio: 'Shapes visual systems and tightens typography for product launches.' },
+  { id: '3', name: 'Rafi Mercer', preview: 'Need one more pass on the motion pacing before sign-off.', time: 'Yesterday', initials: 'RM', bio: 'Focuses on motion pacing, interaction polish, and handoff clarity.' },
+  { id: '4', name: 'Nadia Elsner', preview: 'Profile rail content is ready whenever you want to swap copy.', time: 'Yesterday', initials: 'NE', bio: 'Writes crisp product copy and organizes profile content for review.' },
 ];
 
 const messages: MessageBubbleData[] = [
@@ -34,24 +36,48 @@ const quickActions = ['View brief', 'Shared files', 'Mute thread'];
 const surfaceClass = 'rounded-[28px] border border-[#E2E8F0] bg-white';
 
 export function InboxView() {
-  const [searchValue, setSearchValue] = useState('');
+  const [inboxNavSearchQuery, setInboxNavSearchQuery] = useState('');
+  const [inboxSearchQuery, setInboxSearchQuery] = useState('');
   const [draftMessage, setDraftMessage] = useState('');
+  const normalizedInboxSearchQuery = inboxSearchQuery.trim().toLowerCase();
+  const filteredThreads = threads.filter((item) => {
+    if (!normalizedInboxSearchQuery) {
+      return true;
+    }
+
+    return (
+      item.name.toLowerCase().includes(normalizedInboxSearchQuery) ||
+      item.preview.toLowerCase().includes(normalizedInboxSearchQuery)
+    );
+  });
 
   return (
     <ProtectedPage>
       <main className="min-h-screen bg-[#F8FAFC] pb-8">
         <div className="mx-auto w-full max-w-[1720px] px-4 pb-6 pt-4 md:px-6">
-          <AppTopNav searchPlaceholder="Search inbox threads, files, or people" />
+          <AppTopNav
+            onSearchChange={setInboxNavSearchQuery}
+            searchPlaceholder="Search inbox threads, files, or people"
+            searchValue={inboxNavSearchQuery}
+          />
           <div className="mt-4 grid gap-4 xl:grid-cols-[336px_minmax(0,1fr)_248px]">
             <section className={`${surfaceClass} p-5`}>
               <ThemedText as="h1" className="text-[24px] font-semibold text-slate-950">Inbox</ThemedText>
               <ThemedText as="p" className="mt-1 text-sm text-slate-500">Priority threads and recent updates</ThemedText>
-              <div className="mt-5 flex items-center gap-3 rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-3">
-                <span className="text-[#64748B]">⌕</span>
-                <input className="flex-1 bg-transparent text-base text-slate-900 outline-none" onChange={(event) => setSearchValue(event.target.value)} placeholder="Search messages" value={searchValue} />
-              </div>
+              <SearchInput className="mt-5" onChange={setInboxSearchQuery} placeholder="Search users" value={inboxSearchQuery} />
               <div className="mt-4 space-y-3">
-                {threads.map((item) => <InboxListItem key={item.id} item={item} />)}
+                {filteredThreads.map((item) => (
+                  <InboxListItem
+                    key={item.id}
+                    href={ROUTES.profileDetail(item.id, {
+                      name: item.name,
+                      initials: item.initials,
+                      preview: item.preview,
+                      bio: item.bio ?? item.preview,
+                    })}
+                    item={item}
+                  />
+                ))}
               </div>
             </section>
 

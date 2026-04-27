@@ -1,10 +1,15 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState } from 'react';
 import { API_URL, likePost, unlikePost, deletePost } from '@/lib/api';
 import type { Post } from '@/lib/types';
 import { ThemedText } from '@/components/ui/ThemedText';
+
+type FeedPostUser = {
+    id?: string | number;
+} | null;
 
 function formatTime(isoString: string): string {
     const diff = Date.now() - new Date(isoString).getTime();
@@ -17,7 +22,7 @@ function formatTime(isoString: string): string {
     return `${days} ngày trước`;
 }
 
-export function FeedPost({ item, currentUser }: { item: Post; currentUser?: any }) {
+export function FeedPost({ item, currentUser }: { item: Post; currentUser?: FeedPostUser }) {
     const [liked, setLiked] = useState(item.is_liked);
     const [count, setCount] = useState(item.like_count);
     const [loading, setLoading] = useState(false);
@@ -56,7 +61,7 @@ export function FeedPost({ item, currentUser }: { item: Post; currentUser?: any 
         try {
             await deletePost(String(item.id));
             setIsDeleted(true);
-        } catch (err) {
+        } catch {
             alert('Không thể xóa bài viết. Vui lòng thử lại.');
         }
     };
@@ -85,10 +90,13 @@ export function FeedPost({ item, currentUser }: { item: Post; currentUser?: any 
             <div className="relative flex items-start justify-between gap-4">
                 <Link href="/profile" className="flex items-center gap-4 hover:opacity-80 transition-opacity">
                     {item.author.avatar_url ? (
-                        <img 
+                        <Image 
                             src={item.author.avatar_url.startsWith('http') ? item.author.avatar_url : `${API_URL}${item.author.avatar_url}`} 
                             className="h-14 w-14 rounded-[22px] object-cover" 
                             alt="Avatar" 
+                            width={56}
+                            height={56}
+                            unoptimized
                         />
                     ) : (
                         <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[22px] bg-[#D9ECF8]">
@@ -134,52 +142,57 @@ export function FeedPost({ item, currentUser }: { item: Post; currentUser?: any 
 
                 {firstMediaUrl && (
                     <div className="mt-5 overflow-hidden rounded-[28px] bg-[#F7F8FA]">
-                        <img
+                        <Image
                             src={firstMediaUrl}
                             alt="Post media"
                             className="h-auto max-h-[800px] w-full object-contain cursor-pointer"
+                            width={1200}
+                            height={800}
+                            unoptimized
                         />
                     </div>
                 )}
             </div>
 
-            {/* Stats */}
-            <div className="mt-5 flex items-center justify-between border-b border-[#E4E8EE] pb-4">
-                <div className="flex items-center gap-2">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#4A9FD8] text-white">
-                        <span className="material-icons text-[14px]">thumb_up</span>
-                    </div>
+            <div className="mt-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
                     <ThemedText as="p" className="text-sm font-medium text-slate-600">
                         {count > 0 ? `${count} lượt thích` : 'Chưa có lượt thích'}
                     </ThemedText>
+                    {item.comment_count > 0 && (
+                        <>
+                            <div className="h-1 w-1 rounded-full bg-slate-300" />
+                            <ThemedText as="p" className="text-sm font-medium text-slate-500">
+                                {item.comment_count} bình luận
+                            </ThemedText>
+                        </>
+                    )}
                 </div>
-                <ThemedText as="p" className="text-sm font-medium text-slate-500">
-                    {item.comment_count} bình luận
-                </ThemedText>
+                <ThemedText as="p" className="text-sm font-medium text-slate-500">{item.visibility}</ThemedText>
             </div>
 
             {/* Actions */}
-            <div className="mt-4 flex flex-wrap gap-3">
+            <div className="mt-4 flex flex-wrap gap-3 border-t border-[#E4E8EE] pt-4">
                 <button
                     onClick={handleToggleLike}
                     disabled={loading}
-                    className={`flex flex-1 min-w-[130px] items-center justify-center gap-2 rounded-[20px] px-4 py-4 transition-colors ${liked ? 'bg-[#EAF4FB] text-[#4A9FD8]' : 'bg-[#F7F8FA] text-slate-600 hover:bg-slate-100'}`}
+                    className="flex min-w-[140px] flex-1 items-center justify-center gap-2 rounded-[20px] bg-[#F7F8FA] px-4 py-4 transition-opacity hover:bg-slate-100 active:opacity-80"
                 >
-                    <span className="material-icons text-[20px]">{liked ? 'thumb_up' : 'thumb_up_off_alt'}</span>
-                    <span className="text-base font-medium">{liked ? 'Liked' : 'Like'}</span>
+                    <span className={`material-icons text-[20px] ${liked ? 'text-[#4A9FD8]' : 'text-[#666666]'}`}>{liked ? 'thumb_up' : 'thumb_up_off_alt'}</span>
+                    <span className={`text-base font-medium ${liked ? 'text-[#4A9FD8]' : 'text-slate-900'}`}>{liked ? 'Liked' : 'Like'}</span>
                 </button>
 
-                <Link href={`/post/${item.id}`} className="flex flex-1 min-w-[130px] items-center justify-center gap-2 rounded-[20px] bg-[#F7F8FA] px-4 py-4 text-slate-600 hover:bg-slate-100 transition-colors">
-                    <span className="material-icons text-[20px]">chat_bubble_outline</span>
-                    <span className="text-base font-medium">Comment</span>
+                <Link href={`/post/${item.id}`} className="flex min-w-[140px] flex-1 items-center justify-center gap-2 rounded-[20px] bg-[#F7F8FA] px-4 py-4 transition-opacity hover:bg-slate-100 active:opacity-80">
+                    <span className="material-icons text-[20px] text-[#666666]">chat_bubble_outline</span>
+                    <span className="text-base font-medium text-slate-900">Comment</span>
                 </Link>
 
                 <button 
                     onClick={handleShare}
-                    className="flex flex-1 min-w-[130px] items-center justify-center gap-2 rounded-[20px] bg-[#F7F8FA] px-4 py-4 text-slate-600 hover:bg-slate-100 transition-colors"
+                    className="flex min-w-[140px] flex-1 items-center justify-center gap-2 rounded-[20px] bg-[#F7F8FA] px-4 py-4 transition-opacity hover:bg-slate-100 active:opacity-80"
                 >
-                    <span className="material-icons text-[20px]">reply</span>
-                    <span className="text-base font-medium">Share</span>
+                    <span className="material-icons text-[20px] text-[#666666]">reply</span>
+                    <span className="text-base font-medium text-slate-900">Share</span>
                 </button>
             </div>
         </section>

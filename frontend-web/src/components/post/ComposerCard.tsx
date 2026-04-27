@@ -1,7 +1,8 @@
 'use client';
 
+import Image from 'next/image';
 import { useState, useRef } from 'react';
-import { createPost, uploadPostMedia } from '@/lib/api';
+import { createPost, uploadPostMedia, resolveAvatarUrl } from '@/lib/api';
 import type { AuthUser } from '@/lib/auth';
 import { ThemedText } from '@/components/ui/ThemedText';
 
@@ -43,9 +44,10 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
             setIsFocused(false);
             
             onPostCreated?.();
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Failed to post:', error);
-            alert(error.message ?? 'Không thể đăng bài viết');
+            const message = error instanceof Error ? error.message : 'Không thể đăng bài viết';
+            alert(message);
         } finally {
             setIsPosting(false);
         }
@@ -56,13 +58,13 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
       ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase()
       : 'LC';
 
-    const avatarUrl = currentUser?.avatar_url;
+    const avatarUrl = resolveAvatarUrl(currentUser?.avatar_url);
 
     return (
         <section className="rounded-[28px] border border-[#E4E8EE] bg-white p-5">
             <div className="flex items-start gap-4">
                 {avatarUrl ? (
-                    <img src={avatarUrl} className="h-14 w-14 rounded-[22px] object-cover" alt="Avatar" />
+                    <Image src={avatarUrl} width={56} height={56} className="h-14 w-14 rounded-[22px] object-cover" alt="Avatar" unoptimized />
                 ) : (
                     <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[22px] bg-[#D9ECF8]">
                         <ThemedText as="span" className="text-base font-semibold text-slate-900">{initials}</ThemedText>
@@ -82,12 +84,15 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
 
             {selectedImage && (
                 <div className="relative mt-4 overflow-hidden rounded-[24px]">
+                    {/* Use native img for blob URLs — next/image does not support blob: scheme */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                         src={selectedImage}
                         className="h-auto max-h-[500px] w-full rounded-[24px] object-contain bg-slate-50"
                         alt="Preview"
                     />
                     <button
+                        type="button"
                         onClick={() => { setSelectedImage(null); setSelectedFile(null); }}
                         className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
                     >

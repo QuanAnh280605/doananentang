@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 import { ProtectedPage } from '@/components/app/ProtectedPage';
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/ui/ThemedText';
-import { fetchCurrentUser, updateUserProfile, type AuthUser } from '@/lib/auth';
+import { fetchCurrentUser,updateUserProfile, fetchFollowStatus, followUser, type AuthUser, type FollowStatus, unfollowUser } from '@/lib/auth';
 import { FeedPost } from '@/components/post/FeedPost';
 import { fetchPosts, deletePost, API_URL } from '@/lib/api';
 import type { Post } from '@/lib/types';
@@ -29,7 +30,31 @@ const recentPosts = [
   { id: '2', time: 'Yesterday', body: 'Pinned three references that keep social products feeling light: fewer panels, stronger hierarchy, and interaction states that resolve without noise.', accentClassName: 'bg-[#FCE7F3]' },
 ];
 
-function buildProfileViewModel(user: AuthUser | null) {
+type ProfileSnapshot = {
+  id: string;
+  name: string;
+  initials: string;
+  preview: string;
+  bio: string;
+};
+
+type ProfileViewProps = {
+  selectedUser?: ProfileSnapshot;
+};
+
+function buildProfileViewModel(user: AuthUser | null, selectedUser?: ProfileSnapshot) {
+  if (selectedUser) {
+    return {
+      displayName: selectedUser.name,
+      initials: selectedUser.initials,
+      headline: 'Search result profile',
+      intro: selectedUser.bio,
+      studio: 'Opened from inbox search',
+      location: `Profile ID ${selectedUser.id}`,
+      website: selectedUser.preview,
+    };
+  }
+
   const firstName = user?.first_name?.trim() || '';
   const lastName = user?.last_name?.trim() || '';
   const displayName = `${firstName} ${lastName}`.trim();
@@ -49,9 +74,15 @@ function buildProfileViewModel(user: AuthUser | null) {
 
 const surfaceClass = 'rounded-[28px] border border-[#E4E8EE] bg-white';
 
-export function ProfileView() {
+export function ProfileView({ selectedUser }: ProfileViewProps) {
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [followStatus, setFollowStatus] = useState<FollowStatus | null>(null);
+  const [isLoadingFollowStatus, setIsLoadingFollowStatus] = useState(false);
+  const [isSubmittingFollow, setIsSubmittingFollow] = useState(false);
+  const [followErrorMessage, setFollowErrorMessage] = useState<string | null>(null);
+  const isSelectedUserProfile = Boolean(selectedUser);
+  const selectedUserId = selectedUser ? Number(selectedUser.id) : null;
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
   const [isEditingIntro, setIsEditingIntro] = useState(false);
@@ -60,6 +91,10 @@ export function ProfileView() {
   const [isSavingIntro, setIsSavingIntro] = useState(false);
 
   useEffect(() => {
+    if (selectedUser) {
+      return undefined;
+    }
+
     let isMounted = true;
 
     fetchCurrentUser()
@@ -90,7 +125,9 @@ export function ProfileView() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [selectedUser]);
+
+  const profile = useMemo(() => buildProfileViewModel(user, selectedUser), [selectedUser, user]);
 
   const handleDeletePost = async (postId: string) => {
     if (!confirm('Bạn có chắc muốn xóa bài viết này?')) return;
@@ -138,7 +175,64 @@ export function ProfileView() {
     return `${Math.floor(hours / 24)} ngày trước`;
   };
 
-  const profile = useMemo(() => buildProfileViewModel(user), [user]);
+  useEffect(() => {
+    if (!isSelectedUserProfile || selectedUserId === null || Number.isNaN(selectedUserId)) {
+      return;
+    }
+
+    let isActive = true;
+    const timeoutId = setTimeout(() => {
+      setIsLoadingFollowStatus(true);
+      setFollowErrorMessage(null);
+
+      fetchFollowStatus(selectedUserId)
+        .then((status) => {
+          if (isActive) {
+            setFollowStatus(status);
+          }
+        })
+        .catch((error: unknown) => {
+          if (!isActive) {
+            return;
+          }
+          const message = error instanceof Error ? error.message : 'Cannot load follow status right now.';
+          setFollowErrorMessage(message);
+          setFollowStatus(null);
+        })
+        .finally(() => {
+          if (isActive) {
+            setIsLoadingFollowStatus(false);
+          }
+        });
+    }, 0);
+
+    return () => {
+      isActive = false;
+      clearTimeout(timeoutId);
+    };
+  }, [isSelectedUserProfile, selectedUserId]);
+
+  const handleFollowToggle = () => {
+    if (!isSelectedUserProfile || selectedUserId === null || Number.isNaN(selectedUserId) || isSubmittingFollow) {
+      return;
+    }
+
+    setIsSubmittingFollow(true);
+    setFollowErrorMessage(null);
+    const request = followStatus?.is_following ? unfollowUser(selectedUserId) : followUser(selectedUserId);
+
+    request
+      .then((status) => {
+        setFollowStatus(status);
+      })
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : 'Cannot update follow status right now.';
+        setFollowErrorMessage(message);
+      })
+      .finally(() => {
+        setIsSubmittingFollow(false);
+      });
+  };
 
   return (
     <ProtectedPage>
@@ -152,7 +246,7 @@ export function ProfileView() {
                 <div className="flex items-end gap-4">
                   <div className="flex h-[92px] w-[92px] items-center justify-center rounded-[28px] border-4 border-white bg-[#EAF4FB] text-[28px] font-semibold tracking-[0.5px] text-slate-900 overflow-hidden">
                     {profile.avatarUrl ? (
-                      <img src={profile.avatarUrl} alt={profile.displayName} className="h-full w-full object-cover" />
+                      <Image src={profile.avatarUrl} alt={profile.displayName} width={92} height={92} className="h-full w-full object-cover" unoptimized />
                     ) : (
                       profile.initials
                     )}
@@ -163,14 +257,37 @@ export function ProfileView() {
                 </div>
               </div>
               <div className="mt-5 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-                <div className="xl:max-w-[760px] xl:flex-1" />
-                <Link 
-                  href="/profile/edit" 
-                  className="inline-flex min-w-[140px] items-center justify-center rounded-[22px] bg-[#0A0A0A] px-6 py-4 text-base font-medium !text-white hover:bg-slate-800 transition-colors"
-                >
-                  Edit profile
-                </Link>
+                <div className="xl:max-w-[760px] xl:flex-1">
+                  <ThemedText as="h1" className="text-[34px] font-semibold leading-[42px] text-slate-950">{profile.displayName}</ThemedText>
+                  <ThemedText as="p" className="mt-3 max-w-3xl text-[16px] leading-7 text-slate-600">{profile.intro}</ThemedText>
+                </div>
+                {isSelectedUserProfile ? (
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      className="rounded-[20px] bg-[#0A0A0A] px-4 py-4 text-base font-medium text-white"
+                      disabled={isLoadingFollowStatus || isSubmittingFollow}
+                      onClick={handleFollowToggle}
+                      type="button">
+                      {isLoadingFollowStatus || isSubmittingFollow
+                        ? 'Please wait...'
+                        : followStatus?.is_following
+                          ? 'Following'
+                          : 'Follow'}
+                    </button>
+                    <button className="rounded-[20px] bg-[#F7F8FA] px-4 py-4 text-base font-medium text-slate-900" type="button">Message</button>
+                  </div>
+                ) : (
+                  <Link 
+                    href="/profile/edit" 
+                    className="inline-flex min-w-[140px] items-center justify-center rounded-[22px] bg-[#0A0A0A] px-6 py-4 text-base font-medium !text-white hover:bg-slate-800 transition-colors"
+                  >
+                    Edit profile
+                  </Link>
+                )}
               </div>
+              {isSelectedUserProfile && followErrorMessage ? (
+                <ThemedText as="p" className="mt-2 text-sm text-rose-600">{followErrorMessage}</ThemedText>
+              ) : null}
               <div className="mt-6 flex flex-wrap gap-3">
                 {tabs.map((tab) => (
                   <button 

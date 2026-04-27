@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState, useCallback } from 'react';
 
@@ -8,7 +9,7 @@ import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/ui/ThemedText';
 import { ComposerCard } from '@/components/post/ComposerCard';
 import { FeedPost } from '@/components/post/FeedPost';
-import { fetchPosts } from '@/lib/api';
+import { fetchPosts, resolveAvatarUrl } from '@/lib/api';
 import { fetchCurrentUser, type AuthUser } from '@/lib/auth';
 import { ROUTES } from '@/lib/routes';
 import type { Post } from '@/lib/types';
@@ -26,19 +27,29 @@ const stories = [
 ];
 
 const contacts = [
-  { name: 'Ari Mendoza', status: 'Editing new campaign', initials: 'AM' },
-  { name: 'Nadia Elsner', status: 'Reviewing typography', initials: 'NE' },
-  { name: 'Jules Tate', status: 'In Riverside Studio', initials: 'JT' },
-  { name: 'Owen Ybarra', status: 'Exporting review clips', initials: 'OY' },
+  { id: 'am', name: 'Ari Mendoza', status: 'Editing new campaign', initials: 'AM', bio: 'Builds campaign systems and keeps launch assets moving.' },
+  { id: 'ne', name: 'Nadia Elsner', status: 'Reviewing typography', initials: 'NE', bio: 'Writes crisp product copy and organizes review-ready profile content.' },
+  { id: 'jt', name: 'Jules Tate', status: 'In Riverside Studio', initials: 'JT', bio: 'Supports studio sessions and visual coordination across teams.' },
+  { id: 'oy', name: 'Owen Ybarra', status: 'Exporting review clips', initials: 'OY', bio: 'Handles review exports, clips, and last-mile production polish.' },
 ];
 
 const inboxItems = [
-  { name: 'Rafi Mercer', message: 'Can you review the revised launch pacing?', initials: 'RM', unread: true },
-  { name: 'Aya Tran', message: 'Dropping sprint references in five minutes.', initials: 'AT' },
-  { name: 'Nadia Elsner', message: 'Shared fresh type comps for the thread.', initials: 'NE' },
+  { id: 'rm', name: 'Rafi Mercer', message: 'Can you review the revised launch pacing?', initials: 'RM', bio: 'Focuses on motion pacing, interaction polish, and handoff clarity.', unread: true },
+  { id: 'at', name: 'Aya Tran', message: 'Dropping sprint references in five minutes.', initials: 'AT', bio: 'Shapes visual systems and tightens typography for product launches.' },
+  { id: 'ne', name: 'Nadia Elsner', message: 'Shared fresh type comps for the thread.', initials: 'NE', bio: 'Writes crisp product copy and organizes review-ready profile content.' },
 ];
 
 const surfaceClass = 'rounded-[28px] border border-[#E4E8EE] bg-white';
+
+function Avatar({ initials, soft = false }: { initials: string; soft?: boolean }) {
+  return (
+    <div className={`flex h-14 w-14 items-center justify-center rounded-[22px] ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`}>
+      <ThemedText as="span" className="text-base font-semibold tracking-[0.5px] text-slate-900">
+        {initials}
+      </ThemedText>
+    </div>
+  );
+}
 
 function SectionCard({ title, rightLabel, children }: { title: string; rightLabel?: string; children: React.ReactNode }) {
   return (
@@ -75,6 +86,9 @@ export function HomeFeed() {
 
   useEffect(() => {
     fetchCurrentUser().then(setCurrentUser).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     loadPosts();
   }, [loadPosts]);
 
@@ -86,7 +100,7 @@ export function HomeFeed() {
     <ProtectedPage>
       <main className="min-h-screen bg-[#EDF1F5] pb-8">
         <div className="mx-auto w-full max-w-[1720px] px-4 pb-6 pt-4 md:px-6">
-          <AppTopNav currentUser={currentUser} />
+          <AppTopNav searchPlaceholder="Search users" currentUser={currentUser} />
 
           <div className="mt-4 grid gap-4 xl:grid-cols-[350px_minmax(0,1fr)_360px]">
             {/* Left Rail */}
@@ -106,11 +120,11 @@ export function HomeFeed() {
                 <div className="px-5 pb-5">
                   <div className="-mt-8">
                     {currentUser?.avatar_url ? (
-                        <img src={currentUser.avatar_url} className="h-16 w-16 rounded-[22px] border-4 border-white shadow-sm object-cover" alt="Avatar" />
+                      <Image src={resolveAvatarUrl(currentUser.avatar_url) as string} width={64} height={64} className="h-16 w-16 rounded-[22px] border-4 border-white shadow-sm object-cover" alt="Avatar" unoptimized />
                     ) : (
-                        <div className="flex h-16 w-16 items-center justify-center rounded-[22px] border-4 border-white bg-[#EAF4FB] shadow-sm">
-                            <ThemedText as="span" className="text-xl font-bold text-slate-950">{initials}</ThemedText>
-                        </div>
+                      <div className="flex h-16 w-16 items-center justify-center rounded-[22px] border-4 border-white bg-[#EAF4FB] shadow-sm">
+                        <ThemedText as="span" className="text-xl font-bold text-slate-950">{initials}</ThemedText>
+                      </div>
                     )}
                   </div>
                   <ThemedText as="h2" className="mt-4 text-[28px] font-semibold text-slate-950">
@@ -125,8 +139,8 @@ export function HomeFeed() {
                       <ThemedText as="p" className="mt-1 text-xl font-semibold text-slate-950">2.4k</ThemedText>
                     </div>
                     <div className="rounded-[22px] bg-[#F7F8FA] px-4 py-4">
-                      <ThemedText as="p" className="text-sm text-slate-500">Projects</ThemedText>
-                      <ThemedText as="p" className="mt-1 text-xl font-semibold text-slate-950">14 live</ThemedText>
+                      <ThemedText as="p" className="text-sm text-slate-500">Posts</ThemedText>
+                      <ThemedText as="p" className="mt-1 text-xl font-semibold text-slate-950">14</ThemedText>
                     </div>
                   </div>
                   <div className="mt-5 grid grid-cols-2 gap-3">
@@ -182,16 +196,22 @@ export function HomeFeed() {
             <div className="space-y-4">
               <SectionCard title="Contacts" rightLabel="12 online">
                 {contacts.map((item) => (
-                  <div key={item.name} className="flex items-center gap-4 rounded-[22px] bg-[#F7F8FA] px-4 py-4 hover:bg-slate-100 transition-colors cursor-pointer">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#D9ECF8] text-slate-900 font-bold">
-                        {item.initials}
-                    </div>
+                  <Link
+                    key={item.id}
+                    className="flex items-center gap-4 rounded-[22px] bg-[#F7F8FA] px-4 py-4 transition hover:opacity-95"
+                    href={ROUTES.profileDetail(item.id, {
+                      name: item.name,
+                      initials: item.initials,
+                      preview: item.status,
+                      bio: item.bio,
+                    })}>
+                    <Avatar initials={item.initials} soft />
                     <div className="flex-1">
                       <ThemedText as="p" className="text-lg font-medium text-slate-900">{item.name}</ThemedText>
                       <ThemedText as="p" className="text-sm text-slate-500">{item.status}</ThemedText>
                     </div>
-                    <div className="h-3 w-3 rounded-full bg-[#6FC18A] border-2 border-white shadow-sm" />
-                  </div>
+                    <div className="h-3 w-3 rounded-full bg-[#6FC18A]" />
+                  </Link>
                 ))}
               </SectionCard>
 
@@ -212,16 +232,22 @@ export function HomeFeed() {
 
               <SectionCard title="Messenger" rightLabel="3 unread">
                 {inboxItems.map((item) => (
-                  <div key={item.name} className="flex items-center gap-4 rounded-[22px] bg-[#F7F8FA] px-4 py-4 hover:bg-slate-100 transition-colors cursor-pointer">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#EAF4FB] text-slate-950 font-bold">
-                        {item.initials}
-                    </div>
+                  <Link
+                    key={item.id}
+                    className="flex items-center gap-4 rounded-[22px] bg-[#F7F8FA] px-4 py-4 transition hover:opacity-95"
+                    href={ROUTES.profileDetail(item.id, {
+                      name: item.name,
+                      initials: item.initials,
+                      preview: item.message,
+                      bio: item.bio,
+                    })}>
+                    <Avatar initials={item.initials} soft />
                     <div className="flex-1 space-y-1">
                       <ThemedText as="p" className="text-lg font-medium text-slate-900">{item.name}</ThemedText>
                       <ThemedText as="p" className="text-sm text-slate-500 line-clamp-1">{item.message}</ThemedText>
                     </div>
                     {item.unread ? <div className="h-3 w-3 rounded-full bg-[#4A9FD8]" /> : null}
-                  </div>
+                  </Link>
                 ))}
                 <Link className="mt-2 block rounded-[22px] bg-[#0A0A0A] px-5 py-4 text-center text-base font-medium !text-white hover:bg-slate-800 transition-colors" href={ROUTES.inbox}>
                   Open inbox

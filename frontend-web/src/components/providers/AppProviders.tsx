@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 
+import { GlobalSearchProvider } from '@/components/search/GlobalSearchProvider';
 import { ToastProvider } from '@/components/toast/ToastProvider';
 
 type AppProvidersProps = {
@@ -9,5 +10,9 @@ type AppProvidersProps = {
 };
 
 export function AppProviders({ children }: AppProvidersProps) {
-  return <ToastProvider>{children}</ToastProvider>;
+  return (
+    <ToastProvider>
+      <GlobalSearchProvider>{children}</GlobalSearchProvider>
+    </ToastProvider>
+  );
 }

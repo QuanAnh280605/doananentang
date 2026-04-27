@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ProtectedPage } from '@/components/app/ProtectedPage';
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/ui/ThemedText';
@@ -170,7 +171,7 @@ function LivePreviewCard({
         <div className="-mt-12 flex items-end gap-3 px-3">
           {avatarSource ? (
             <div className="h-16 w-16 shrink-0 overflow-hidden rounded-[22px] border-[3px] border-white">
-              <img src={avatarSource} alt={displayName} className="h-full w-full object-cover" />
+              <Image src={avatarSource} alt={displayName} width={64} height={64} className="h-full w-full object-cover" unoptimized />
             </div>
           ) : (
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] border-[3px] border-white bg-[#EAF4FB]">
@@ -369,17 +370,6 @@ export default function EditProfilePage() {
         <div className="mx-auto w-full max-w-[1720px] space-y-4 px-4 pb-6 pt-4 md:px-6">
           <AppTopNav />
 
-          {/* Back header */}
-          <div className="flex items-center gap-3 rounded-[28px] border border-[#E4E8EE] bg-white px-5 py-4">
-            <button
-              onClick={() => window.history.back()}
-              className="flex h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA] transition-opacity hover:opacity-80"
-            >
-              <span className="text-lg">←</span>
-            </button>
-            <ThemedText as="h1" className="text-lg font-semibold text-slate-900">Edit-profile</ThemedText>
-          </div>
-
           {/* Main 2-col layout */}
           <form onSubmit={handleSave}>
             <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
@@ -423,7 +413,7 @@ export default function EditProfilePage() {
                   <div className="mb-6 flex items-center gap-4">
                     {currentAvatarSource ? (
                       <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full">
-                        <img src={currentAvatarSource} alt="Avatar" className="h-full w-full object-cover" />
+                        <Image src={currentAvatarSource} alt="Avatar" width={64} height={64} className="h-full w-full object-cover" unoptimized />
                       </div>
                     ) : (
                       <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#EAF4FB]">

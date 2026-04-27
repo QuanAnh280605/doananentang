@@ -57,6 +57,10 @@ select:focus {
   box-shadow: 0 0 0 4px var(--ring-soft);
 }
 
+input.no-focus-ring:focus {
+  box-shadow: none !important;
+}
+
 ::selection {
   background: rgba(125, 211, 252, 0.35);
 }

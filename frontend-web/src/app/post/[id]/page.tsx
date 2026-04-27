@@ -3,13 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ProtectedPage } from '@/components/app/ProtectedPage';
-import { AppTopNav } from '@/components/navigation/AppTopNav';
+import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/ui/ThemedText';
 import { ROUTES } from '@/lib/routes';
-import { fetchPostDetail, fetchPostComments, createComment, deleteComment, likeComment, unlikeComment, deletePost, API_URL } from '@/lib/api';
+import { fetchPostDetail, fetchPostComments, createComment, deleteComment, likeComment, unlikeComment, API_URL } from '@/lib/api';
 import { fetchCurrentUser, type AuthUser } from '@/lib/auth';
 import type { Post, Comment } from '@/lib/types';
 import Link from 'next/link';
+import Image from 'next/image';
 
 const surfaceClass = 'rounded-[28px] border border-[#E4E8EE] bg-white';
 
@@ -23,20 +24,27 @@ function formatTime(isoStr: string) {
   return `${Math.floor(hours / 24)} ngày trước`;
 }
 
-function Avatar({ initials, avatarUrl, size = 'h-10 w-10' }: { initials: string; avatarUrl?: string | null; size?: string }) {
+function getInitials(firstName?: string | null, lastName?: string | null) {
+  return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase() || '??';
+}
+
+function Avatar({ initials, avatarUrl, size = 'h-14 w-14' }: { initials: string; avatarUrl?: string | null; size?: string }) {
   if (avatarUrl) {
     const uri = avatarUrl.startsWith('http') ? avatarUrl : `${API_URL}${avatarUrl}`;
     return (
-      <img 
+      <Image 
         src={uri} 
         alt="Avatar"
-        className={`${size} shrink-0 rounded-[14px] object-cover`}
+        width={100}
+        height={100}
+        className={`${size} shrink-0 rounded-[22px] object-cover`}
+        unoptimized
       />
     );
   }
   return (
-    <div className={`flex ${size} shrink-0 items-center justify-center rounded-[14px] bg-[#EAF4FB]`}>
-      <ThemedText as="span" className="text-sm font-semibold tracking-[0.5px] text-slate-900">
+    <div className={`flex ${size} shrink-0 items-center justify-center rounded-[22px] bg-[#D9ECF8]`}>
+      <ThemedText as="span" className="text-base font-semibold tracking-[0.5px] text-slate-900">
         {initials}
       </ThemedText>
     </div>
@@ -60,7 +68,7 @@ function CommentItem({
   const [likeCount, setLikeCount] = useState(comment.like_count);
 
   const authorName = `${comment.author.first_name} ${comment.author.last_name}`;
-  const initials = `${comment.author.first_name?.[0] || ''}${comment.author.last_name?.[0] || ''}`.toUpperCase();
+  const initials = getInitials(comment.author.first_name, comment.author.last_name);
   const canDelete = currentUser && (currentUser.id.toString() === comment.author_id || currentUser.id.toString() === postAuthorId);
 
   const handleLike = async () => {
@@ -74,34 +82,34 @@ function CommentItem({
         setLikeCount(c => c + 1);
         await likeComment(comment.id);
       }
-    } catch (err) {
+    } catch {
       setIsLiked(comment.is_liked);
       setLikeCount(comment.like_count);
     }
   };
 
   return (
-    <div className="mt-4">
+    <div className="space-y-3">
       <div className="flex items-start gap-3">
         <Avatar initials={initials} avatarUrl={comment.author.avatar_url} />
-        <div className="flex-1">
-          <div className="rounded-[20px] bg-[#F7F8FA] px-4 py-3">
+        <div className="flex-1 rounded-2xl bg-[#F7F8FA] p-4">
+          <div className="mb-1 flex items-center justify-between gap-3">
             <ThemedText as="p" className="font-semibold text-slate-900">{authorName}</ThemedText>
-            <ThemedText as="p" className="mt-1 text-slate-700">{comment.content}</ThemedText>
+            <ThemedText as="p" className="shrink-0 text-xs text-slate-500">{formatTime(comment.created_at)}</ThemedText>
           </div>
-          <div className="mt-2 flex items-center gap-4 px-2">
-            <ThemedText as="p" className="text-xs text-slate-500">{formatTime(comment.created_at)}</ThemedText>
+          <ThemedText as="p" className="leading-6 text-slate-700">{comment.content}</ThemedText>
+
+          <div className="mt-3 flex items-center gap-4">
             <button 
               onClick={handleLike} 
-              className={`flex items-center gap-1 text-xs font-bold ${isLiked ? 'text-[#4A9FD8]' : 'text-slate-500'} hover:opacity-70 transition-opacity`}
+              className={`flex items-center gap-1 text-xs font-medium transition-opacity hover:opacity-70 active:opacity-60 ${isLiked ? 'text-[#4A9FD8]' : 'text-slate-500'}`}
             >
               <span className="material-icons text-[14px]">{isLiked ? 'thumb_up' : 'thumb_up_off_alt'}</span>
-              {likeCount > 0 && <span>{likeCount}</span>}
-              <span>Thích</span>
+              <span>{likeCount > 0 ? `${likeCount} Thích` : 'Thích'}</span>
             </button>
             <button 
               onClick={() => onReply(comment)} 
-              className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:opacity-70 transition-opacity"
+              className="flex items-center gap-1 text-xs font-medium text-slate-500 transition-opacity hover:opacity-70 active:opacity-60"
             >
               <span className="material-icons text-[14px]">reply</span>
               Trả lời
@@ -109,7 +117,7 @@ function CommentItem({
             {canDelete && (
               <button 
                 onClick={() => onDelete(comment.id)} 
-                className="flex items-center gap-1 text-xs font-bold text-red-400 hover:text-red-600 transition-colors"
+                className="flex items-center gap-1 text-xs font-medium text-[#D05B5B] transition-opacity hover:opacity-70 active:opacity-60"
               >
                 <span className="material-icons text-[14px]">delete_outline</span>
                 Xóa
@@ -120,7 +128,7 @@ function CommentItem({
       </div>
       
       {comment.replies && comment.replies.length > 0 && (
-        <div className="ml-5 border-l-2 border-[#E4E8EE] pl-5">
+        <div className="ml-12 space-y-3 border-l-2 border-[#E4E8EE] pl-4">
           {comment.replies.map(reply => (
             <CommentItem 
               key={reply.id} 
@@ -150,7 +158,6 @@ export default function PostDetailPage() {
   const [commentInput, setCommentInput] = useState('');
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
 
   useEffect(() => {
     if (!postId) return;
@@ -184,7 +191,7 @@ export default function PostDetailPage() {
       setComments(updatedComments);
       setCommentInput('');
       setReplyTo(null);
-    } catch (err) {
+    } catch {
       alert('Không thể gửi bình luận');
     } finally {
       setIsSubmitting(false);
@@ -197,7 +204,7 @@ export default function PostDetailPage() {
       await deleteComment(commentId);
       const updatedComments = await fetchPostComments(postId as string);
       setComments(updatedComments);
-    } catch (err) {
+    } catch {
       alert('Xóa bình luận thất bại');
     }
   };
@@ -220,19 +227,12 @@ export default function PostDetailPage() {
     </ProtectedPage>
   );
 
-  const authorName = `${post.author.first_name} ${post.author.last_name}`;
-  const initials = `${post.author.first_name?.[0] || ''}${post.author.last_name?.[0] || ''}`.toUpperCase();
-  const firstMediaUrl = post.media && post.media.length > 0 
-    ? (post.media[0].file_url.startsWith('http') ? post.media[0].file_url : `${API_URL}${post.media[0].file_url}`) 
-    : null;
-  const isAuthor = currentUser?.id.toString() === String(post.author_id) || currentUser?.id.toString() === String(post.author?.id);
+  const currentUserInitials = getInitials(currentUser?.first_name, currentUser?.last_name);
 
   return (
     <ProtectedPage>
-      <main className="min-h-screen bg-[#EDF1F5] pb-12">
+      <main className="min-h-screen bg-[#EDF1F5] pb-32">
         <div className="mx-auto w-full max-w-[860px] px-4 pb-6 pt-4 md:px-6">
-          <AppTopNav currentUser={currentUser} />
-          
           <button 
             onClick={() => router.back()} 
             className="mb-4 mt-6 flex items-center gap-2 font-semibold text-slate-500 hover:text-slate-900 transition-colors"
@@ -241,126 +241,75 @@ export default function PostDetailPage() {
             Quay lại
           </button>
 
-          <section className={`${surfaceClass} p-6 shadow-sm`}>
-            {/* Post Header */}
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <Avatar size="h-14 w-14" initials={initials} avatarUrl={post.author.avatar_url} />
-                <div>
-                  <ThemedText as="h2" className="text-[22px] font-bold text-slate-950">{authorName}</ThemedText>
-                  <ThemedText as="p" className="text-sm font-medium text-slate-500">{formatTime(post.created_at)}</ThemedText>
-                </div>
-              </div>
-              <div className="relative">
-                <button 
-                  onClick={() => setShowMenu(!showMenu)} 
-                  className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#F7F8FA] text-[#666666] hover:bg-slate-100 transition-colors"
-                >
-                  <span className="material-icons">{showMenu ? 'close' : 'more_horiz'}</span>
-                </button>
-                
-                {showMenu && (
-                  <div className="absolute right-0 top-14 z-20 w-48 overflow-hidden rounded-[20px] border border-[#E4E8EE] bg-white shadow-xl">
-                    {isAuthor && (
-                      <button 
-                        onClick={async () => {
-                          if (confirm('Xóa bài viết này?')) {
-                            await deletePost(post.id);
-                            router.push(ROUTES.home);
-                          }
-                        }} 
-                        className="w-full px-5 py-4 text-left font-medium text-red-500 hover:bg-red-50 transition-colors"
-                      >
-                        Xóa bài viết
-                      </button>
-                    )}
-                    <button onClick={() => setShowMenu(false)} className="w-full px-5 py-4 text-left font-medium text-slate-600 hover:bg-slate-50 transition-colors">
-                      Báo cáo
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            {/* Post Content */}
-            <ThemedText as="p" className="mt-8 text-[18px] leading-8 text-slate-800">{post.content}</ThemedText>
-            
-            {firstMediaUrl && (
-              <div className="mt-6 overflow-hidden rounded-[28px] bg-[#F7F8FA]">
-                <img 
-                  src={firstMediaUrl} 
-                  alt="Post media" 
-                  className="h-auto max-h-[800px] w-full object-contain"
-                />
-              </div>
-            )}
+          <FeedPost item={post} currentUser={currentUser} />
 
-            {/* Comment Section */}
-            <div className="mt-10 border-t border-[#E4E8EE] pt-8">
-              <div className="flex items-center justify-between mb-6">
-                <ThemedText as="h3" className="text-[22px] font-bold text-slate-900">
-                  Bình luận ({comments.length})
+          <section className="mt-6">
+            <ThemedText as="h3" className="mb-4 px-2 text-lg font-semibold text-slate-900">
+              Bình luận ({comments.length})
+            </ThemedText>
+
+            {comments.length === 0 ? (
+              <div className={`${surfaceClass} flex flex-col items-center p-8`}>
+                <span className="material-icons text-[28px] text-[#94A3B8]">chat_bubble_outline</span>
+                <ThemedText as="p" className="mt-3 text-center text-sm text-slate-500">
+                  Chưa có bình luận. Hãy là người đầu tiên!
                 </ThemedText>
               </div>
-              
-              {/* Comment List */}
-              <div className="space-y-2 mb-10">
-                {comments.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 gap-4">
-                    <span className="material-icons text-slate-200 text-[48px]">chat_bubble_outline</span>
-                    <ThemedText as="p" className="text-slate-500 font-medium">Chưa có bình luận nào. Hãy là người đầu tiên!</ThemedText>
-                  </div>
-                ) : (
-                  comments.map(c => (
-                    <CommentItem 
-                      key={c.id} 
-                      comment={c} 
-                      currentUser={currentUser} 
-                      postAuthorId={post.author_id}
-                      onReply={(comment) => setReplyTo(comment)}
-                      onDelete={handleDeleteComment}
-                    />
-                  ))
-                )}
+            ) : (
+              <div className={`${surfaceClass} space-y-6 p-5`}>
+                {comments.map((comment) => (
+                  <CommentItem
+                    key={comment.id}
+                    comment={comment}
+                    currentUser={currentUser}
+                    postAuthorId={post.author_id}
+                    onReply={(selectedComment) => setReplyTo(selectedComment)}
+                    onDelete={handleDeleteComment}
+                  />
+                ))}
               </div>
-
-              {/* Sticky Comment Input */}
-              <div className="sticky bottom-4 z-10 flex flex-col gap-3 bg-white border border-[#E4E8EE] p-4 rounded-[24px] shadow-lg">
-                {replyTo && (
-                  <div className="flex items-center justify-between bg-[#EAF4FB] px-4 py-2 rounded-xl">
-                    <ThemedText as="span" className="text-sm font-semibold text-[#4A9FD8]">
-                      Đang trả lời {replyTo.author.first_name}
-                    </ThemedText>
-                    <button onClick={() => setReplyTo(null)} className="text-slate-400 hover:text-slate-600">
-                      <span className="material-icons text-[18px]">close</span>
-                    </button>
-                  </div>
-                )}
-                <div className="flex gap-4 items-end">
-                  <div className="flex-1">
-                    <textarea 
-                      value={commentInput}
-                      onChange={(e) => setCommentInput(e.target.value)}
-                      placeholder={replyTo ? "Viết câu trả lời..." : "Viết bình luận của bạn..."}
-                      className="w-full bg-[#F7F8FA] rounded-2xl px-5 py-4 outline-none resize-none min-h-[56px] text-slate-900 placeholder:text-slate-400"
-                      rows={commentInput.split('\n').length > 3 ? 4 : 2}
-                    />
-                  </div>
-                  <button 
-                    onClick={handlePostComment}
-                    disabled={isSubmitting || !commentInput.trim()}
-                    className={`flex h-14 w-14 items-center justify-center rounded-[20px] bg-[#0A0A0A] text-white transition-all ${isSubmitting || !commentInput.trim() ? 'opacity-50' : 'hover:bg-slate-800'}`}
-                  >
-                    {isSubmitting ? (
-                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    ) : (
-                      <span className="material-icons">send</span>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
+            )}
           </section>
+        </div>
+
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[#E4E8EE] bg-white px-4 py-3">
+          {replyTo && (
+            <div className="mx-auto mb-2 flex w-full max-w-[800px] items-center justify-between rounded-xl bg-[#F7F8FA] px-4 py-2">
+              <ThemedText as="p" className="text-sm text-slate-500">
+                Đang trả lời <span className="font-semibold text-slate-900">{replyTo.author.first_name}</span>
+              </ThemedText>
+              <button onClick={() => setReplyTo(null)} className="flex h-6 w-6 items-center justify-center text-[#94A3B8] transition-colors hover:text-slate-600">
+                <span className="material-icons text-[16px]">close</span>
+              </button>
+            </div>
+          )}
+          <div className="mx-auto flex w-full max-w-[800px] items-center gap-3">
+            <Avatar initials={currentUserInitials} avatarUrl={currentUser?.avatar_url} />
+            <input
+              value={commentInput}
+              onChange={(event) => setCommentInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  handlePostComment();
+                }
+              }}
+              disabled={isSubmitting}
+              placeholder="Viết bình luận..."
+              className="min-h-11 flex-1 rounded-[22px] bg-[#F7F8FA] px-5 py-3 text-base text-slate-900 placeholder:text-[#94A3B8]"
+            />
+            <button
+              onClick={handlePostComment}
+              disabled={isSubmitting || !commentInput.trim()}
+              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors ${commentInput.trim() && !isSubmitting ? 'bg-[#0A0A0A] text-white hover:bg-slate-800' : 'bg-[#F7F8FA] text-[#94A3B8]'}`}
+            >
+              {isSubmitting ? (
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#94A3B8] border-t-transparent" />
+              ) : (
+                <span className="material-icons text-[20px]">send</span>
+              )}
+            </button>
+          </div>
         </div>
       </main>
     </ProtectedPage>
