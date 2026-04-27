@@ -7,6 +7,7 @@ import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/ui/ThemedText';
 import { fetchCurrentUser, updateUserProfile, changePassword, uploadUserAvatar, type AuthUser, type GenderValue } from '@/lib/auth';
 import { API_URL } from '@/lib/api';
+import { compressToWebP } from '@/lib/image';
 
 const surfaceClass = 'rounded-[28px] border border-[#E4E8EE] bg-white';
 
@@ -190,12 +191,12 @@ function LivePreviewCard({
         {/* Stats */}
         <div className="mt-4 flex gap-6 px-1">
           <div>
-            <ThemedText as="p" className="text-lg font-semibold text-slate-950">2.4k</ThemedText>
+            <ThemedText as="p" className="text-lg font-semibold text-slate-950">0</ThemedText>
             <ThemedText as="p" className="text-xs text-slate-500">Followers</ThemedText>
           </div>
           <div>
-            <ThemedText as="p" className="text-lg font-semibold text-slate-950">14 live</ThemedText>
-            <ThemedText as="p" className="text-xs text-slate-500">Projects</ThemedText>
+            <ThemedText as="p" className="text-lg font-semibold text-slate-950">0</ThemedText>
+            <ThemedText as="p" className="text-xs text-slate-500">Posts</ThemedText>
           </div>
         </div>
       </SectionCard>
@@ -308,7 +309,8 @@ export default function EditProfilePage() {
     setIsSaving(true);
     try {
       if (avatarFile) {
-        await uploadUserAvatar(avatarFile);
+        const compressed = await compressToWebP(avatarFile);
+        await uploadUserAvatar(compressed);
       }
 
       await updateUserProfile({

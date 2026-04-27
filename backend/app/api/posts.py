@@ -187,7 +187,7 @@ def like_post_endpoint(
   current_user: User = Depends(get_current_user),
   db: Session = Depends(get_db),
 ):
-  """Thích bài viết. Idempotent: gọi lại nhiều lần cũng chỉ tạo 1 lượt thích."""
+  """Thích bài viết."""
   post = get_post(db, post_id)
   if not post:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Post not found')
@@ -198,7 +198,7 @@ def like_post_endpoint(
 
 
 # ──────────────────────────────────────────────────────────────
-# DELETE /api/posts/{post_id}/like — Bỏ thích bài viết
+# DELETE /api/posts/{post_id}/like — Bỏ tương tác bài viết
 # ──────────────────────────────────────────────────────────────
 @router.delete('/{post_id}/like', response_model=LikeStatusResponse)
 def unlike_post_endpoint(
@@ -206,7 +206,7 @@ def unlike_post_endpoint(
   current_user: User = Depends(get_current_user),
   db: Session = Depends(get_db),
 ):
-  """Bỏ thích bài viết. Idempotent: nếu chưa like thì vẫn trả 200 với liked=false."""
+  """Bỏ tương tác bài viết."""
   post = get_post(db, post_id)
   if not post:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Post not found')
@@ -217,18 +217,23 @@ def unlike_post_endpoint(
 
 
 # ──────────────────────────────────────────────────────────────
-# GET /api/posts/{post_id}/likes — Danh sách người đã thích
+# GET /api/posts/{post_id}/likes — Danh sách người đã tương tác
 # ──────────────────────────────────────────────────────────────
 @router.get('/{post_id}/likes', response_model=PostLikersResponse)
 def get_post_likers(
   post_id: int,
   db: Session = Depends(get_db),
 ):
-  """Lấy danh sách người dùng đã thích bài viết. Không yêu cầu đăng nhập."""
+  """Lấy danh sách người dùng đã like bài viết."""
   post = get_post(db, post_id)
   if not post:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Post not found')
 
   users = get_users_who_liked(db, post_id)
   count = get_like_count(db, post_id)
-  return PostLikersResponse(post_id=post_id, like_count=count, users=users)
+  
+  return PostLikersResponse(
+      post_id=post_id, 
+      like_count=count, 
+      users=users
+  )

@@ -14,7 +14,7 @@ class LikeStatusResponse(BaseModel):
 
 
 class LikeUserRead(BaseModel):
-  """Thông tin người đã thích (dùng trong danh sách)"""
+  """Thông tin người đã like"""
   id: int | UUID
   first_name: str
   last_name: str
@@ -24,7 +24,7 @@ class LikeUserRead(BaseModel):
 
 
 class PostLikersResponse(BaseModel):
-  """Danh sách người đã thích bài viết"""
+  """Danh sách người đã like bài viết"""
   post_id: int | UUID
   like_count: int
   users: list[LikeUserRead]

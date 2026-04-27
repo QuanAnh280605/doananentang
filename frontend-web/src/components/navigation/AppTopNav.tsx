@@ -11,8 +11,8 @@ type AppTopNavProps = {
 
 function IconBubble({ icon }: { icon: string }) {
   return (
-    <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#F7F8FA] text-[#666666] hover:bg-[#E2E8F0] transition-colors cursor-pointer">
-      <span className="material-icons text-[21px]">{icon}</span>
+    <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900 active:scale-90 transition-all duration-200 cursor-pointer">
+      <span className="material-icons text-[20px]">{icon}</span>
     </div>
   );
 }
@@ -31,53 +31,53 @@ export function AppTopNav({
     : null;
 
   return (
-    <nav className="rounded-[28px] border border-[#E4E8EE] bg-white px-5 py-4">
+    <nav className="rounded-[32px] border border-slate-200/60 bg-white/90 backdrop-blur-md px-6 py-4 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex w-full flex-col gap-4 md:flex-1 md:flex-row md:items-center">
           {/* Logo Area */}
-          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#4A9FD8] text-white">
-              <span className="material-icons text-[22px]">filter_tilt_shift</span>
+          <Link href="/" className="flex items-center gap-3.5 group">
+            <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-slate-950 text-white shadow-lg shadow-slate-950/20 group-hover:scale-105 transition-transform duration-300">
+              <span className="material-icons text-[20px]">filter_tilt_shift</span>
             </div>
-            <div>
-              <ThemedText as="p" className="text-[26px] font-semibold tracking-[-0.5px] text-slate-950">
+            <div className="flex flex-col">
+              <ThemedText as="p" className="text-[22px] font-bold tracking-tight text-slate-950 leading-none">
                 Northfeed
               </ThemedText>
-              <ThemedText as="p" className="text-sm text-slate-500 leading-3">
-                studio
+              <ThemedText as="p" className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                Studio
               </ThemedText>
             </div>
           </Link>
 
           {/* Search Bar */}
-          <div className="rounded-[22px] bg-[#F7F8FA] px-4 py-4 md:ml-6 md:max-w-[560px] md:flex-1">
+          <div className="rounded-[20px] bg-slate-100/50 border border-transparent focus-within:border-slate-200 focus-within:bg-white px-5 py-3.5 md:ml-8 md:max-w-[560px] md:flex-1 transition-all duration-300 group">
             <div className="flex items-center gap-3">
-              <span className="material-icons text-[20px] text-slate-400">search</span>
+              <span className="material-icons text-[18px] text-slate-400 group-focus-within:text-slate-900 transition-colors">search</span>
               <input 
                 type="text"
                 placeholder={searchPlaceholder}
-                className="flex-1 bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400"
+                className="flex-1 bg-transparent text-[15px] text-slate-900 outline-none placeholder:text-slate-400 font-medium"
               />
             </div>
           </div>
         </div>
 
         {/* Action Buttons & Avatar */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <IconBubble icon="mail_outline" />
           <IconBubble icon="notifications_none" />
           <IconBubble icon="apps" />
           
-          <Link href="/profile" className="ml-1 hover:opacity-80 transition-opacity">
+          <Link href="/profile" className="ml-2 group">
             {avatarUrl ? (
               <img 
                 src={avatarUrl} 
                 alt="Avatar"
-                className="h-14 w-14 shrink-0 rounded-[22px] object-cover"
+                className="h-11 w-11 shrink-0 rounded-[14px] object-cover ring-0 group-hover:ring-4 ring-slate-100 transition-all duration-300"
               />
             ) : (
-              <div className="flex h-14 w-14 items-center justify-center rounded-[22px] bg-[#EAF4FB]">
-                <ThemedText as="span" className="text-base font-semibold tracking-[0.5px] text-slate-900">
+              <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-slate-100 group-hover:bg-[#EAF4FB] transition-colors">
+                <ThemedText as="span" className="text-[14px] font-bold text-slate-900">
                   {initials}
                 </ThemedText>
               </div>

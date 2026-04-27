@@ -8,6 +8,7 @@ import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/ui/ThemedText';
 import { fetchCurrentUser, updateUserProfile, type AuthUser } from '@/lib/auth';
 import { FeedPost } from '@/components/post/FeedPost';
+import { PostDetailModal } from '@/components/post/PostDetailModal';
 import { fetchPosts, deletePost, API_URL } from '@/lib/api';
 import type { Post } from '@/lib/types';
 
@@ -22,11 +23,6 @@ const tabs: { key: ProfileTab; label: string; icon: string }[] = [
 const featuredMedia = [
   { id: '1', title: 'Review systems playbook', subtitle: 'A tighter artifact for faster approvals and clearer motion notes.', fillClassName: 'bg-[#D9ECF8]' },
   { id: '2', title: 'Northfeed launch board', subtitle: 'Signals, rituals, and release checkpoints shaped for distributed teams.', fillClassName: 'bg-[#EEE8FF]' },
-];
-
-const recentPosts = [
-  { id: '1', time: 'Updated 12 min ago', body: 'Shared a revised review template for the motion pass. The goal is less ceremony, clearer decision points, and faster approval once the story is already obvious.', accentClassName: 'bg-[#D9ECF8]' },
-  { id: '2', time: 'Yesterday', body: 'Pinned three references that keep social products feeling light: fewer panels, stronger hierarchy, and interaction states that resolve without noise.', accentClassName: 'bg-[#FCE7F3]' },
 ];
 
 function buildProfileViewModel(user: AuthUser | null) {
@@ -58,6 +54,7 @@ export function ProfileView() {
   const [tempIntro, setTempIntro] = useState('');
   const [tempCity, setTempCity] = useState('');
   const [isSavingIntro, setIsSavingIntro] = useState(false);
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -92,16 +89,6 @@ export function ProfileView() {
     };
   }, []);
 
-  const handleDeletePost = async (postId: string) => {
-    if (!confirm('Bạn có chắc muốn xóa bài viết này?')) return;
-    try {
-      await deletePost(postId);
-      setPosts(current => current.filter(p => p.id !== postId));
-    } catch (err) {
-      alert('Không thể xóa bài viết. Vui lòng thử lại.');
-    }
-  };
-
   const handleSaveIntro = async () => {
     setIsSavingIntro(true);
     try {
@@ -109,9 +96,7 @@ export function ProfileView() {
         bio: tempIntro.trim() || null,
         city: tempCity.trim() || null,
       };
-      console.log('DEBUG: Sending profile update:', payload);
       await updateUserProfile(payload);
-      // Refresh current user to update UI
       const updatedUser = await fetchCurrentUser();
       setUser(updatedUser);
       setIsEditingIntro(false);
@@ -128,21 +113,18 @@ export function ProfileView() {
     setIsEditingIntro(false);
   };
 
-  const formatTime = (isoStr: string) => {
-    const diff = Date.now() - new Date(isoStr).getTime();
-    const minutes = Math.floor(diff / 60000);
-    if (minutes < 1) return 'Vừa xong';
-    if (minutes < 60) return `${minutes} phút trước`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours} giờ trước`;
-    return `${Math.floor(hours / 24)} ngày trước`;
-  };
-
   const profile = useMemo(() => buildProfileViewModel(user), [user]);
 
   return (
     <ProtectedPage>
       <main className="min-h-screen bg-[#F8FAFC] pb-8">
+        {selectedPostId && (
+            <PostDetailModal 
+                postId={selectedPostId}
+                onClose={() => setSelectedPostId(null)}
+                currentUser={user}
+            />
+        )}
         <div className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-4 md:px-6">
           {/* Back header */}
           <div className="mt-4 flex items-center gap-3 rounded-[28px] border border-[#E4E8EE] bg-white px-5 py-4">
@@ -297,7 +279,12 @@ export function ProfileView() {
                   ) : (
                     <div className="space-y-4">
                       {posts.map((item) => (
-                        <FeedPost key={item.id} item={item} currentUser={user} />
+                        <FeedPost 
+                            key={item.id} 
+                            item={item} 
+                            currentUser={user} 
+                            onPostClick={(id) => setSelectedPostId(id)}
+                        />
                       ))}
                     </div>
                   )}
