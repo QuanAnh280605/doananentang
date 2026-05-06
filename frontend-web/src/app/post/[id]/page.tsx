@@ -38,7 +38,6 @@ function Avatar({ initials, avatarUrl, size = 'h-14 w-14' }: { initials: string;
         width={100}
         height={100}
         className={`${size} shrink-0 rounded-[22px] object-cover`}
-        unoptimized
       />
     );
   }

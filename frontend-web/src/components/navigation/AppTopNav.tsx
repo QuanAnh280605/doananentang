@@ -98,7 +98,6 @@ export function AppTopNav({
                 width={56}
                 height={56}
                 className="h-11 w-11 shrink-0 rounded-[14px] object-cover ring-0 group-hover:ring-4 ring-slate-100 transition-all duration-300"
-                unoptimized
               />
             ) : (
               <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-slate-100 group-hover:bg-[#EAF4FB] transition-colors">

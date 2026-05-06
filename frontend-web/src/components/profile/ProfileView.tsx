@@ -238,7 +238,7 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
                 <div className="flex items-end gap-4">
                   <div className="flex h-[92px] w-[92px] items-center justify-center rounded-[28px] border-4 border-white bg-[#EAF4FB] text-[28px] font-semibold tracking-[0.5px] text-slate-900 overflow-hidden">
                     {profile.avatarUrl ? (
-                      <Image src={profile.avatarUrl} alt={profile.displayName} width={92} height={92} className="h-full w-full object-cover" unoptimized />
+                      <Image src={profile.avatarUrl} alt={profile.displayName} width={92} height={92} className="h-full w-full object-cover" />
                     ) : (
                       profile.initials
                     )}
@@ -250,8 +250,9 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
               </div>
               <div className="mt-5 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                 <div className="xl:max-w-[760px] xl:flex-1">
-                  <ThemedText as="h1" className="text-[34px] font-semibold leading-[42px] text-slate-950">{profile.displayName}</ThemedText>
-                  <ThemedText as="p" className="mt-3 max-w-3xl text-[16px] leading-7 text-slate-600">{profile.intro}</ThemedText>
+                  {profile.intro && (
+                    <ThemedText as="p" className="mt-1 max-w-3xl text-[16px] leading-7 text-slate-600">{profile.intro}</ThemedText>
+                  )}
                 </div>
                 {isSelectedUserProfile ? (
                   <div className="flex flex-wrap gap-3">

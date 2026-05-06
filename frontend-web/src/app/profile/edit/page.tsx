@@ -171,7 +171,7 @@ function LivePreviewCard({
         <div className="-mt-12 flex items-end gap-3 px-3">
           {avatarSource ? (
             <div className="h-16 w-16 shrink-0 overflow-hidden rounded-[22px] border-[3px] border-white">
-              <Image src={avatarSource} alt={displayName} width={64} height={64} className="h-full w-full object-cover" unoptimized />
+              <Image src={avatarSource} alt={displayName} width={64} height={64} className="h-full w-full object-cover" />
             </div>
           ) : (
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] border-[3px] border-white bg-[#EAF4FB]">
@@ -423,7 +423,7 @@ export default function EditProfilePage() {
                   <div className="mb-6 flex items-center gap-4">
                     {currentAvatarSource ? (
                       <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full">
-                        <Image src={currentAvatarSource} alt="Avatar" width={64} height={64} className="h-full w-full object-cover" unoptimized />
+                        <Image src={currentAvatarSource} alt="Avatar" width={64} height={64} className="h-full w-full object-cover" />
                       </div>
                     ) : (
                       <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#EAF4FB]">
