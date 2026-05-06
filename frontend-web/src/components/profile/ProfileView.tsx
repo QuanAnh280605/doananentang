@@ -208,7 +208,6 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
         setIsSubmittingFollow(false);
       });
   };
-  };
 
   return (
     <ProtectedPage>

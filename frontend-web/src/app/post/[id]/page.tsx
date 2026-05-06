@@ -267,6 +267,13 @@ export default function PostDetailPage() {
     </ProtectedPage>
   );
 
+  const initials = getInitials(post.author?.first_name, post.author?.last_name) || 'U';
+  const authorName = `${post.author?.first_name || ''} ${post.author?.last_name || ''}`.trim() || 'Người dùng';
+  const isAuthor = currentUser?.id != null && post.author?.id != null && String(currentUser.id) === String(post.author.id);
+  const firstMediaUrl = post.media?.[0]?.file_url ? 
+    (post.media[0].file_url.startsWith('http') ? post.media[0].file_url : `${API_URL}${post.media[0].file_url}`) 
+    : null;
+
   const currentUserInitials = getInitials(currentUser?.first_name, currentUser?.last_name);
 
   return (
@@ -414,6 +421,8 @@ export default function PostDetailPage() {
                   />
                 ))}
               </div>
+            )}
+
               {/* Sticky Comment Input */}
               <div className="sticky bottom-4 z-10 flex flex-col gap-3 bg-white border border-[#E4E8EE] p-4 rounded-[24px] shadow-lg mt-4">
                 {replyTo && (
