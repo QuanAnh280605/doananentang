@@ -296,7 +296,7 @@ export default function PostDetailPage() {
               }}
               disabled={isSubmitting}
               placeholder="Viết bình luận..."
-              className="min-h-11 flex-1 rounded-[22px] bg-[#F7F8FA] px-5 py-3 text-base text-slate-900 placeholder:text-[#94A3B8]"
+              className="no-focus-ring min-h-11 flex-1 rounded-[22px] border border-transparent bg-[#F7F8FA] px-5 py-3 text-base text-slate-900 outline-none placeholder:text-[#94A3B8] transition-colors focus:border-slate-200 focus:outline-none focus:shadow-none focus:ring-0 [box-shadow:none!important] [outline:none!important]"
             />
             <button
               onClick={handlePostComment}

@@ -217,11 +217,14 @@ export default function InboxScreen() {
               <View className="rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-4">
                 <TextInput
                   className="min-h-[72px] text-base leading-6 text-slate-900"
+                  cursorColor="#0F172A"
                   multiline
                   onChangeText={setDraftMessage}
                   placeholder="Write a reply..."
                   placeholderTextColor="#64748B"
+                  selectionColor="rgba(15, 23, 42, 0.24)"
                   textAlignVertical="top"
+                  underlineColorAndroid="transparent"
                   value={draftMessage}
                 />
                 <View className="mt-4 flex-row items-center justify-between gap-3 border-t border-slate-200 pt-4">

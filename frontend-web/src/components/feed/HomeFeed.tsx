@@ -89,7 +89,17 @@ export function HomeFeed() {
   }, []);
 
   useEffect(() => {
-    loadPosts();
+    let cancelled = false;
+
+    queueMicrotask(() => {
+      if (!cancelled) {
+        void loadPosts();
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [loadPosts]);
 
   const initials = currentUser 

@@ -280,12 +280,15 @@ export default function PostDetailScreen() {
                                 <Avatar initials="BN" soft />
                                 <TextInput
                                     className="flex-1 rounded-[22px] bg-[#F7F8FA] px-5 py-3 text-base text-slate-900"
+                                    cursorColor="#0F172A"
                                     placeholder="Viết bình luận..."
                                     placeholderTextColor="#94A3B8"
+                                    selectionColor="rgba(15, 23, 42, 0.24)"
                                     value={newComment}
                                     onChangeText={setNewComment}
                                     onSubmitEditing={handleSendComment}
                                     returnKeyType="send"
+                                    underlineColorAndroid="transparent"
                                     editable={!sending}
                                 />
                                 <Pressable

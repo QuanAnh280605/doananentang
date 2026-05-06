@@ -9,7 +9,7 @@ import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/ui/ThemedText';
 import { fetchCurrentUser,updateUserProfile, fetchFollowStatus, followUser, type AuthUser, type FollowStatus, unfollowUser } from '@/lib/auth';
 import { FeedPost } from '@/components/post/FeedPost';
-import { fetchPosts, deletePost, API_URL } from '@/lib/api';
+import { fetchPosts, API_URL } from '@/lib/api';
 import type { Post } from '@/lib/types';
 
 type ProfileTab = 'posts' | 'about' | 'media';
@@ -23,11 +23,6 @@ const tabs: { key: ProfileTab; label: string }[] = [
 const featuredMedia = [
   { id: '1', title: 'Review systems playbook', subtitle: 'A tighter artifact for faster approvals and clearer motion notes.', fillClassName: 'bg-[#D9ECF8]' },
   { id: '2', title: 'Northfeed launch board', subtitle: 'Signals, rituals, and release checkpoints shaped for distributed teams.', fillClassName: 'bg-[#EEE8FF]' },
-];
-
-const recentPosts = [
-  { id: '1', time: 'Updated 12 min ago', body: 'Shared a revised review template for the motion pass. The goal is less ceremony, clearer decision points, and faster approval once the story is already obvious.', accentClassName: 'bg-[#D9ECF8]' },
-  { id: '2', time: 'Yesterday', body: 'Pinned three references that keep social products feeling light: fewer panels, stronger hierarchy, and interaction states that resolve without noise.', accentClassName: 'bg-[#FCE7F3]' },
 ];
 
 type ProfileSnapshot = {
@@ -59,7 +54,6 @@ function buildProfileViewModel(user: AuthUser | null, selectedUser?: ProfileSnap
   const lastName = user?.last_name?.trim() || '';
   const displayName = `${firstName} ${lastName}`.trim();
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-  const emailHandle = user?.email ? user.email.replace(/^mailto:/, '') : '';
   const avatarUrl = user?.avatar_url ? (user.avatar_url.startsWith('http') ? user.avatar_url : `${API_URL}${user.avatar_url}`) : null;
 
   return {
@@ -129,16 +123,6 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
 
   const profile = useMemo(() => buildProfileViewModel(user, selectedUser), [selectedUser, user]);
 
-  const handleDeletePost = async (postId: string) => {
-    if (!confirm('Bạn có chắc muốn xóa bài viết này?')) return;
-    try {
-      await deletePost(postId);
-      setPosts(current => current.filter(p => p.id !== postId));
-    } catch (err) {
-      alert('Không thể xóa bài viết. Vui lòng thử lại.');
-    }
-  };
-
   const handleSaveIntro = async () => {
     setIsSavingIntro(true);
     try {
@@ -152,7 +136,7 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
       const updatedUser = await fetchCurrentUser();
       setUser(updatedUser);
       setIsEditingIntro(false);
-    } catch (err) {
+    } catch {
       alert('Không thể cập nhật thông tin.');
     } finally {
       setIsSavingIntro(false);
@@ -163,16 +147,6 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
     setTempIntro(user?.bio || '');
     setTempCity(user?.city || '');
     setIsEditingIntro(false);
-  };
-
-  const formatTime = (isoStr: string) => {
-    const diff = Date.now() - new Date(isoStr).getTime();
-    const minutes = Math.floor(diff / 60000);
-    if (minutes < 1) return 'Vừa xong';
-    if (minutes < 60) return `${minutes} phút trước`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours} giờ trước`;
-    return `${Math.floor(hours / 24)} ngày trước`;
   };
 
   useEffect(() => {

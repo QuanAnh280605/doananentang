@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import Link from 'next/link';
 import Image from 'next/image';
 import { ProtectedPage } from '@/components/app/ProtectedPage';
 import { AppTopNav } from '@/components/navigation/AppTopNav';
@@ -329,8 +328,8 @@ export default function EditProfilePage() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Có lỗi xảy ra khi lưu thay đổi');
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : 'Có lỗi xảy ra khi lưu thay đổi');
     } finally {
       setIsSaving(false);
     }

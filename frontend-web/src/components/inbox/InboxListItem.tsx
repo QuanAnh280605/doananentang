@@ -13,7 +13,13 @@ export type InboxListItemData = {
   unread?: number;
 };
 
-export function InboxListItem({ item, href }: { item: InboxListItemData; href?: string }) {
+type InboxListItemProps = {
+  item: InboxListItemData;
+  href?: string;
+  onClick?: () => void;
+};
+
+export function InboxListItem({ item, href, onClick }: InboxListItemProps) {
   const content = (
     <>
       <div className="flex items-start gap-3">
@@ -33,7 +39,11 @@ export function InboxListItem({ item, href }: { item: InboxListItemData; href?: 
   );
 
   return (
-    href ? (
+    onClick ? (
+      <button className={`block w-full rounded-[24px] border px-4 py-4 text-left transition hover:opacity-95 ${item.active ? 'border-[#BFDBFE] bg-[#EFF6FF]' : 'border-transparent bg-[#F8FAFC]'}`} onClick={onClick} type="button">
+        {content}
+      </button>
+    ) : href ? (
       <Link className={`block rounded-[24px] border px-4 py-4 transition hover:opacity-95 ${item.active ? 'border-[#BFDBFE] bg-[#EFF6FF]' : 'border-transparent bg-[#F8FAFC]'}`} href={href}>
         {content}
       </Link>

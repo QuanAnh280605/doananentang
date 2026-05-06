@@ -1,4 +1,11 @@
 import { ROUTES } from '@/lib/routes';
+import type {
+  ChatMessageResponse,
+  CreateDirectChatRequest,
+  DirectChatListItemResponse,
+  DirectChatResponse,
+  SendChatMessageRequest,
+} from '@/lib/chat.types';
 import { formatApiErrorDetail, normalizeApiUrl, type ApiUrlSource, type TokenRefreshResponse } from '@/lib/shared-api';
 import {
   clearAuthTokens,
@@ -323,4 +330,26 @@ export function likeComment(commentId: string): Promise<{ liked: boolean; like_c
 
 export function unlikeComment(commentId: string): Promise<{ liked: boolean; like_count: number }> {
   return apiFetch<{ liked: boolean; like_count: number }>(`/api/comments/${commentId}/like`, { method: 'DELETE' });
+}
+
+export function fetchDirectChats(): Promise<DirectChatListItemResponse[]> {
+  return apiFetch<DirectChatListItemResponse[]>('/api/chats');
+}
+
+export function createDirectChat(payload: CreateDirectChatRequest): Promise<DirectChatResponse> {
+  return apiFetch<DirectChatResponse>('/api/chats/direct', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function fetchChatMessages(chatId: string): Promise<ChatMessageResponse[]> {
+  return apiFetch<ChatMessageResponse[]>(`/api/chats/${chatId}/messages`);
+}
+
+export function createChatMessage(chatId: string, payload: SendChatMessageRequest): Promise<ChatMessageResponse> {
+  return apiFetch<ChatMessageResponse>(`/api/chats/${chatId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }

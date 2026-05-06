@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from app.api.deps import get_current_user
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.crud.follow import count_followers, count_following, create_follow, delete_follow, is_following
+from app.crud.follow import count_followers, count_following, create_follow, delete_follow, is_following, search_following_users
 from app.crud.user import create_user, get_user_by_email, get_user_by_id, get_user_by_phone, list_users, search_users
 from app.models.user import User
 from app.schemas.user import FollowStatusRead, UserCreate, UserRead, UserSearchRead
@@ -51,6 +51,27 @@ def search_users_endpoint(
   db: Session = Depends(get_db)
 ) -> list[UserSearchRead]:
   users = search_users(db, q, limit)
+  return [
+    UserSearchRead(
+      id=user.id,
+      first_name=user.first_name,
+      last_name=user.last_name,
+      full_name=user.full_name,
+      avatar_url=user.avatar_url,
+      bio=user.bio,
+    )
+    for user in users
+  ]
+
+
+@router.get('/following/search', response_model=list[UserSearchRead])
+def search_following_users_endpoint(
+  q: str = Query(..., min_length=1),
+  limit: int = Query(20, ge=1, le=50),
+  current_user: User = Depends(get_current_user),
+  db: Session = Depends(get_db),
+) -> list[UserSearchRead]:
+  users = search_following_users(db, current_user.id, q, limit)
   return [
     UserSearchRead(
       id=user.id,

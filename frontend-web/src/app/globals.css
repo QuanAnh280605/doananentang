@@ -57,7 +57,17 @@ select:focus {
   box-shadow: 0 0 0 4px var(--ring-soft);
 }
 
-input.no-focus-ring:focus {
+input.no-focus-ring:focus,
+textarea.no-focus-ring:focus,
+select.no-focus-ring:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+input.no-focus-ring:focus-visible,
+textarea.no-focus-ring:focus-visible,
+select.no-focus-ring:focus-visible {
+  outline: none !important;
   box-shadow: none !important;
 }
 

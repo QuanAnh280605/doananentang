@@ -1,5 +1,5 @@
 import { apiFetch, API_URL } from '@/lib/api';
-import { clearAuthTokens, getRefreshToken, setAuthTokens } from '@/lib/session';
+import { clearAuthTokens, getAccessToken, getRefreshToken, setAuthTokens } from '@/lib/session';
 
 export type GenderValue = 'female' | 'male' | 'custom';
 
@@ -166,6 +166,14 @@ export async function searchUsers(query: string, limit = 20): Promise<SearchUser
     limit: String(limit),
   });
   return apiFetch<SearchUser[]>(`/api/users/search?${params}`);
+}
+
+export async function searchFollowingUsers(query: string, limit = 20): Promise<SearchUser[]> {
+  const params = new URLSearchParams({
+    q: query,
+    limit: String(limit),
+  });
+  return apiFetch<SearchUser[]>(`/api/users/following/search?${params}`);
 }
 
 export async function fetchFollowStatus(userId: number): Promise<FollowStatus> {

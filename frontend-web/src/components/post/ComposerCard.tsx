@@ -72,7 +72,7 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
                 )}
                 <div className="flex-1">
                     <textarea
-                        className="w-full rounded-[24px] bg-[#F7F8FA] px-5 py-4 text-base text-slate-900 outline-none placeholder:text-slate-400 resize-none transition-all"
+                        className="no-focus-ring w-full resize-none rounded-[24px] border border-transparent bg-[#F7F8FA] px-5 py-4 text-base text-slate-900 outline-none placeholder:text-slate-400 transition-all focus:border-slate-200 focus:outline-none focus:shadow-none focus:ring-0 [box-shadow:none!important] [outline:none!important]"
                         placeholder="Share a project update, a photo, or a thought"
                         value={text}
                         onChange={(e) => setText(e.target.value)}
