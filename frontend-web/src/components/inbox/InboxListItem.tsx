@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 import { ThemedText } from '@/components/ui/ThemedText';
 
 export type InboxListItemData = {
@@ -6,13 +8,20 @@ export type InboxListItemData = {
   preview: string;
   time: string;
   initials: string;
+  bio?: string;
   active?: boolean;
   unread?: number;
 };
 
-export function InboxListItem({ item }: { item: InboxListItemData }) {
-  return (
-    <div className={`rounded-[24px] border px-4 py-4 ${item.active ? 'border-[#BFDBFE] bg-[#EFF6FF]' : 'border-transparent bg-[#F8FAFC]'}`}>
+type InboxListItemProps = {
+  item: InboxListItemData;
+  href?: string;
+  onClick?: () => void;
+};
+
+export function InboxListItem({ item, href, onClick }: InboxListItemProps) {
+  const content = (
+    <>
       <div className="flex items-start gap-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#DBEAFE]">
           <ThemedText as="span" className="text-sm font-semibold tracking-[0.6px] text-slate-900">{item.initials}</ThemedText>
@@ -26,6 +35,22 @@ export function InboxListItem({ item }: { item: InboxListItemData }) {
         </div>
       </div>
       {item.unread ? <div className="mt-3 inline-flex rounded-full bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white">{item.unread} new</div> : null}
-    </div>
+    </>
+  );
+
+  return (
+    onClick ? (
+      <button className={`block w-full rounded-[24px] border px-4 py-4 text-left transition hover:opacity-95 ${item.active ? 'border-[#BFDBFE] bg-[#EFF6FF]' : 'border-transparent bg-[#F8FAFC]'}`} onClick={onClick} type="button">
+        {content}
+      </button>
+    ) : href ? (
+      <Link className={`block rounded-[24px] border px-4 py-4 transition hover:opacity-95 ${item.active ? 'border-[#BFDBFE] bg-[#EFF6FF]' : 'border-transparent bg-[#F8FAFC]'}`} href={href}>
+        {content}
+      </Link>
+    ) : (
+      <div className={`rounded-[24px] border px-4 py-4 ${item.active ? 'border-[#BFDBFE] bg-[#EFF6FF]' : 'border-transparent bg-[#F8FAFC]'}`}>
+        {content}
+      </div>
+    )
   );
 }

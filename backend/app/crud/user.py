@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -44,5 +44,28 @@ def get_user_by_id(db: Session, user_id: int) -> User | None:
 
 def list_users(db: Session) -> list[User]:
   statement = select(User).order_by(User.__table__.c.id)
+  return list(db.scalars(statement).all())
+
+
+def search_users(db: Session, query: str, limit: int = 20) -> list[User]:
+  normalized_query = query.strip().lower()
+  if not normalized_query:
+    return []
+
+  pattern = f'%{normalized_query}%'
+  full_name = func.lower(User.first_name + ' ' + User.last_name)
+
+  statement = (
+    select(User)
+    .where(
+      or_(
+        func.lower(User.first_name).like(pattern),
+        func.lower(User.last_name).like(pattern),
+        full_name.like(pattern),
+      )
+    )
+    .order_by(User.first_name, User.last_name, User.id)
+    .limit(max(1, min(limit, 50)))
+  )
   return list(db.scalars(statement).all())
   

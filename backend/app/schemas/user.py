@@ -67,6 +67,24 @@ class UserRead(UserBase):
   def full_name(self) -> str:
     return ' '.join(part for part in [self.first_name, self.last_name] if part).strip()
 
+
+class UserSearchRead(BaseModel):
+  id: int
+  first_name: str
+  last_name: str
+  full_name: str
+  avatar_url: str | None = None
+  bio: str | None = None
+
+  model_config = ConfigDict(from_attributes=True)
+
+
+class FollowStatusRead(BaseModel):
+  user_id: int
+  is_following: bool
+  followers_count: int
+  following_count: int
+
 class UserUpdate(BaseModel):
   bio: str | None = None
   first_name: str | None = None

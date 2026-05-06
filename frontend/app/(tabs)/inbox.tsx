@@ -1,4 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
@@ -10,6 +11,7 @@ import { ProfilePanelStat, type ProfilePanelStatData } from '@/components/inbox/
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { SearchInput } from '@/components/ui/SearchInput';
 
 const threads: InboxListItemData[] = [
   {
@@ -18,6 +20,7 @@ const threads: InboxListItemData[] = [
     preview: 'Updated the final review deck and moved three comments into the handoff.',
     time: '09:24',
     initials: 'LE',
+    bio: 'Leads launch reviews and keeps the team aligned on calmer product details.',
     active: true,
     unread: 2,
   },
@@ -27,6 +30,7 @@ const threads: InboxListItemData[] = [
     preview: 'I left the typography notes in the thread for round two.',
     time: '08:10',
     initials: 'AT',
+    bio: 'Shapes visual systems and tightens typography for product launches.',
   },
   {
     id: '3',
@@ -34,6 +38,7 @@ const threads: InboxListItemData[] = [
     preview: 'Need one more pass on the motion pacing before sign-off.',
     time: 'Yesterday',
     initials: 'RM',
+    bio: 'Focuses on motion pacing, interaction polish, and handoff clarity.',
   },
   {
     id: '4',
@@ -41,6 +46,7 @@ const threads: InboxListItemData[] = [
     preview: 'Profile rail content is ready whenever you want to swap copy.',
     time: 'Yesterday',
     initials: 'NE',
+    bio: 'Writes crisp product copy and organizes profile content for review.',
   },
 ];
 
@@ -116,17 +122,35 @@ function SectionShell({
 }
 
 export default function InboxScreen() {
+  const router = useRouter();
   const { width, height } = useWindowDimensions();
   const useViewportLayout = width >= 1100;
   const isTablet = width >= 768;
   const viewportPanelHeight = Math.max(height - 120, 560);
-  const [searchValue, setSearchValue] = useState('');
+  const [inboxNavSearchQuery, setInboxNavSearchQuery] = useState('');
+  const [inboxSearchQuery, setInboxSearchQuery] = useState('');
   const [draftMessage, setDraftMessage] = useState('');
+  const normalizedInboxSearchQuery = inboxSearchQuery.trim().toLowerCase();
+  const filteredThreads = threads.filter((item) => {
+    if (!normalizedInboxSearchQuery) {
+      return true;
+    }
+
+    return (
+      item.name.toLowerCase().includes(normalizedInboxSearchQuery) ||
+      item.preview.toLowerCase().includes(normalizedInboxSearchQuery)
+    );
+  });
 
   const content = (
     <ThemedView className="flex-1">
       <ThemedView className="mx-auto w-full max-w-[1720px] px-4 pb-6 pt-4 md:px-6">
-        <AppTopNav isTablet={isTablet} searchPlaceholder="Search inbox threads, files, or people" />
+        <AppTopNav
+          isTablet={isTablet}
+          onSearchChange={setInboxNavSearchQuery}
+          searchPlaceholder="Search inbox threads, files, or people"
+          searchValue={inboxNavSearchQuery}
+        />
 
         <View className={useViewportLayout ? 'flex-row items-stretch gap-4 mt-4' : 'gap-5'} style={useViewportLayout ? { height: viewportPanelHeight } : undefined}>
           <View className={useViewportLayout ? 'w-[336px]' : isTablet ? 'w-full' : 'w-full'}>
@@ -135,23 +159,29 @@ export default function InboxScreen() {
               subtitle="Priority threads and recent updates"
               className={useViewportLayout ? 'h-full' : ''}
               contentClassName={useViewportLayout ? 'min-h-0 flex-1' : ''}>
-              <View className="flex-row items-center gap-3 rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-3">
-                <MaterialIcons color="#64748B" name="search" size={20} />
-                <TextInput
-                  className="flex-1 text-base text-slate-900"
-                  onChangeText={setSearchValue}
-                  placeholder="Search messages"
-                  placeholderTextColor="#64748B"
-                  value={searchValue}
-                />
-              </View>
+              <SearchInput onChangeText={setInboxSearchQuery} placeholder="Search users" value={inboxSearchQuery} />
 
               <ScrollView
                 className={useViewportLayout ? 'min-h-0 flex-1' : ''}
                 contentContainerClassName="gap-3"
                 showsVerticalScrollIndicator={false}>
-                {threads.map((item) => (
-                  <InboxListItem key={item.id} item={item} />
+                {filteredThreads.map((item) => (
+                  <InboxListItem
+                    key={item.id}
+                    item={item}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/profile/[userId]',
+                        params: {
+                          userId: item.id,
+                          name: item.name,
+                          initials: item.initials,
+                          preview: item.preview,
+                          bio: item.bio ?? item.preview,
+                        },
+                      })
+                    }
+                  />
                 ))}
               </ScrollView>
             </SectionShell>
@@ -187,11 +217,14 @@ export default function InboxScreen() {
               <View className="rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-4">
                 <TextInput
                   className="min-h-[72px] text-base leading-6 text-slate-900"
+                  cursorColor="#0F172A"
                   multiline
                   onChangeText={setDraftMessage}
                   placeholder="Write a reply..."
                   placeholderTextColor="#64748B"
+                  selectionColor="rgba(15, 23, 42, 0.24)"
                   textAlignVertical="top"
+                  underlineColorAndroid="transparent"
                   value={draftMessage}
                 />
                 <View className="mt-4 flex-row items-center justify-between gap-3 border-t border-slate-200 pt-4">

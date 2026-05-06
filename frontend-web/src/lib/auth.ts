@@ -1,5 +1,5 @@
 import { apiFetch, API_URL } from '@/lib/api';
-import { clearAuthTokens, getRefreshToken, setAuthTokens } from '@/lib/session';
+import { clearAuthTokens, getAccessToken, getRefreshToken, setAuthTokens } from '@/lib/session';
 
 export type GenderValue = 'female' | 'male' | 'custom';
 
@@ -23,6 +23,22 @@ export type AuthResponse = {
   refresh_token: string;
   token_type: 'bearer';
   user: AuthUser;
+};
+
+export type SearchUser = {
+  id: number;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  avatar_url: string | null;
+  bio: string | null;
+};
+
+export type FollowStatus = {
+  user_id: number;
+  is_following: boolean;
+  followers_count: number;
+  following_count: number;
 };
 
 export type RegisterFormState = {
@@ -142,6 +158,38 @@ export async function loginUser(payload: LoginRequest): Promise<AuthResponse> {
 
 export async function fetchCurrentUser(): Promise<AuthUser> {
   return apiFetch<AuthUser>('/api/auth/me');
+}
+
+export async function searchUsers(query: string, limit = 20): Promise<SearchUser[]> {
+  const params = new URLSearchParams({
+    q: query,
+    limit: String(limit),
+  });
+  return apiFetch<SearchUser[]>(`/api/users/search?${params}`);
+}
+
+export async function searchFollowingUsers(query: string, limit = 20): Promise<SearchUser[]> {
+  const params = new URLSearchParams({
+    q: query,
+    limit: String(limit),
+  });
+  return apiFetch<SearchUser[]>(`/api/users/following/search?${params}`);
+}
+
+export async function fetchFollowStatus(userId: number): Promise<FollowStatus> {
+  return apiFetch<FollowStatus>(`/api/users/${userId}/follow-status`);
+}
+
+export async function followUser(userId: number): Promise<FollowStatus> {
+  return apiFetch<FollowStatus>(`/api/users/${userId}/follow`, {
+    method: 'POST',
+  });
+}
+
+export async function unfollowUser(userId: number): Promise<FollowStatus> {
+  return apiFetch<FollowStatus>(`/api/users/${userId}/follow`, {
+    method: 'DELETE',
+  });
 }
 
 export async function logoutUser(): Promise<void> {

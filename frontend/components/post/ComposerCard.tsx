@@ -68,13 +68,16 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
                 <View className="flex-1">
                     <TextInput
                         className="rounded-[24px] bg-[#F7F8FA] px-5 py-4 text-base text-slate-900"
+                        cursorColor="#0F172A"
                         placeholder="Share a project update, a photo, or a thought"
                         placeholderTextColor="#94A3B8"
+                        selectionColor="rgba(15, 23, 42, 0.24)"
                         value={text}
                         onChangeText={setText}
                         onFocus={() => setIsFocused(true)}
                         multiline
                         style={{ minHeight: isFocused ? 80 : 48 }}
+                        underlineColorAndroid="transparent"
                     />
                 </View>
             </View>

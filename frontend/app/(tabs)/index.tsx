@@ -31,15 +31,19 @@ type Story = {
 
 
 type Contact = {
+  id: string;
   name: string;
   status: string;
   initials: string;
+  bio: string;
 };
 
 type InboxItem = {
+  id: string;
   name: string;
   message: string;
   initials: string;
+  bio: string;
   unread?: boolean;
 };
 
@@ -58,18 +62,26 @@ const stories: Story[] = [
 
 
 const contacts: Contact[] = [
-  { name: 'Ari Mendoza', status: 'Editing new campaign', initials: 'AM' },
-  { name: 'Nadia Elsner', status: 'Reviewing typography', initials: 'NE' },
-  { name: 'Jules Tate', status: 'In Riverside Studio', initials: 'JT' },
-  { name: 'Owen Ybarra', status: 'Exporting review clips', initials: 'OY' },
+  { id: 'am', name: 'Ari Mendoza', status: 'Editing new campaign', initials: 'AM', bio: 'Builds campaign systems and keeps launch assets moving.' },
+  { id: 'ne', name: 'Nadia Elsner', status: 'Reviewing typography', initials: 'NE', bio: 'Writes crisp product copy and organizes review-ready profile content.' },
+  { id: 'jt', name: 'Jules Tate', status: 'In Riverside Studio', initials: 'JT', bio: 'Supports studio sessions and visual coordination across teams.' },
+  { id: 'oy', name: 'Owen Ybarra', status: 'Exporting review clips', initials: 'OY', bio: 'Handles review exports, clips, and last-mile production polish.' },
 ];
 
 const inboxItems: InboxItem[] = [
-  { name: 'Rafi Mercer', message: 'Can you review the revised launch pacing?', initials: 'RM', unread: true },
-  { name: 'Aya Tran', message: 'Dropping sprint references in five minutes.', initials: 'AT' },
-  { name: 'Nadia Elsner', message: 'Shared fresh type comps for the thread.', initials: 'NE' },
+  { id: 'rm', name: 'Rafi Mercer', message: 'Can you review the revised launch pacing?', initials: 'RM', bio: 'Focuses on motion pacing, interaction polish, and handoff clarity.', unread: true },
+  { id: 'at', name: 'Aya Tran', message: 'Dropping sprint references in five minutes.', initials: 'AT', bio: 'Shapes visual systems and tightens typography for product launches.' },
+  { id: 'ne', name: 'Nadia Elsner', message: 'Shared fresh type comps for the thread.', initials: 'NE', bio: 'Writes crisp product copy and organizes review-ready profile content.' },
 ];
 
+
+function ActionBubble({ icon, filled = false }: { icon: keyof typeof MaterialIcons.glyphMap; filled?: boolean }) {
+  return (
+    <View className={`h-12 w-12 items-center justify-center rounded-[18px] ${filled ? 'bg-[#0A0A0A]' : 'bg-[#F7F8FA]'}`}>
+      <MaterialIcons color={filled ? '#FFFFFF' : '#666666'} name={icon} size={21} />
+    </View>
+  );
+}
 
 function SectionCard({ title, rightLabel, children }: { title: string; rightLabel?: string; children: React.ReactNode }) {
   return (
@@ -112,36 +124,62 @@ function StoryCard({ item }: { item: Story }) {
 
 function ContactRow({ item }: { item: Contact }) {
   return (
-    <View className="flex-row items-center gap-4 rounded-[22px] bg-[#F7F8FA] px-4 py-4">
-      <Avatar initials={item.initials} soft />
-      <View className="flex-1">
-        <ThemedText className="text-lg font-medium text-slate-900">{item.name}</ThemedText>
-        <ThemedText className="text-sm text-slate-500">{item.status}</ThemedText>
-      </View>
-      <View className="h-3 w-3 rounded-full bg-[#6FC18A]" />
-    </View>
+    <Link
+      asChild
+      href={{
+        pathname: '/profile/[userId]',
+        params: {
+          userId: item.id,
+          name: item.name,
+          initials: item.initials,
+          preview: item.status,
+          bio: item.bio,
+        },
+      }}>
+      <Pressable className="flex-row items-center gap-4 rounded-[22px] bg-[#F7F8FA] px-4 py-4 active:opacity-90">
+        <Avatar initials={item.initials} soft />
+        <View className="flex-1">
+          <ThemedText className="text-lg font-medium text-slate-900">{item.name}</ThemedText>
+          <ThemedText className="text-sm text-slate-500">{item.status}</ThemedText>
+        </View>
+        <View className="h-3 w-3 rounded-full bg-[#6FC18A]" />
+      </Pressable>
+    </Link>
   );
 }
 
 function MessengerRow({ item }: { item: InboxItem }) {
   return (
-    <View className="flex-row items-center gap-4 rounded-[22px] bg-[#F7F8FA] px-4 py-4">
-      <Avatar initials={item.initials} soft />
-      <View className="flex-1 gap-1">
-        <ThemedText className="text-lg font-medium text-slate-900">{item.name}</ThemedText>
-        <ThemedText className="text-sm text-slate-500">{item.message}</ThemedText>
-      </View>
-      {item.unread ? <View className="h-3 w-3 rounded-full bg-[#4A9FD8]" /> : null}
-    </View>
+    <Link
+      asChild
+      href={{
+        pathname: '/profile/[userId]',
+        params: {
+          userId: item.id,
+          name: item.name,
+          initials: item.initials,
+          preview: item.message,
+          bio: item.bio,
+        },
+      }}>
+      <Pressable className="flex-row items-center gap-4 rounded-[22px] bg-[#F7F8FA] px-4 py-4 active:opacity-90">
+        <Avatar initials={item.initials} soft />
+        <View className="flex-1 gap-1">
+          <ThemedText className="text-lg font-medium text-slate-900">{item.name}</ThemedText>
+          <ThemedText className="text-sm text-slate-500">{item.message}</ThemedText>
+        </View>
+        {item.unread ? <View className="h-3 w-3 rounded-full bg-[#4A9FD8]" /> : null}
+      </Pressable>
+    </Link>
   );
 }
 
 function ProfileRail({ currentUser }: { currentUser: AuthUser | null }) {
-  const initials = currentUser 
+  const initials = currentUser
     ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase()
     : 'LE';
-  const fullName = currentUser 
-    ? `${currentUser.first_name} ${currentUser.last_name}` 
+  const fullName = currentUser
+    ? `${currentUser.first_name} ${currentUser.last_name}`
     : 'Lena Evere';
   const bio = currentUser?.bio || 'Leading product design at Northfeed, shaping calmer social tools for creative teams.';
 
@@ -241,7 +279,7 @@ export default function HomeScreen() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
-    fetchCurrentUser().then(setCurrentUser).catch(() => {});
+    fetchCurrentUser().then(setCurrentUser).catch(() => { });
   }, []);
 
   const loadPosts = useCallback(async () => {
@@ -267,10 +305,8 @@ export default function HomeScreen() {
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerClassName="pb-8">
         <View className="mx-auto w-full max-w-[1720px] px-4 pb-6 pt-4 md:px-6">
-          <AppTopNav 
-            isTablet={isTablet} 
-            avatarUrl={currentUser?.avatar_url}
-            avatarInitials={currentUser ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase() : 'LE'} 
+          <AppTopNav isTablet={isTablet} searchPlaceholder="Search users" avatarUrl={currentUser?.avatar_url}
+            avatarInitials={currentUser ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase() : 'LE'}
           />
 
           <View className={`mt-4 gap-4 ${isDesktop ? 'flex-row items-start' : ''}`}>

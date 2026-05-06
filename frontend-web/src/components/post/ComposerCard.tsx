@@ -61,9 +61,10 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
             setIsFocused(false);
 
             onPostCreated?.();
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Failed to post:', error);
-            alert(error.message ?? 'Không thể đăng bài viết');
+            const message = error instanceof Error ? error.message : 'Không thể đăng bài viết';
+            alert(message);
         } finally {
             setIsPosting(false);
         }

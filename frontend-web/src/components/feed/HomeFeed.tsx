@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState, useCallback } from 'react';
 
@@ -27,19 +28,29 @@ const stories = [
 ];
 
 const contacts = [
-  { name: 'Ari Mendoza', status: 'Editing new campaign', initials: 'AM' },
-  { name: 'Nadia Elsner', status: 'Reviewing typography', initials: 'NE' },
-  { name: 'Jules Tate', status: 'In Riverside Studio', initials: 'JT' },
-  { name: 'Owen Ybarra', status: 'Exporting review clips', initials: 'OY' },
+  { id: 'am', name: 'Ari Mendoza', status: 'Editing new campaign', initials: 'AM', bio: 'Builds campaign systems and keeps launch assets moving.' },
+  { id: 'ne', name: 'Nadia Elsner', status: 'Reviewing typography', initials: 'NE', bio: 'Writes crisp product copy and organizes review-ready profile content.' },
+  { id: 'jt', name: 'Jules Tate', status: 'In Riverside Studio', initials: 'JT', bio: 'Supports studio sessions and visual coordination across teams.' },
+  { id: 'oy', name: 'Owen Ybarra', status: 'Exporting review clips', initials: 'OY', bio: 'Handles review exports, clips, and last-mile production polish.' },
 ];
 
 const inboxItems = [
-  { name: 'Rafi Mercer', message: 'Can you review the revised launch pacing?', initials: 'RM', unread: true },
-  { name: 'Aya Tran', message: 'Dropping sprint references in five minutes.', initials: 'AT' },
-  { name: 'Nadia Elsner', message: 'Shared fresh type comps for the thread.', initials: 'NE' },
+  { id: 'rm', name: 'Rafi Mercer', message: 'Can you review the revised launch pacing?', initials: 'RM', bio: 'Focuses on motion pacing, interaction polish, and handoff clarity.', unread: true },
+  { id: 'at', name: 'Aya Tran', message: 'Dropping sprint references in five minutes.', initials: 'AT', bio: 'Shapes visual systems and tightens typography for product launches.' },
+  { id: 'ne', name: 'Nadia Elsner', message: 'Shared fresh type comps for the thread.', initials: 'NE', bio: 'Writes crisp product copy and organizes review-ready profile content.' },
 ];
 
 const surfaceClass = 'rounded-[32px] border border-slate-200/60 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.02)]';
+
+function Avatar({ initials, soft = false }: { initials: string; soft?: boolean }) {
+  return (
+    <div className={`flex h-14 w-14 items-center justify-center rounded-[22px] ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`}>
+      <ThemedText as="span" className="text-base font-semibold tracking-[0.5px] text-slate-900">
+        {initials}
+      </ThemedText>
+    </div>
+  );
+}
 
 function SectionCard({ title, rightLabel, children }: { title: string; rightLabel?: string; children: React.ReactNode }) {
   return (
@@ -108,7 +119,7 @@ export function HomeFeed() {
           />
         )}
         <div className="mx-auto w-full max-w-[1720px] px-4 pb-6 pt-4 md:px-6">
-          <AppTopNav currentUser={currentUser} />
+          <AppTopNav searchPlaceholder="Search users" currentUser={currentUser} />
 
           <div className="mt-4 grid gap-4 xl:grid-cols-[350px_minmax(0,1fr)_360px]">
             {/* Left Rail */}
@@ -260,8 +271,8 @@ export function HomeFeed() {
                       {item.initials}
                     </div>
                     <div className="flex-1 space-y-0.5">
-                      <ThemedText as="p" className="text-[16px] font-bold text-slate-950 tracking-tight">{item.name}</ThemedText>
-                      <ThemedText as="p" className="text-[13px] font-medium text-slate-400 line-clamp-1 group-hover:text-slate-500 transition-colors">{item.message}</ThemedText>
+                        <ThemedText as="p" className="text-[16px] font-bold text-slate-950 tracking-tight">{item.name}</ThemedText>
+                        <ThemedText as="p" className="text-[13px] font-medium text-slate-400 line-clamp-1 group-hover:text-slate-500 transition-colors">{item.message}</ThemedText>
                     </div>
                     {item.unread ? <div className="h-2.5 w-2.5 rounded-full bg-[#4A9FD8] shadow-[0_0_10px_rgba(74,159,216,0.5)]" /> : null}
                   </div>

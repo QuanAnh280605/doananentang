@@ -389,7 +389,6 @@ export default function EditProfileScreen() {
       : null;
 
   const initials = `${(firstName || 'N').charAt(0)}${(lastName || 'A').charAt(0)}`.toUpperCase();
-  const displayName = `${firstName} ${lastName}`.trim();
 
   return (
     <>

@@ -8,6 +8,7 @@ export type InboxListItemData = {
   preview: string;
   time: string;
   initials: string;
+  bio?: string;
   active?: boolean;
   unread?: number;
 };
@@ -20,10 +21,11 @@ function AvatarPill({ initials }: { initials: string }) {
   );
 }
 
-export function InboxListItem({ item }: { item: InboxListItemData }) {
+export function InboxListItem({ item, onPress }: { item: InboxListItemData; onPress?: () => void }) {
   return (
     <Pressable
-      className={`rounded-[24px] border px-4 py-4 active:opacity-90 ${item.active ? 'border-[#BFDBFE] bg-[#EFF6FF]' : 'border-transparent bg-[#F8FAFC]'}`}>
+      className={`rounded-[24px] border px-4 py-4 active:opacity-90 ${item.active ? 'border-[#BFDBFE] bg-[#EFF6FF]' : 'border-transparent bg-[#F8FAFC]'}`}
+      onPress={onPress}>
       <View className="flex-row items-start gap-3">
         <AvatarPill initials={item.initials} />
         <View className="flex-1 gap-1">

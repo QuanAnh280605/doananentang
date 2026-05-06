@@ -1,11 +1,16 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState } from 'react';
 import { API_URL, likePost, unlikePost, deletePost } from '@/lib/api';
 import type { Post } from '@/lib/types';
 import { ThemedText } from '@/components/ui/ThemedText';
 import { InteractionsModal } from './InteractionsModal';
+
+type FeedPostUser = {
+    id?: string | number;
+} | null;
 
 function formatTime(isoString: string): string {
     const diff = Date.now() - new Date(isoString).getTime();
@@ -24,7 +29,7 @@ export function FeedPost({
     onPostClick
 }: {
     item: Post;
-    currentUser?: any;
+    currentUser?: FeedPostUser | any;
     onPostClick?: (id: string) => void;
 }) {
     const [liked, setLiked] = useState(item.is_liked);
@@ -66,7 +71,7 @@ export function FeedPost({
         try {
             await deletePost(String(item.id));
             setIsDeleted(true);
-        } catch (err) {
+        } catch {
             alert('Không thể xóa bài viết. Vui lòng thử lại.');
         }
     };
@@ -188,6 +193,14 @@ export function FeedPost({
                     <ThemedText as="p" className="text-[14px] font-bold text-slate-500 group-hover/stats:text-[#4A9FD8] transition-colors">
                         {count > 0 ? `${count} lượt thích` : 'Hãy là người đầu tiên thích'}
                     </ThemedText>
+                    {item.comment_count > 0 && (
+                        <>
+                            <div className="h-1 w-1 rounded-full bg-slate-300" />
+                            <ThemedText as="p" className="text-sm font-medium text-slate-500">
+                                {item.comment_count} bình luận
+                            </ThemedText>
+                        </>
+                    )}
                 </div>
                 <button onClick={handleItemClick} className="flex items-center gap-2 group/comments">
                     <ThemedText as="p" className="text-[14px] font-bold text-slate-500 group-hover/comments:text-slate-900 transition-colors">

@@ -1,11 +1,16 @@
+import { useGlobalSearch } from '@/components/search/GlobalSearchProvider';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ThemedText } from '@/components/ui/ThemedText';
+import { SearchInput } from '@/components/ui/SearchInput';
 import { API_URL } from '@/lib/api';
 import type { AuthUser } from '@/lib/auth';
 
 type AppTopNavProps = {
   searchPlaceholder?: string;
   avatarInitials?: string;
+  searchValue?: string;
+  onSearchChange?: (value: string) => void;
   currentUser?: AuthUser | null;
 };
 
@@ -20,15 +25,36 @@ function IconBubble({ icon }: { icon: string }) {
 export function AppTopNav({
   searchPlaceholder = 'Search people, notes, or screenshots',
   avatarInitials = 'LE',
+  searchValue,
+  onSearchChange,
   currentUser,
+
 }: AppTopNavProps) {
+  const globalSearch = useGlobalSearch();
+  const isControlled = typeof onSearchChange === 'function';
+  const resolvedSearchValue = isControlled ? (searchValue ?? '') : globalSearch.query;
   const initials = currentUser 
     ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase()
     : avatarInitials;
-    
-  const avatarUrl = currentUser?.avatar_url 
+
+  const avatarUrl = currentUser?.avatar_url
     ? (currentUser.avatar_url.startsWith('http') ? currentUser.avatar_url : `${API_URL}${currentUser.avatar_url}`)
     : null;
+
+  const handleSearchChange = (value: string) => {
+    if (isControlled) {
+      onSearchChange(value);
+      return;
+    }
+
+    globalSearch.setQuery(value);
+  };
+
+  const handleSearchFocus = () => {
+    if (!isControlled) {
+      globalSearch.open();
+    }
+  };
 
   return (
     <nav className="rounded-[32px] border border-slate-200/60 bg-white/90 backdrop-blur-md px-6 py-4 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
@@ -49,17 +75,13 @@ export function AppTopNav({
             </div>
           </Link>
 
-          {/* Search Bar */}
-          <div className="rounded-[20px] bg-slate-100/50 border border-transparent focus-within:border-slate-200 focus-within:bg-white px-5 py-3.5 md:ml-8 md:max-w-[560px] md:flex-1 transition-all duration-300 group">
-            <div className="flex items-center gap-3">
-              <span className="material-icons text-[18px] text-slate-400 group-focus-within:text-slate-900 transition-colors">search</span>
-              <input 
-                type="text"
-                placeholder={searchPlaceholder}
-                className="flex-1 bg-transparent text-[15px] text-slate-900 outline-none placeholder:text-slate-400 font-medium"
-              />
-            </div>
-          </div>
+          <SearchInput
+            className="md:ml-6 md:max-w-[560px] md:flex-1 rounded-[20px] bg-slate-100/50 border border-transparent focus-within:border-slate-200 focus-within:bg-white transition-all duration-300"
+            onChange={handleSearchChange}
+            onFocus={handleSearchFocus}
+            placeholder={searchPlaceholder}
+            value={resolvedSearchValue}
+          />
         </div>
 
         {/* Action Buttons & Avatar */}
@@ -70,10 +92,13 @@ export function AppTopNav({
           
           <Link href="/profile" className="ml-2 group">
             {avatarUrl ? (
-              <img 
+              <Image 
                 src={avatarUrl} 
                 alt="Avatar"
+                width={56}
+                height={56}
                 className="h-11 w-11 shrink-0 rounded-[14px] object-cover ring-0 group-hover:ring-4 ring-slate-100 transition-all duration-300"
+                unoptimized
               />
             ) : (
               <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-slate-100 group-hover:bg-[#EAF4FB] transition-colors">

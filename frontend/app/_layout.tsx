@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import 'react-native-reanimated';
 
+import { GlobalSearchProvider } from '@/components/search/GlobalSearchProvider';
 import { ToastProvider } from '@/components/toast/ToastProvider';
 import { restoreAuthSession } from '@/lib/api';
 
@@ -36,15 +37,18 @@ export default function RootLayout() {
 
   return (
     <ToastProvider>
-      <>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
-          <Stack.Screen name="(post)" options={{ headerShown: false }} />
-        </Stack>
-        <StatusBar style="dark" />
-      </>
+      <GlobalSearchProvider>
+        <>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="profile/[userId]" options={{ headerShown: false }} />
+            <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
+            <Stack.Screen name="(post)" options={{ headerShown: false }} />
+          </Stack>
+          <StatusBar style="dark" />
+        </>
+      </GlobalSearchProvider>
     </ToastProvider>
   );
 }
