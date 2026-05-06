@@ -79,7 +79,8 @@ export function resolveAvatarUrl(avatarUrl: string | null | undefined): string |
     return avatarUrl;
   }
   // Relative path — prefix with backend base URL
-  return `${API_URL}${avatarUrl}`;
+  const hasLeadingSlash = avatarUrl.startsWith('/');
+  return `${API_URL}${hasLeadingSlash ? '' : '/'}${avatarUrl}`;
 }
 
 function canAttemptRefresh(path: string, hasCustomAuthorization: boolean): boolean {

@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+
 import Link from 'next/link';
 import { useEffect, useState, useCallback } from 'react';
 
@@ -10,7 +10,7 @@ import { ThemedText } from '@/components/ui/ThemedText';
 import { ComposerCard } from '@/components/post/ComposerCard';
 import { FeedPost } from '@/components/post/FeedPost';
 import { PostDetailModal } from '@/components/post/PostDetailModal';
-import { fetchPosts, API_URL } from '@/lib/api';
+import { fetchPosts, resolveAvatarUrl } from '@/lib/api';
 import { fetchCurrentUser, type AuthUser } from '@/lib/auth';
 import { ROUTES } from '@/lib/routes';
 import type { Post } from '@/lib/types';
@@ -142,7 +142,7 @@ export function HomeFeed() {
                   <div className="-mt-10">
                     {currentUser?.avatar_url ? (
                       <img
-                        src={currentUser.avatar_url.startsWith('http') ? currentUser.avatar_url : `${API_URL}${currentUser.avatar_url}`}
+                        src={resolveAvatarUrl(currentUser.avatar_url) as string}
                         className="h-20 w-20 rounded-[24px] border-[5px] border-white shadow-xl object-cover"
                         alt="Avatar"
                       />

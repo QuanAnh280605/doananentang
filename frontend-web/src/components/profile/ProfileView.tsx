@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
+
 
 import { ProtectedPage } from '@/components/app/ProtectedPage';
 import { AppTopNav } from '@/components/navigation/AppTopNav';
@@ -10,7 +10,7 @@ import { ThemedText } from '@/components/ui/ThemedText';
 import { fetchCurrentUser,updateUserProfile, fetchFollowStatus, followUser, type AuthUser, type FollowStatus, unfollowUser } from '@/lib/auth';
 import { FeedPost } from '@/components/post/FeedPost';
 import { PostDetailModal } from '@/components/post/PostDetailModal';
-import { fetchPosts, deletePost, API_URL } from '@/lib/api';
+import { fetchPosts, deletePost, resolveAvatarUrl } from '@/lib/api';
 import type { Post } from '@/lib/types';
 
 type ProfileTab = 'posts' | 'about' | 'media';
@@ -56,7 +56,7 @@ function buildProfileViewModel(user: AuthUser | null, selectedUser?: ProfileSnap
   const lastName = user?.last_name?.trim() || '';
   const displayName = `${firstName} ${lastName}`.trim();
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-  const avatarUrl = user?.avatar_url ? (user.avatar_url.startsWith('http') ? user.avatar_url : `${API_URL}${user.avatar_url}`) : null;
+  const avatarUrl = resolveAvatarUrl(user?.avatar_url);
 
   return {
     displayName,
@@ -238,7 +238,7 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
                 <div className="flex items-end gap-4">
                   <div className="flex h-[92px] w-[92px] items-center justify-center rounded-[28px] border-4 border-white bg-[#EAF4FB] text-[28px] font-semibold tracking-[0.5px] text-slate-900 overflow-hidden">
                     {profile.avatarUrl ? (
-                      <Image src={profile.avatarUrl} alt={profile.displayName} width={92} height={92} className="h-full w-full object-cover" />
+                      <img src={profile.avatarUrl} alt={profile.displayName} className="h-full w-full object-cover" />
                     ) : (
                       profile.initials
                     )}

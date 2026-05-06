@@ -1,9 +1,9 @@
 import { useGlobalSearch } from '@/components/search/GlobalSearchProvider';
 import Link from 'next/link';
-import Image from 'next/image';
+
 import { ThemedText } from '@/components/ui/ThemedText';
 import { SearchInput } from '@/components/ui/SearchInput';
-import { API_URL } from '@/lib/api';
+import { resolveAvatarUrl } from '@/lib/api';
 import type { AuthUser } from '@/lib/auth';
 
 type AppTopNavProps = {
@@ -37,9 +37,7 @@ export function AppTopNav({
     ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase()
     : avatarInitials;
 
-  const avatarUrl = currentUser?.avatar_url
-    ? (currentUser.avatar_url.startsWith('http') ? currentUser.avatar_url : `${API_URL}${currentUser.avatar_url}`)
-    : null;
+  const avatarUrl = resolveAvatarUrl(currentUser?.avatar_url);
 
   const handleSearchChange = (value: string) => {
     if (isControlled) {
@@ -92,11 +90,9 @@ export function AppTopNav({
           
           <Link href="/profile" className="ml-2 group">
             {avatarUrl ? (
-              <Image 
+              <img 
                 src={avatarUrl} 
                 alt="Avatar"
-                width={56}
-                height={56}
                 className="h-11 w-11 shrink-0 rounded-[14px] object-cover ring-0 group-hover:ring-4 ring-slate-100 transition-all duration-300"
               />
             ) : (

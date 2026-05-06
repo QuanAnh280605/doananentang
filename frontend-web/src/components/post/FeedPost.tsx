@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
-import { API_URL, likePost, unlikePost, deletePost } from '@/lib/api';
+import { API_URL, likePost, unlikePost, deletePost, resolveAvatarUrl } from '@/lib/api';
 import type { Post } from '@/lib/types';
 import { ThemedText } from '@/components/ui/ThemedText';
 import { InteractionsModal } from './InteractionsModal';
@@ -109,7 +109,7 @@ export function FeedPost({
                     <div className="relative">
                         {item.author.avatar_url ? (
                             <img
-                                src={item.author.avatar_url.startsWith('http') ? item.author.avatar_url : `${API_URL}${item.author.avatar_url}`}
+                                src={resolveAvatarUrl(item.author.avatar_url) as string}
                                 className="h-15 w-15 rounded-[22px] object-cover ring-4 ring-transparent group-hover/author:ring-slate-50 transition-all duration-500 shadow-sm"
                                 alt="Avatar"
                             />
