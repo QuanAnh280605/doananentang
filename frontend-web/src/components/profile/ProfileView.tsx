@@ -7,11 +7,12 @@ import Link from 'next/link';
 import { ProtectedPage } from '@/components/app/ProtectedPage';
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/ui/ThemedText';
-import { fetchCurrentUser,updateUserProfile, fetchFollowStatus, followUser, type AuthUser, type FollowStatus, unfollowUser } from '@/lib/auth';
+import { fetchCurrentUser, updateUserProfile, fetchFollowStatus, followUser, type AuthUser, type FollowStatus, unfollowUser } from '@/lib/auth';
 import { FeedPost } from '@/components/post/FeedPost';
 import { PostDetailModal } from '@/components/post/PostDetailModal';
 import { fetchPosts, deletePost, resolveAvatarUrl } from '@/lib/api';
 import type { Post } from '@/lib/types';
+import { FollowListModal } from '@/components/profile/FollowListModal';
 
 type ProfileTab = 'posts' | 'about' | 'media';
 
@@ -86,6 +87,8 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
   const [tempCity, setTempCity] = useState('');
   const [isSavingIntro, setIsSavingIntro] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [isFollowModalOpen, setIsFollowModalOpen] = useState(false);
+  const [followModalType, setFollowModalType] = useState<'followers' | 'following'>('followers');
 
   useEffect(() => {
     if (selectedUser) {
@@ -125,6 +128,7 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
   }, [selectedUser]);
 
   const profile = useMemo(() => buildProfileViewModel(user, selectedUser), [selectedUser, user]);
+
   const handleSaveIntro = async () => {
     setIsSavingIntro(true);
     try {
@@ -213,17 +217,17 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
     <ProtectedPage>
       <main className="min-h-screen bg-[#F8FAFC] pb-8">
         {selectedPostId && (
-            <PostDetailModal 
-                postId={selectedPostId}
-                onClose={() => setSelectedPostId(null)}
-                currentUser={user}
-            />
+          <PostDetailModal
+            postId={selectedPostId}
+            onClose={() => setSelectedPostId(null)}
+            currentUser={user}
+          />
         )}
         <div className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-4 md:px-6">
           {/* Back header */}
           <div className="mt-4 flex items-center gap-3 rounded-[28px] border border-[#E4E8EE] bg-white px-5 py-4">
-            <Link 
-              href="/" 
+            <Link
+              href="/"
               className="flex h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA] text-slate-900 hover:bg-slate-100 transition-colors"
             >
               <span className="material-icons">arrow_back</span>
@@ -270,8 +274,8 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
                     <button className="rounded-[20px] bg-[#F7F8FA] px-4 py-4 text-base font-medium text-slate-900" type="button">Message</button>
                   </div>
                 ) : (
-                  <Link 
-                    href="/profile/edit" 
+                  <Link
+                    href="/profile/edit"
                     className="inline-flex min-w-[140px] items-center justify-center rounded-[22px] bg-[#0A0A0A] px-6 py-4 text-base font-medium !text-white hover:bg-slate-800 transition-colors"
                   >
                     Edit profile
@@ -281,12 +285,22 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
               {isSelectedUserProfile && followErrorMessage ? (
                 <ThemedText as="p" className="mt-2 text-sm text-rose-600">{followErrorMessage}</ThemedText>
               ) : null}
+              <div className="mt-4 flex flex-wrap gap-5">
+                <button type="button" onClick={() => { setFollowModalType('followers'); setIsFollowModalOpen(true); }} className="flex items-center gap-1.5 transition-opacity hover:opacity-80">
+                  <ThemedText as="span" className="text-[15px] font-bold text-slate-950">{followStatus?.followers_count ?? '2.4k'}</ThemedText>
+                  <ThemedText as="span" className="text-[15px] text-slate-500">người theo dõi</ThemedText>
+                </button>
+                <button type="button" onClick={() => { setFollowModalType('following'); setIsFollowModalOpen(true); }} className="flex items-center gap-1.5 transition-opacity hover:opacity-80">
+                  <ThemedText as="span" className="text-[15px] font-bold text-slate-950">{followStatus?.following_count ?? '120'}</ThemedText>
+                  <ThemedText as="span" className="text-[15px] text-slate-500">đang theo dõi</ThemedText>
+                </button>
+              </div>
               <div className="mt-6 flex flex-wrap gap-3">
                 {tabs.map((tab) => (
-                  <button 
-                    key={tab.key} 
-                    className={`flex min-w-[112px] items-center justify-center gap-2 rounded-[20px] px-6 py-4 text-base font-medium transition-colors ${activeTab === tab.key ? 'bg-[#0A0A0A] !text-white' : 'bg-[#F7F8FA] text-slate-900 hover:bg-slate-200'}`} 
-                    onClick={() => setActiveTab(tab.key)} 
+                  <button
+                    key={tab.key}
+                    className={`flex min-w-[112px] items-center justify-center gap-2 rounded-[20px] px-6 py-4 text-base font-medium transition-colors ${activeTab === tab.key ? 'bg-[#0A0A0A] !text-white' : 'bg-[#F7F8FA] text-slate-900 hover:bg-slate-200'}`}
+                    onClick={() => setActiveTab(tab.key)}
                     type="button"
                   >
                     <span className="material-icons text-[20px]">{tab.icon}</span>
@@ -303,15 +317,15 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
                 <div className="flex items-center justify-between mb-5">
                   <ThemedText as="h2" className="text-[24px] font-semibold text-slate-950">Intro</ThemedText>
                   {!isEditingIntro ? (
-                    <button 
-                      onClick={() => setIsEditingIntro(true)} 
+                    <button
+                      onClick={() => setIsEditingIntro(true)}
                       className="text-sm font-medium text-blue-600 hover:underline"
                     >
                       Edit
                     </button>
                   ) : null}
                 </div>
-                
+
                 {isEditingIntro ? (
                   <div className="space-y-4">
                     <div>
@@ -397,11 +411,11 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
                   ) : (
                     <div className="space-y-4">
                       {posts.map((item) => (
-                        <FeedPost 
-                            key={item.id} 
-                            item={item} 
-                            currentUser={user} 
-                            onPostClick={(id) => setSelectedPostId(id)}
+                        <FeedPost
+                          key={item.id}
+                          item={item}
+                          currentUser={user}
+                          onPostClick={(id) => setSelectedPostId(id)}
                         />
                       ))}
                     </div>
@@ -437,6 +451,12 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
           </div>
         </div>
       </main>
+      <FollowListModal
+        visible={isFollowModalOpen}
+        type={followModalType}
+        userId={selectedUserId ?? user?.id ?? null}
+        onClose={() => setIsFollowModalOpen(false)}
+      />
     </ProtectedPage>
   );
 }
