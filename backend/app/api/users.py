@@ -10,10 +10,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from app.api.deps import get_current_user
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.crud.follow import count_followers, count_following, create_follow, delete_follow, is_following, search_following_users
+from app.crud.follow import count_followers, count_following, create_follow, delete_follow, is_following, get_followers, get_following, search_following_users
 from app.crud.user import create_user, get_user_by_email, get_user_by_id, get_user_by_phone, list_users, search_users
 from app.models.user import User
-from app.schemas.user import FollowStatusRead, UserCreate, UserRead, UserSearchRead
+from app.schemas.user import FollowStatusRead, UserCreate, UserRead, UserSearchRead, FollowUserRead, PaginatedFollowUsersResponse
 from app.schemas.user import UserUpdate
 
 router = APIRouter()
@@ -100,6 +100,62 @@ def get_follow_status_endpoint(
     is_following=is_following(db, current_user.id, user_id),
     followers_count=count_followers(db, user_id),
     following_count=count_following(db, user_id),
+  )
+
+
+@router.get('/{user_id}/followers', response_model=PaginatedFollowUsersResponse)
+def get_followers_endpoint(
+  user_id: int,
+  page: int = Query(1, ge=1),
+  page_size: int = Query(20, ge=1, le=50),
+  current_user: User = Depends(get_current_user),
+  db: Session = Depends(get_db),
+) -> PaginatedFollowUsersResponse:
+  user = get_user_by_id(db, user_id)
+  if user is None:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found')
+  
+  total = count_followers(db, user_id)
+  total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+  skip = (page - 1) * page_size
+  
+  users_data = get_followers(db, target_user_id=user_id, current_user_id=current_user.id, skip=skip, limit=page_size)
+  items = [FollowUserRead.model_validate(u) for u in users_data]
+  
+  return PaginatedFollowUsersResponse(
+    items=items,
+    total=total,
+    page=page,
+    page_size=page_size,
+    total_pages=total_pages
+  )
+
+
+@router.get('/{user_id}/following', response_model=PaginatedFollowUsersResponse)
+def get_following_endpoint(
+  user_id: int,
+  page: int = Query(1, ge=1),
+  page_size: int = Query(20, ge=1, le=50),
+  current_user: User = Depends(get_current_user),
+  db: Session = Depends(get_db),
+) -> PaginatedFollowUsersResponse:
+  user = get_user_by_id(db, user_id)
+  if user is None:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found')
+  
+  total = count_following(db, user_id)
+  total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+  skip = (page - 1) * page_size
+  
+  users_data = get_following(db, target_user_id=user_id, current_user_id=current_user.id, skip=skip, limit=page_size)
+  items = [FollowUserRead.model_validate(u) for u in users_data]
+  
+  return PaginatedFollowUsersResponse(
+    items=items,
+    total=total,
+    page=page,
+    page_size=page_size,
+    total_pages=total_pages
   )
 
 

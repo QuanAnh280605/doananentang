@@ -79,6 +79,10 @@ class UserSearchRead(BaseModel):
   model_config = ConfigDict(from_attributes=True)
 
 
+class FollowUserRead(UserSearchRead):
+  is_following: bool
+
+
 class FollowStatusRead(BaseModel):
   user_id: int
   is_following: bool
@@ -94,3 +98,10 @@ class UserUpdate(BaseModel):
   gender: GenderValue | None = None
   city: str | None = None
 
+
+class PaginatedFollowUsersResponse(BaseModel):
+  items: list[FollowUserRead]
+  total: int
+  page: int
+  page_size: int
+  total_pages: int

@@ -85,7 +85,6 @@ export function HomeFeed() {
       setLoading(false);
     }
   }, []);
-
   const [userPostCount, setUserPostCount] = useState(0);
 
   useEffect(() => {
@@ -186,9 +185,9 @@ export function HomeFeed() {
 
               <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
                 {stories.map((item) => (
-                  <div key={item.id} className={`${item.fill} min-w-[200px] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden rounded-[32px] p-6 shadow-sm relative group`}>
-                    <div className="flex h-11 w-11 items-center justify-center rounded-[16px] bg-white/20 backdrop-blur-md text-white border border-white/20 group-hover:bg-white/30 transition-colors">
-                      <ThemedText as="span" className="text-[13px] font-bold">{item.initials}</ThemedText>
+                  <div key={item.id} className={`${item.fill} min-w-[180px] cursor-pointer hover:opacity-95 transition-opacity overflow-hidden rounded-[28px] p-5 shadow-sm`}>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-white/20 text-white">
+                      <ThemedText as="span" className="text-xs font-bold">{item.initials}</ThemedText>
                     </div>
                     <div className="mt-28 space-y-1 relative z-10">
                       <ThemedText as="p" className="text-[17px] font-bold text-white tracking-tight leading-tight">{item.title}</ThemedText>
@@ -213,14 +212,9 @@ export function HomeFeed() {
                   <ThemedText as="p" className="text-slate-400 text-sm mt-1">Start by sharing your first update!</ThemedText>
                 </div>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-4">
                   {posts.map((item) => (
-                    <FeedPost
-                      key={item.id}
-                      item={item}
-                      currentUser={currentUser}
-                      onPostClick={(id) => setSelectedPostId(id)}
-                    />
+                    <FeedPost key={item.id} item={item} currentUser={currentUser} />
                   ))}
                 </div>
               )}
@@ -271,8 +265,8 @@ export function HomeFeed() {
                       {item.initials}
                     </div>
                     <div className="flex-1 space-y-0.5">
-                        <ThemedText as="p" className="text-[16px] font-bold text-slate-950 tracking-tight">{item.name}</ThemedText>
-                        <ThemedText as="p" className="text-[13px] font-medium text-slate-400 line-clamp-1 group-hover:text-slate-500 transition-colors">{item.message}</ThemedText>
+                      <ThemedText as="p" className="text-[16px] font-bold text-slate-950 tracking-tight">{item.name}</ThemedText>
+                      <ThemedText as="p" className="text-[13px] font-medium text-slate-400 line-clamp-1 group-hover:text-slate-500 transition-colors">{item.message}</ThemedText>
                     </div>
                     {item.unread ? <div className="h-2.5 w-2.5 rounded-full bg-[#4A9FD8] shadow-[0_0_10px_rgba(74,159,216,0.5)]" /> : null}
                   </div>
