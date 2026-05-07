@@ -79,7 +79,8 @@ export function resolveAvatarUrl(avatarUrl: string | null | undefined): string |
     return avatarUrl;
   }
   // Relative path — prefix with backend base URL
-  return `${API_URL}${avatarUrl}`;
+  const hasLeadingSlash = avatarUrl.startsWith('/');
+  return `${API_URL}${hasLeadingSlash ? '' : '/'}${avatarUrl}`;
 }
 
 function canAttemptRefresh(path: string, hasCustomAuthorization: boolean): boolean {
@@ -272,8 +273,8 @@ export function fetchPostDetail(postId: string): Promise<Post> {
   return apiFetch<Post>(`/api/posts/${postId}`);
 }
 
-export function likePost(postId: string): Promise<LikeStatus> {
-  return apiFetch<LikeStatus>(`/api/posts/${postId}/like`, { method: 'POST' });
+export function likePost(postId: string, reactionType: string = 'like'): Promise<LikeStatus> {
+  return apiFetch<LikeStatus>(`/api/posts/${postId}/like?reaction_type=${reactionType}`, { method: 'POST' });
 }
 
 export function unlikePost(postId: string): Promise<LikeStatus> {
@@ -282,6 +283,10 @@ export function unlikePost(postId: string): Promise<LikeStatus> {
 
 export function deletePost(postId: string): Promise<void> {
   return apiFetch<void>(`/api/posts/${postId}`, { method: 'DELETE' });
+}
+
+export function fetchPostLikers(postId: string): Promise<{ post_id: string; like_count: number; users: any[] }> {
+  return apiFetch<{ post_id: string; like_count: number; users: any[] }>(`/api/posts/${postId}/likes`);
 }
 
 export function createPost(content: string, mediaUrls: string[] = []): Promise<Post> {

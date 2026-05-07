@@ -2,22 +2,23 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
+
 
 import { ProtectedPage } from '@/components/app/ProtectedPage';
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/ui/ThemedText';
 import { fetchCurrentUser,updateUserProfile, fetchFollowStatus, followUser, type AuthUser, type FollowStatus, unfollowUser } from '@/lib/auth';
 import { FeedPost } from '@/components/post/FeedPost';
-import { fetchPosts, API_URL } from '@/lib/api';
+import { PostDetailModal } from '@/components/post/PostDetailModal';
+import { fetchPosts, deletePost, resolveAvatarUrl } from '@/lib/api';
 import type { Post } from '@/lib/types';
 
 type ProfileTab = 'posts' | 'about' | 'media';
 
-const tabs: { key: ProfileTab; label: string }[] = [
-  { key: 'posts', label: 'Posts' },
-  { key: 'about', label: 'About' },
-  { key: 'media', label: 'Media' },
+const tabs: { key: ProfileTab; label: string; icon: string }[] = [
+  { key: 'posts', label: 'Posts', icon: 'grid_view' },
+  { key: 'about', label: 'About', icon: 'person_outline' },
+  { key: 'media', label: 'Media', icon: 'photo_library' },
 ];
 
 const featuredMedia = [
@@ -47,14 +48,15 @@ function buildProfileViewModel(user: AuthUser | null, selectedUser?: ProfileSnap
       studio: 'Opened from inbox search',
       location: `Profile ID ${selectedUser.id}`,
       website: selectedUser.preview,
+      email: '',
+      avatarUrl: null
     };
   }
-
   const firstName = user?.first_name?.trim() || '';
   const lastName = user?.last_name?.trim() || '';
   const displayName = `${firstName} ${lastName}`.trim();
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-  const avatarUrl = user?.avatar_url ? (user.avatar_url.startsWith('http') ? user.avatar_url : `${API_URL}${user.avatar_url}`) : null;
+  const avatarUrl = resolveAvatarUrl(user?.avatar_url);
 
   return {
     displayName,
@@ -83,6 +85,7 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
   const [tempIntro, setTempIntro] = useState('');
   const [tempCity, setTempCity] = useState('');
   const [isSavingIntro, setIsSavingIntro] = useState(false);
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
 
   useEffect(() => {
     if (selectedUser) {
@@ -122,7 +125,6 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
   }, [selectedUser]);
 
   const profile = useMemo(() => buildProfileViewModel(user, selectedUser), [selectedUser, user]);
-
   const handleSaveIntro = async () => {
     setIsSavingIntro(true);
     try {
@@ -130,9 +132,7 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
         bio: tempIntro.trim() || null,
         city: tempCity.trim() || null,
       };
-      console.log('DEBUG: Sending profile update:', payload);
       await updateUserProfile(payload);
-      // Refresh current user to update UI
       const updatedUser = await fetchCurrentUser();
       setUser(updatedUser);
       setIsEditingIntro(false);
@@ -148,6 +148,7 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
     setTempCity(user?.city || '');
     setIsEditingIntro(false);
   };
+
 
   useEffect(() => {
     if (!isSelectedUserProfile || selectedUserId === null || Number.isNaN(selectedUserId)) {
@@ -211,8 +212,25 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
   return (
     <ProtectedPage>
       <main className="min-h-screen bg-[#F8FAFC] pb-8">
+        {selectedPostId && (
+            <PostDetailModal 
+                postId={selectedPostId}
+                onClose={() => setSelectedPostId(null)}
+                currentUser={user}
+            />
+        )}
         <div className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-4 md:px-6">
-          <AppTopNav searchPlaceholder="Search profile highlights, media, or posts" />
+          {/* Back header */}
+          <div className="mt-4 flex items-center gap-3 rounded-[28px] border border-[#E4E8EE] bg-white px-5 py-4">
+            <Link 
+              href="/" 
+              className="flex h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA] text-slate-900 hover:bg-slate-100 transition-colors"
+            >
+              <span className="material-icons">arrow_back</span>
+            </Link>
+            <ThemedText as="h1" className="text-lg font-semibold text-slate-900">Profile</ThemedText>
+          </div>
+
           <section className={`${surfaceClass} mt-4 overflow-hidden`}>
             <div className="h-[210px] bg-[#D9ECF8]" />
             <div className="px-5 pb-5">
@@ -220,20 +238,21 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
                 <div className="flex items-end gap-4">
                   <div className="flex h-[92px] w-[92px] items-center justify-center rounded-[28px] border-4 border-white bg-[#EAF4FB] text-[28px] font-semibold tracking-[0.5px] text-slate-900 overflow-hidden">
                     {profile.avatarUrl ? (
-                      <Image src={profile.avatarUrl} alt={profile.displayName} width={92} height={92} className="h-full w-full object-cover" unoptimized />
+                      <img src={profile.avatarUrl} alt={profile.displayName} className="h-full w-full object-cover" />
                     ) : (
                       profile.initials
                     )}
                   </div>
                   <div className="pb-1">
-                    <ThemedText as="h1" className="text-[28px] font-bold text-slate-950">{profile.displayName}</ThemedText>
+                    <ThemedText as="h1" className="text-[24px] font-bold text-slate-950">{profile.displayName}</ThemedText>
                   </div>
                 </div>
               </div>
               <div className="mt-5 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                 <div className="xl:max-w-[760px] xl:flex-1">
-                  <ThemedText as="h1" className="text-[34px] font-semibold leading-[42px] text-slate-950">{profile.displayName}</ThemedText>
-                  <ThemedText as="p" className="mt-3 max-w-3xl text-[16px] leading-7 text-slate-600">{profile.intro}</ThemedText>
+                  {profile.intro && (
+                    <ThemedText as="p" className="mt-1 max-w-3xl text-[16px] leading-7 text-slate-600">{profile.intro}</ThemedText>
+                  )}
                 </div>
                 {isSelectedUserProfile ? (
                   <div className="flex flex-wrap gap-3">
@@ -266,10 +285,11 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
                 {tabs.map((tab) => (
                   <button 
                     key={tab.key} 
-                    className={`min-w-[112px] rounded-[20px] px-4 py-4 text-base font-medium transition-colors ${activeTab === tab.key ? 'bg-[#0A0A0A] !text-white' : 'bg-[#F7F8FA] text-slate-900 hover:bg-slate-200'}`} 
+                    className={`flex min-w-[112px] items-center justify-center gap-2 rounded-[20px] px-6 py-4 text-base font-medium transition-colors ${activeTab === tab.key ? 'bg-[#0A0A0A] !text-white' : 'bg-[#F7F8FA] text-slate-900 hover:bg-slate-200'}`} 
                     onClick={() => setActiveTab(tab.key)} 
                     type="button"
                   >
+                    <span className="material-icons text-[20px]">{tab.icon}</span>
                     {tab.label}
                   </button>
                 ))}
@@ -377,7 +397,12 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
                   ) : (
                     <div className="space-y-4">
                       {posts.map((item) => (
-                        <FeedPost key={item.id} item={item} currentUser={user} />
+                        <FeedPost 
+                            key={item.id} 
+                            item={item} 
+                            currentUser={user} 
+                            onPostClick={(id) => setSelectedPostId(id)}
+                        />
                       ))}
                     </div>
                   )}

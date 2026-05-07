@@ -26,6 +26,8 @@ export type Post = {
   like_count: number;
   comment_count: number;
   is_liked: boolean;
+  reaction_counts?: Record<string, number>;
+  user_reaction?: string | null;
 };
 
 export type PaginatedPosts = {

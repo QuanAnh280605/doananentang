@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+
 import Link from 'next/link';
 import { useEffect, useState, useCallback } from 'react';
 
@@ -9,6 +9,7 @@ import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/ui/ThemedText';
 import { ComposerCard } from '@/components/post/ComposerCard';
 import { FeedPost } from '@/components/post/FeedPost';
+import { PostDetailModal } from '@/components/post/PostDetailModal';
 import { fetchPosts, resolveAvatarUrl } from '@/lib/api';
 import { fetchCurrentUser, type AuthUser } from '@/lib/auth';
 import { ROUTES } from '@/lib/routes';
@@ -39,7 +40,7 @@ const inboxItems = [
   { id: 'ne', name: 'Nadia Elsner', message: 'Shared fresh type comps for the thread.', initials: 'NE', bio: 'Writes crisp product copy and organizes review-ready profile content.' },
 ];
 
-const surfaceClass = 'rounded-[28px] border border-[#E4E8EE] bg-white';
+const surfaceClass = 'rounded-[32px] border border-slate-200/60 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.02)]';
 
 function Avatar({ initials, soft = false }: { initials: string; soft?: boolean }) {
   return (
@@ -53,14 +54,14 @@ function Avatar({ initials, soft = false }: { initials: string; soft?: boolean }
 
 function SectionCard({ title, rightLabel, children }: { title: string; rightLabel?: string; children: React.ReactNode }) {
   return (
-    <section className={`${surfaceClass} p-5`}>
-      <div className="flex items-center justify-between gap-3">
-        <ThemedText as="h2" className="text-[22px] font-semibold text-slate-950">
+    <section className={`${surfaceClass} p-6`}>
+      <div className="flex items-center justify-between gap-3 px-1">
+        <ThemedText as="h2" className="text-[20px] font-bold text-slate-950 tracking-tight">
           {title}
         </ThemedText>
-        {rightLabel ? <ThemedText as="p" className="text-sm text-slate-500">{rightLabel}</ThemedText> : null}
+        {rightLabel ? <ThemedText as="p" className="text-[12px] font-bold text-slate-400 uppercase tracking-wider">{rightLabel}</ThemedText> : null}
       </div>
-      <div className="mt-4 space-y-3">{children}</div>
+      <div className="mt-5 space-y-3">{children}</div>
     </section>
   );
 }
@@ -69,6 +70,7 @@ export function HomeFeed() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
 
   const loadPosts = useCallback(async () => {
     setLoading(true);
@@ -84,81 +86,94 @@ export function HomeFeed() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchCurrentUser().then(setCurrentUser).catch(() => {});
-  }, []);
+  const [userPostCount, setUserPostCount] = useState(0);
 
   useEffect(() => {
-    let cancelled = false;
-
-    queueMicrotask(() => {
-      if (!cancelled) {
-        void loadPosts();
+    let isMounted = true;
+    fetchCurrentUser().then(user => {
+      if (isMounted) {
+        setCurrentUser(user);
+        if (user) {
+          fetchPosts(1, 1, user.id).then(res => {
+            if (isMounted) setUserPostCount(res.total || 0);
+          });
+        }
       }
-    });
-
-    return () => {
-      cancelled = true;
-    };
+    }).catch(() => { });
+    loadPosts();
+    return () => { isMounted = false; };
   }, [loadPosts]);
 
-  const initials = currentUser 
+  const initials = currentUser
     ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase()
     : 'LE';
 
   return (
     <ProtectedPage>
-      <main className="min-h-screen bg-[#EDF1F5] pb-8">
+      <main className="min-h-screen bg-[#F8FAFC] pb-12">
+        {selectedPostId && (
+          <PostDetailModal
+            postId={selectedPostId}
+            onClose={() => setSelectedPostId(null)}
+            currentUser={currentUser}
+          />
+        )}
         <div className="mx-auto w-full max-w-[1720px] px-4 pb-6 pt-4 md:px-6">
           <AppTopNav searchPlaceholder="Search users" currentUser={currentUser} />
 
           <div className="mt-4 grid gap-4 xl:grid-cols-[350px_minmax(0,1fr)_360px]">
             {/* Left Rail */}
-            <div className="space-y-4">
-              <ThemedText as="p" className="px-1 text-lg font-semibold text-slate-900">Shortcuts</ThemedText>
-              {shortcuts.map((item) => (
-                <div key={item.label} className="flex items-center gap-4 rounded-[22px] bg-[#F7F8FA] px-4 py-4 hover:bg-slate-100 transition-colors cursor-pointer">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#D9ECF8] text-[#4A9FD8]">
-                    <span className="material-icons text-[22px]">{item.icon}</span>
+            <div className="space-y-5">
+              <ThemedText as="p" className="px-2 text-[13px] font-bold text-slate-400 uppercase tracking-[0.15em]">Shortcuts</ThemedText>
+              <div className="space-y-3">
+                {shortcuts.map((item) => (
+                  <div key={item.label} className="flex items-center gap-4 rounded-[24px] bg-white border border-slate-100 p-4 hover:border-slate-200 hover:shadow-md transition-all duration-300 cursor-pointer group">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-[16px] bg-slate-50 text-slate-400 group-hover:bg-[#EAF4FB] group-hover:text-[#4A9FD8] transition-colors">
+                      <span className="material-icons text-[22px]">{item.icon}</span>
+                    </div>
+                    <ThemedText as="p" className="text-[16px] font-bold text-slate-950 tracking-tight">{item.label}</ThemedText>
                   </div>
-                  <ThemedText as="p" className="text-lg font-medium text-slate-900">{item.label}</ThemedText>
-                </div>
-              ))}
+                ))}
+              </div>
 
-              <section className={`${surfaceClass} overflow-hidden shadow-sm`}>
-                <div className="h-[180px] bg-[#EAF4FB]" />
-                <div className="px-5 pb-5">
-                  <div className="-mt-8">
+              <section className={`${surfaceClass} overflow-hidden`}>
+                <div className="h-[160px] bg-gradient-to-br from-[#EAF4FB] to-[#D9ECF8]" />
+                <div className="px-6 pb-6">
+                  <div className="-mt-10">
                     {currentUser?.avatar_url ? (
-                      <Image src={resolveAvatarUrl(currentUser.avatar_url) as string} width={64} height={64} className="h-16 w-16 rounded-[22px] border-4 border-white shadow-sm object-cover" alt="Avatar" unoptimized />
+                      <img
+                        src={resolveAvatarUrl(currentUser.avatar_url) as string}
+                        className="h-20 w-20 rounded-[24px] border-[5px] border-white shadow-xl object-cover"
+                        alt="Avatar"
+                      />
                     ) : (
-                      <div className="flex h-16 w-16 items-center justify-center rounded-[22px] border-4 border-white bg-[#EAF4FB] shadow-sm">
-                        <ThemedText as="span" className="text-xl font-bold text-slate-950">{initials}</ThemedText>
+                      <div className="flex h-20 w-20 items-center justify-center rounded-[24px] border-[5px] border-white bg-[#EAF4FB] shadow-xl">
+                        <ThemedText as="span" className="text-2xl font-bold text-slate-950">{initials}</ThemedText>
                       </div>
                     )}
                   </div>
-                  <ThemedText as="h2" className="mt-4 text-[28px] font-semibold text-slate-950">
+                  <ThemedText as="h2" className="mt-5 text-[26px] font-bold text-slate-950 tracking-tight">
                     {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : 'Lena Evere'}
                   </ThemedText>
-                  <ThemedText as="p" className="mt-2 text-base leading-7 text-slate-600">
-                    {currentUser?.bio || 'Leading product design at Northfeed, shaping calmer social tools for creative teams.'}
+                  <ThemedText as="p" className="mt-2.5 text-[15px] leading-relaxed text-slate-500 font-medium">
+                    {currentUser?.bio || 'Chưa có tiểu sử giới thiệu.'}
                   </ThemedText>
-                  <div className="mt-5 grid grid-cols-2 gap-3">
-                    <div className="rounded-[22px] bg-[#F7F8FA] px-4 py-4">
-                      <ThemedText as="p" className="text-sm text-slate-500">Followers</ThemedText>
-                      <ThemedText as="p" className="mt-1 text-xl font-semibold text-slate-950">2.4k</ThemedText>
+                  <div className="mt-6 grid grid-cols-2 gap-4">
+                    <div className="rounded-[24px] bg-slate-50 p-4 border border-slate-100">
+                      <ThemedText as="p" className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Followers</ThemedText>
+                      <ThemedText as="p" className="mt-1 text-[19px] font-bold text-slate-950">0</ThemedText>
                     </div>
-                    <div className="rounded-[22px] bg-[#F7F8FA] px-4 py-4">
-                      <ThemedText as="p" className="text-sm text-slate-500">Posts</ThemedText>
-                      <ThemedText as="p" className="mt-1 text-xl font-semibold text-slate-950">14</ThemedText>
+                    <div className="rounded-[24px] bg-slate-50 p-4 border border-slate-100">
+                      <ThemedText as="p" className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Posts</ThemedText>
+                      <ThemedText as="p" className="mt-1 text-[19px] font-bold text-slate-950">{userPostCount}</ThemedText>
                     </div>
                   </div>
-                  <div className="mt-5 grid grid-cols-2 gap-3">
-                    <Link className="rounded-[22px] bg-[#0A0A0A] px-4 py-4 text-center text-base font-medium !text-white hover:bg-slate-800 transition-colors" href={ROUTES.profile}>
+                  <div className="mt-6 grid grid-cols-2 gap-3">
+                    <Link className="rounded-[20px] bg-slate-950 px-4 py-4 text-center text-[15px] font-bold !text-white hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-950/10" href={ROUTES.profile}>
                       View profile
                     </Link>
-                    <Link href="/profile/edit" className="rounded-[22px] bg-[#F7F8FA] px-4 py-4 text-center text-base font-medium text-slate-900 hover:bg-slate-200 transition-colors">
-                      Edit intro
+                    <Link href="/profile/edit" className="rounded-[20px] bg-slate-50 px-4 py-4 text-center text-[15px] font-bold text-slate-900 border border-slate-100 hover:bg-slate-100 transition-all active:scale-95">
+                      Edit profile
                     </Link>
                   </div>
                 </div>
@@ -166,100 +181,103 @@ export function HomeFeed() {
             </div>
 
             {/* Center Feed */}
-            <div className="space-y-4">
+            <div className="space-y-6">
               <ComposerCard onPostCreated={loadPosts} currentUser={currentUser} />
 
-              <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+              <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
                 {stories.map((item) => (
-                  <div key={item.id} className={`${item.fill} min-w-[180px] cursor-pointer hover:opacity-95 transition-opacity overflow-hidden rounded-[28px] p-5 shadow-sm`}>
-                    <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-white/20 text-white">
-                        <ThemedText as="span" className="text-xs font-bold">{item.initials}</ThemedText>
+                  <div key={item.id} className={`${item.fill} min-w-[200px] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden rounded-[32px] p-6 shadow-sm relative group`}>
+                    <div className="flex h-11 w-11 items-center justify-center rounded-[16px] bg-white/20 backdrop-blur-md text-white border border-white/20 group-hover:bg-white/30 transition-colors">
+                      <ThemedText as="span" className="text-[13px] font-bold">{item.initials}</ThemedText>
                     </div>
-                    <div className="mt-24 space-y-1">
-                      <ThemedText as="p" className="text-lg font-semibold text-white">{item.title}</ThemedText>
-                      <ThemedText as="p" className="text-sm text-white/80">{item.time}</ThemedText>
+                    <div className="mt-28 space-y-1 relative z-10">
+                      <ThemedText as="p" className="text-[17px] font-bold text-white tracking-tight leading-tight">{item.title}</ThemedText>
+                      <ThemedText as="p" className="text-[12px] font-bold text-white/70 uppercase tracking-wider">{item.time}</ThemedText>
                     </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
                   </div>
                 ))}
               </div>
 
               {loading ? (
-                <div className="flex flex-col items-center justify-center p-12 space-y-4">
-                  <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#4A9FD8] border-t-transparent" />
-                  <ThemedText as="p" className="text-slate-500">Đang tải bài viết...</ThemedText>
+                <div className="flex flex-col items-center justify-center p-16 space-y-4">
+                  <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-[#4A9FD8] border-t-transparent" />
+                  <ThemedText as="p" className="text-[15px] font-medium text-slate-400">Refreshing your feed...</ThemedText>
                 </div>
               ) : posts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center p-12 bg-white rounded-[28px] border border-[#E4E8EE]">
-                  <span className="material-icons text-slate-300 text-[48px]">article</span>
-                  <ThemedText as="p" className="mt-4 text-slate-500 font-medium">Chưa có bài viết nào</ThemedText>
+                <div className="flex flex-col items-center justify-center p-16 bg-white rounded-[32px] border border-slate-200/60 shadow-sm">
+                  <div className="h-20 w-20 flex items-center justify-center rounded-[28px] bg-slate-50 mb-6">
+                    <span className="material-icons text-slate-300 text-[36px]">article</span>
+                  </div>
+                  <ThemedText as="p" className="text-slate-400 font-bold text-lg">No posts yet</ThemedText>
+                  <ThemedText as="p" className="text-slate-400 text-sm mt-1">Start by sharing your first update!</ThemedText>
                 </div>
               ) : (
-                <div className="space-y-4">
-                    {posts.map((item) => (
-                        <FeedPost key={item.id} item={item} currentUser={currentUser} />
-                    ))}
+                <div className="space-y-6">
+                  {posts.map((item) => (
+                    <FeedPost
+                      key={item.id}
+                      item={item}
+                      currentUser={currentUser}
+                      onPostClick={(id) => setSelectedPostId(id)}
+                    />
+                  ))}
                 </div>
               )}
             </div>
 
             {/* Right Rail */}
-            <div className="space-y-4">
+            <div className="space-y-5">
               <SectionCard title="Contacts" rightLabel="12 online">
                 {contacts.map((item) => (
-                  <Link
-                    key={item.id}
-                    className="flex items-center gap-4 rounded-[22px] bg-[#F7F8FA] px-4 py-4 transition hover:opacity-95"
-                    href={ROUTES.profileDetail(item.id, {
-                      name: item.name,
-                      initials: item.initials,
-                      preview: item.status,
-                      bio: item.bio,
-                    })}>
-                    <Avatar initials={item.initials} soft />
-                    <div className="flex-1">
-                      <ThemedText as="p" className="text-lg font-medium text-slate-900">{item.name}</ThemedText>
-                      <ThemedText as="p" className="text-sm text-slate-500">{item.status}</ThemedText>
+                  <div key={item.name} className="flex items-center gap-4 rounded-[24px] bg-white border border-slate-100 p-4 hover:border-slate-200 hover:shadow-md transition-all duration-300 cursor-pointer group">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-slate-50 text-slate-900 font-bold group-hover:bg-[#EAF4FB] transition-colors">
+                      {item.initials}
                     </div>
-                    <div className="h-3 w-3 rounded-full bg-[#6FC18A]" />
-                  </Link>
+                    <div className="flex-1">
+                      <ThemedText as="p" className="text-[16px] font-bold text-slate-950 tracking-tight">{item.name}</ThemedText>
+                      <ThemedText as="p" className="text-[13px] font-medium text-slate-400">{item.status}</ThemedText>
+                    </div>
+                    <div className="h-2.5 w-2.5 rounded-full bg-[#6FC18A] border-2 border-white ring-1 ring-slate-100" />
+                  </div>
                 ))}
               </SectionCard>
 
-              <section className={`${surfaceClass} p-5 shadow-sm`}>
-                <div className="inline-flex rounded-full bg-[#D9ECF8] px-3 py-2">
-                  <ThemedText as="p" className="text-sm font-semibold text-slate-900">Tonight</ThemedText>
+              <section className={`${surfaceClass} p-6 overflow-hidden relative group`}>
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                  <span className="material-icons text-[64px]">event</span>
                 </div>
-                <ThemedText as="h2" className="mt-4 text-[24px] font-semibold leading-8 text-slate-950">
+                <div className="inline-flex rounded-full bg-[#EAF4FB] px-3 py-1.5 border border-[#D9ECF8]">
+                  <ThemedText as="p" className="text-[11px] font-bold text-[#4A9FD8] uppercase tracking-wider">Tonight</ThemedText>
+                </div>
+                <ThemedText as="h2" className="mt-5 text-[22px] font-bold leading-tight text-slate-950 tracking-tight">
                   Prototype review with motion notes
                 </ThemedText>
-                <ThemedText as="p" className="mt-3 text-base text-slate-500">
-                  18:30 - 19:15 | Riverside Studio 4
-                </ThemedText>
-                <button className="mt-5 rounded-[20px] bg-[#0A0A0A] px-6 py-4 text-base font-medium text-white hover:bg-slate-800 transition-colors" type="button">
+                <div className="mt-4 flex items-center gap-2 text-slate-400">
+                  <span className="material-icons text-[18px]">schedule</span>
+                  <ThemedText as="p" className="text-[14px] font-medium">
+                    18:30 - 19:15 | Riverside Studio 4
+                  </ThemedText>
+                </div>
+                <button className="mt-6 w-full rounded-[20px] bg-slate-950 px-6 py-4 text-[15px] font-bold text-white hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-950/10" type="button">
                   View brief
                 </button>
               </section>
 
               <SectionCard title="Messenger" rightLabel="3 unread">
                 {inboxItems.map((item) => (
-                  <Link
-                    key={item.id}
-                    className="flex items-center gap-4 rounded-[22px] bg-[#F7F8FA] px-4 py-4 transition hover:opacity-95"
-                    href={ROUTES.profileDetail(item.id, {
-                      name: item.name,
-                      initials: item.initials,
-                      preview: item.message,
-                      bio: item.bio,
-                    })}>
-                    <Avatar initials={item.initials} soft />
-                    <div className="flex-1 space-y-1">
-                      <ThemedText as="p" className="text-lg font-medium text-slate-900">{item.name}</ThemedText>
-                      <ThemedText as="p" className="text-sm text-slate-500 line-clamp-1">{item.message}</ThemedText>
+                  <div key={item.name} className="flex items-center gap-4 rounded-[24px] bg-white border border-slate-100 p-4 hover:border-slate-200 hover:shadow-md transition-all duration-300 cursor-pointer group">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-slate-50 text-slate-950 font-bold group-hover:bg-[#EAF4FB] transition-colors">
+                      {item.initials}
                     </div>
-                    {item.unread ? <div className="h-3 w-3 rounded-full bg-[#4A9FD8]" /> : null}
-                  </Link>
+                    <div className="flex-1 space-y-0.5">
+                        <ThemedText as="p" className="text-[16px] font-bold text-slate-950 tracking-tight">{item.name}</ThemedText>
+                        <ThemedText as="p" className="text-[13px] font-medium text-slate-400 line-clamp-1 group-hover:text-slate-500 transition-colors">{item.message}</ThemedText>
+                    </div>
+                    {item.unread ? <div className="h-2.5 w-2.5 rounded-full bg-[#4A9FD8] shadow-[0_0_10px_rgba(74,159,216,0.5)]" /> : null}
+                  </div>
                 ))}
-                <Link className="mt-2 block rounded-[22px] bg-[#0A0A0A] px-5 py-4 text-center text-base font-medium !text-white hover:bg-slate-800 transition-colors" href={ROUTES.inbox}>
+                <Link className="mt-4 block rounded-[20px] bg-slate-950 px-5 py-4 text-center text-[15px] font-bold !text-white hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-950/10" href={ROUTES.inbox}>
                   Open inbox
                 </Link>
               </SectionCard>

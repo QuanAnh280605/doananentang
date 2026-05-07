@@ -7,6 +7,7 @@ import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/ui/ThemedText';
 import { fetchCurrentUser, updateUserProfile, changePassword, uploadUserAvatar, type AuthUser, type GenderValue } from '@/lib/auth';
 import { API_URL } from '@/lib/api';
+import { compressToWebP } from '@/lib/image';
 
 const surfaceClass = 'rounded-[28px] border border-[#E4E8EE] bg-white';
 
@@ -170,7 +171,7 @@ function LivePreviewCard({
         <div className="-mt-12 flex items-end gap-3 px-3">
           {avatarSource ? (
             <div className="h-16 w-16 shrink-0 overflow-hidden rounded-[22px] border-[3px] border-white">
-              <Image src={avatarSource} alt={displayName} width={64} height={64} className="h-full w-full object-cover" unoptimized />
+              <Image src={avatarSource} alt={displayName} width={64} height={64} className="h-full w-full object-cover" />
             </div>
           ) : (
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] border-[3px] border-white bg-[#EAF4FB]">
@@ -190,12 +191,12 @@ function LivePreviewCard({
         {/* Stats */}
         <div className="mt-4 flex gap-6 px-1">
           <div>
-            <ThemedText as="p" className="text-lg font-semibold text-slate-950">2.4k</ThemedText>
+            <ThemedText as="p" className="text-lg font-semibold text-slate-950">0</ThemedText>
             <ThemedText as="p" className="text-xs text-slate-500">Followers</ThemedText>
           </div>
           <div>
-            <ThemedText as="p" className="text-lg font-semibold text-slate-950">14 live</ThemedText>
-            <ThemedText as="p" className="text-xs text-slate-500">Projects</ThemedText>
+            <ThemedText as="p" className="text-lg font-semibold text-slate-950">0</ThemedText>
+            <ThemedText as="p" className="text-xs text-slate-500">Posts</ThemedText>
           </div>
         </div>
       </SectionCard>
@@ -308,7 +309,8 @@ export default function EditProfilePage() {
     setIsSaving(true);
     try {
       if (avatarFile) {
-        await uploadUserAvatar(avatarFile);
+        const compressed = await compressToWebP(avatarFile);
+        await uploadUserAvatar(compressed);
       }
 
       await updateUserProfile({
@@ -367,7 +369,16 @@ export default function EditProfilePage() {
     <ProtectedPage>
       <main className="min-h-screen bg-[#F8FAFC] pb-8">
         <div className="mx-auto w-full max-w-[1720px] space-y-4 px-4 pb-6 pt-4 md:px-6">
-          <AppTopNav />
+          {/* Back header */}
+          <div className="flex items-center gap-3 rounded-[28px] border border-[#E4E8EE] bg-white px-5 py-4 mb-4">
+            <button
+              onClick={() => window.history.back()}
+              className="flex h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA] transition-opacity hover:opacity-80"
+            >
+              <span className="text-lg">←</span>
+            </button>
+            <ThemedText as="h1" className="text-lg font-semibold text-slate-900">Edit profile</ThemedText>
+          </div>
 
           {/* Main 2-col layout */}
           <form onSubmit={handleSave}>
@@ -412,7 +423,7 @@ export default function EditProfilePage() {
                   <div className="mb-6 flex items-center gap-4">
                     {currentAvatarSource ? (
                       <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full">
-                        <Image src={currentAvatarSource} alt="Avatar" width={64} height={64} className="h-full w-full object-cover" unoptimized />
+                        <Image src={currentAvatarSource} alt="Avatar" width={64} height={64} className="h-full w-full object-cover" />
                       </div>
                     ) : (
                       <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#EAF4FB]">
