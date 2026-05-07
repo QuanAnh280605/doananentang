@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { fetchPostLikers, API_URL } from '@/lib/api';
 import { ThemedText } from '@/components/ui/ThemedText';
+import type { PostLiker } from '@/lib/types';
 
 export function InteractionsModal({
     postId,
@@ -11,7 +12,7 @@ export function InteractionsModal({
     postId: string;
     onClose: () => void;
 }) {
-    const [likers, setLikers] = useState<any[]>([]);
+    const [likers, setLikers] = useState<PostLiker[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {

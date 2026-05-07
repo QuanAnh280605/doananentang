@@ -38,6 +38,10 @@ def get_chat_by_id(db: Session, chat_id: int) -> Chat | None:
   return db.get(Chat, chat_id)
 
 
+def get_chat_room_name(chat_id: int) -> str:
+  return f'chat:{chat_id}'
+
+
 def is_chat_member(db: Session, chat_id: int, user_id: int) -> bool:
   statement = select(ChatMember).where(ChatMember.chat_id == chat_id, ChatMember.user_id == user_id)
   return db.scalar(statement) is not None

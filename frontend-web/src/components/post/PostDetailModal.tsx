@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { ThemedText } from '@/components/ui/ThemedText';
 import { API_URL, createComment, fetchPostComments, fetchPostDetail, likePost, unlikePost, deleteComment, deletePost, likeComment, unlikeComment } from '@/lib/api';
 import { Post, Comment as PostComment } from '@/lib/types';
@@ -113,7 +113,7 @@ const CommentItem = ({ comment, currentUser, postAuthorId, onReply, onDelete, is
                     {comment.replies.map(reply => (
                         <CommentItem
                             key={reply.id}
-                            comment={reply as any}
+                            comment={reply}
                             currentUser={currentUser}
                             postAuthorId={postAuthorId}
                             onReply={onReply}
@@ -148,33 +148,34 @@ export function PostDetailModal({
     const [showMenu, setShowMenu] = useState(false);
     const [showLikers, setShowLikers] = useState(false);
 
-    const fetchAllData = async () => {
-        if (!postId) return;
-        setLoading(true);
-        try {
-            const [postRes, commentsRes] = await Promise.all([
-                fetchPostDetail(postId),
-                fetchPostComments(postId),
-            ]);
-            setPost(postRes);
-            // Backend trả về dạng cây sẵn, nên không cần xử lý tree ở frontend
-            setComments(commentsRes);
-            if (postRes) {
-                setLiked(postRes.is_liked);
-                setLikeCount(postRes.like_count);
-            }
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
         if (!postId) return;
+
+        let isMounted = true;
         document.body.style.overflow = 'hidden';
-        fetchAllData();
+
+        void Promise.all([
+            fetchPostDetail(postId),
+            fetchPostComments(postId),
+        ]).then(([postRes, commentsRes]) => {
+            if (!isMounted) {
+                return;
+            }
+
+            setPost(postRes);
+            setComments(commentsRes);
+            setLiked(postRes.is_liked);
+            setLikeCount(postRes.like_count);
+        }).catch((error) => {
+            console.error(error);
+        }).finally(() => {
+            if (isMounted) {
+                setLoading(false);
+            }
+        });
+
         return () => {
+            isMounted = false;
             document.body.style.overflow = 'unset';
         };
     }, [postId]);

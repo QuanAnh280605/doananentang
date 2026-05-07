@@ -34,23 +34,7 @@ const contacts = [
   { id: 'oy', name: 'Owen Ybarra', status: 'Exporting review clips', initials: 'OY', bio: 'Handles review exports, clips, and last-mile production polish.' },
 ];
 
-const inboxItems = [
-  { id: 'rm', name: 'Rafi Mercer', message: 'Can you review the revised launch pacing?', initials: 'RM', bio: 'Focuses on motion pacing, interaction polish, and handoff clarity.', unread: true },
-  { id: 'at', name: 'Aya Tran', message: 'Dropping sprint references in five minutes.', initials: 'AT', bio: 'Shapes visual systems and tightens typography for product launches.' },
-  { id: 'ne', name: 'Nadia Elsner', message: 'Shared fresh type comps for the thread.', initials: 'NE', bio: 'Writes crisp product copy and organizes review-ready profile content.' },
-];
-
 const surfaceClass = 'rounded-[32px] border border-slate-200/60 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.02)]';
-
-function Avatar({ initials, soft = false }: { initials: string; soft?: boolean }) {
-  return (
-    <div className={`flex h-14 w-14 items-center justify-center rounded-[22px] ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`}>
-      <ThemedText as="span" className="text-base font-semibold tracking-[0.5px] text-slate-900">
-        {initials}
-      </ThemedText>
-    </div>
-  );
-}
 
 function SectionCard({ title, rightLabel, children }: { title: string; rightLabel?: string; children: React.ReactNode }) {
   return (
@@ -89,6 +73,21 @@ export function HomeFeed() {
 
   useEffect(() => {
     let isMounted = true;
+    void fetchPosts(1, 20)
+      .then((res) => {
+        if (isMounted) {
+          setPosts(res.items || []);
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setLoading(false);
+        }
+      });
+
     fetchCurrentUser().then(user => {
       if (isMounted) {
         setCurrentUser(user);
@@ -99,7 +98,6 @@ export function HomeFeed() {
         }
       }
     }).catch(() => { });
-    loadPosts();
     return () => { isMounted = false; };
   }, [loadPosts]);
 
@@ -236,45 +234,6 @@ export function HomeFeed() {
                     <div className="h-2.5 w-2.5 rounded-full bg-[#6FC18A] border-2 border-white ring-1 ring-slate-100" />
                   </div>
                 ))}
-              </SectionCard>
-
-              <section className={`${surfaceClass} p-6 overflow-hidden relative group`}>
-                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <span className="material-icons text-[64px]">event</span>
-                </div>
-                <div className="inline-flex rounded-full bg-[#EAF4FB] px-3 py-1.5 border border-[#D9ECF8]">
-                  <ThemedText as="p" className="text-[11px] font-bold text-[#4A9FD8] uppercase tracking-wider">Tonight</ThemedText>
-                </div>
-                <ThemedText as="h2" className="mt-5 text-[22px] font-bold leading-tight text-slate-950 tracking-tight">
-                  Prototype review with motion notes
-                </ThemedText>
-                <div className="mt-4 flex items-center gap-2 text-slate-400">
-                  <span className="material-icons text-[18px]">schedule</span>
-                  <ThemedText as="p" className="text-[14px] font-medium">
-                    18:30 - 19:15 | Riverside Studio 4
-                  </ThemedText>
-                </div>
-                <button className="mt-6 w-full rounded-[20px] bg-slate-950 px-6 py-4 text-[15px] font-bold text-white hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-950/10" type="button">
-                  View brief
-                </button>
-              </section>
-
-              <SectionCard title="Messenger" rightLabel="3 unread">
-                {inboxItems.map((item) => (
-                  <div key={item.name} className="flex items-center gap-4 rounded-[24px] bg-white border border-slate-100 p-4 hover:border-slate-200 hover:shadow-md transition-all duration-300 cursor-pointer group">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-slate-50 text-slate-950 font-bold group-hover:bg-[#EAF4FB] transition-colors">
-                      {item.initials}
-                    </div>
-                    <div className="flex-1 space-y-0.5">
-                      <ThemedText as="p" className="text-[16px] font-bold text-slate-950 tracking-tight">{item.name}</ThemedText>
-                      <ThemedText as="p" className="text-[13px] font-medium text-slate-400 line-clamp-1 group-hover:text-slate-500 transition-colors">{item.message}</ThemedText>
-                    </div>
-                    {item.unread ? <div className="h-2.5 w-2.5 rounded-full bg-[#4A9FD8] shadow-[0_0_10px_rgba(74,159,216,0.5)]" /> : null}
-                  </div>
-                ))}
-                <Link className="mt-4 block rounded-[20px] bg-slate-950 px-5 py-4 text-center text-[15px] font-bold !text-white hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-950/10" href={ROUTES.inbox}>
-                  Open inbox
-                </Link>
               </SectionCard>
             </div>
           </div>

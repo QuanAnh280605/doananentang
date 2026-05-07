@@ -1,16 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { useState } from 'react';
 import { API_URL, likePost, unlikePost, deletePost, resolveAvatarUrl } from '@/lib/api';
 import type { Post } from '@/lib/types';
+import type { AuthUser } from '@/lib/auth';
 import { ThemedText } from '@/components/ui/ThemedText';
 import { InteractionsModal } from './InteractionsModal';
-
-type FeedPostUser = {
-    id?: string | number;
-} | null;
 
 function formatTime(isoString: string): string {
     const diff = Date.now() - new Date(isoString).getTime();
@@ -29,7 +25,7 @@ export function FeedPost({
     onPostClick
 }: {
     item: Post;
-    currentUser?: FeedPostUser | any;
+    currentUser?: AuthUser | null;
     onPostClick?: (id: string) => void;
 }) {
     const [liked, setLiked] = useState(item.is_liked);

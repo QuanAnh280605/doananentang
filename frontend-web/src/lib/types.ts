@@ -44,6 +44,13 @@ export type LikeStatus = {
   like_count: number;
 };
 
+export type PostLiker = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  avatar_url: string | null;
+};
+
 export type CommentAuthor = {
   id: string;
   first_name: string;

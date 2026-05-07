@@ -259,7 +259,7 @@ export function fetchHealth(): Promise<HealthResponse> {
   return apiFetch<HealthResponse>('/api/health');
 }
 
-import type { PaginatedPosts, Post, LikeStatus } from './types';
+import type { PaginatedPosts, Post, LikeStatus, PostLiker } from './types';
 
 export function fetchPosts(page = 1, pageSize = 10, authorId?: string | number): Promise<PaginatedPosts> {
   let url = `/api/posts?page=${page}&page_size=${pageSize}&sort_order=desc`;
@@ -285,8 +285,14 @@ export function deletePost(postId: string): Promise<void> {
   return apiFetch<void>(`/api/posts/${postId}`, { method: 'DELETE' });
 }
 
-export function fetchPostLikers(postId: string): Promise<{ post_id: string; like_count: number; users: any[] }> {
-  return apiFetch<{ post_id: string; like_count: number; users: any[] }>(`/api/posts/${postId}/likes`);
+export type PostLikersResponse = {
+  post_id: string;
+  like_count: number;
+  users: PostLiker[];
+};
+
+export function fetchPostLikers(postId: string): Promise<PostLikersResponse> {
+  return apiFetch<PostLikersResponse>(`/api/posts/${postId}/likes`);
 }
 
 export function createPost(content: string, mediaUrls: string[] = []): Promise<Post> {

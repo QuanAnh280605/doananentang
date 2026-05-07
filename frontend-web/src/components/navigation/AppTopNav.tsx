@@ -5,6 +5,7 @@ import { ThemedText } from '@/components/ui/ThemedText';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { resolveAvatarUrl } from '@/lib/api';
 import type { AuthUser } from '@/lib/auth';
+import { ROUTES } from '@/lib/routes';
 
 type AppTopNavProps = {
   searchPlaceholder?: string;
@@ -14,11 +15,21 @@ type AppTopNavProps = {
   currentUser?: AuthUser | null;
 };
 
-function IconBubble({ icon }: { icon: string }) {
+function IconBubble({ icon, href, label }: { icon: string; href?: string; label: string }) {
+  const className = 'flex h-11 w-11 items-center justify-center rounded-[14px] bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900 active:scale-90 transition-all duration-200 cursor-pointer';
+
+  if (href) {
+    return (
+      <Link aria-label={label} className={className} href={href}>
+        <span className="material-icons text-[20px]">{icon}</span>
+      </Link>
+    );
+  }
+
   return (
-    <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900 active:scale-90 transition-all duration-200 cursor-pointer">
+    <button aria-label={label} className={className} type="button">
       <span className="material-icons text-[20px]">{icon}</span>
-    </div>
+    </button>
   );
 }
 
@@ -84,9 +95,9 @@ export function AppTopNav({
 
         {/* Action Buttons & Avatar */}
         <div className="flex items-center gap-2.5">
-          <IconBubble icon="mail_outline" />
-          <IconBubble icon="notifications_none" />
-          <IconBubble icon="apps" />
+          <IconBubble href={ROUTES.inbox} icon="mail_outline" label="Open inbox" />
+          <IconBubble icon="notifications_none" label="Open notifications" />
+          <IconBubble icon="apps" label="Open apps" />
           
           <Link href="/profile" className="ml-2 group">
             {avatarUrl ? (

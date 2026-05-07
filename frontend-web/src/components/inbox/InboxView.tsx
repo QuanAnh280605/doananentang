@@ -14,19 +14,23 @@ import {
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { ThemedText } from '@/components/ui/ThemedText';
-import { searchFollowingUsers, type SearchUser } from '@/lib/auth';
+import { resolveAvatarUrl } from '@/lib/api';
+import { fetchCurrentUser, searchFollowingUsers, type AuthUser, type SearchUser } from '@/lib/auth';
 import {
   applyMessagePreviewToThreads,
   createSingleFlightMessageSender,
   getOrCreateDirectChat,
   listDirectChats,
   listMessages,
+  mapRealtimeMessage,
+  mergeMessagesById,
   normalizeMessageContent,
   runOptimisticMessageSend,
   sendMessage,
 } from '@/lib/chat';
-import type { ChatMessage, DirectChat, InboxThreadData } from '@/lib/chat.types';
+import type { ChatMessage, ChatMessageResponse, DirectChat, InboxThreadData } from '@/lib/chat.types';
 import { ROUTES } from '@/lib/routes';
+import { connectInboxSocket, disconnectInboxSocket, joinChatRoom, leaveChatRoom } from '@/lib/socket';
 
 const surfaceClass = 'rounded-[28px] border border-[#E2E8F0] bg-white';
 
@@ -97,12 +101,14 @@ export function InboxView() {
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [messageError, setMessageError] = useState<string | null>(null);
   const [draftMessage, setDraftMessage] = useState('');
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const searchTimeoutRef = useRef<number | null>(null);
   const latestSearchRequestRef = useRef(0);
   const latestThreadsRequestRef = useRef(0);
   const latestMessageRequestRef = useRef(0);
   const composerTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const sendMessageGuardRef = useRef(createSingleFlightMessageSender(sendMessage));
+  const selectedChatIdRef = useRef<string | null>(null);
   const normalizedInboxSearchQuery = inboxSearchQuery.trim();
   const normalizedDraftMessage = draftMessage.trim();
   const selectedUserId = selectedUser?.id ?? null;
@@ -169,6 +175,69 @@ export function InboxView() {
       window.clearTimeout(timeoutId);
     };
   }, [refreshThreads]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    fetchCurrentUser()
+      .then((user) => {
+        if (isMounted) {
+          setCurrentUser(user);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setCurrentUser(null);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    selectedChatIdRef.current = selectedChat?.id ?? null;
+  }, [selectedChat?.id]);
+
+  useEffect(() => {
+    const socket = connectInboxSocket();
+
+    if (!socket) {
+      return;
+    }
+
+    const handleMessageCreated = (payload: ChatMessageResponse) => {
+      const nextMessage = mapRealtimeMessage(payload);
+
+      if (selectedChatIdRef.current === nextMessage.chatId) {
+        setMessages((currentMessages) => mergeMessagesById(currentMessages, nextMessage));
+      }
+
+      setThreads((currentThreads) => applyMessagePreviewToThreads(currentThreads, nextMessage));
+    };
+
+    socket.on('message-created', handleMessageCreated);
+
+    return () => {
+      socket.off('message-created', handleMessageCreated);
+      disconnectInboxSocket();
+    };
+  }, []);
+
+  useEffect(() => {
+    const chatId = selectedChat?.id ?? null;
+
+    if (!chatId) {
+      return;
+    }
+
+    void joinChatRoom(chatId);
+
+    return () => {
+      void leaveChatRoom(chatId);
+    };
+  }, [selectedChat?.id]);
 
   useEffect(() => {
     if (selectedUserId === null) {
@@ -340,6 +409,7 @@ export function InboxView() {
         preview: item.preview,
         time: item.time,
         initials: buildInitials(item.user.first_name, item.user.last_name),
+        avatarUrl: item.user.avatar_url,
         bio: item.user.bio?.trim() || item.preview,
         unread: item.unread,
         active: item.user.id === selectedConversation?.user.id,
@@ -352,7 +422,7 @@ export function InboxView() {
     <ProtectedPage>
       <main className="min-h-[100dvh] bg-[#F8FAFC] xl:h-[100dvh] xl:overflow-hidden">
         <div className="mx-auto flex min-h-[100dvh] w-full max-w-[1720px] flex-col px-4 pb-4 pt-4 md:px-6 xl:h-full xl:min-h-0">
-          <AppTopNav searchPlaceholder="Search people, notes, or screenshots" />
+          <AppTopNav searchPlaceholder="Search people, notes, or screenshots" currentUser={currentUser} />
           <div className="mt-4 grid min-h-0 flex-1 gap-4 xl:h-[calc(100dvh-112px)] xl:grid-cols-[336px_minmax(0,1fr)_248px]">
             <section className={`${surfaceClass} min-h-0 overflow-hidden p-5`}>
               <ThemedText as="h1" className="text-[24px] font-semibold text-slate-950">Inbox</ThemedText>
@@ -406,10 +476,14 @@ export function InboxView() {
               </div>
               <div className="mt-4 flex shrink-0 items-center justify-between gap-3 rounded-[22px] bg-[#F8FAFC] px-4 py-3">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#DBEAFE]">
-                    <span className="text-sm font-semibold tracking-[0.6px] text-slate-900">
-                      {selectedConversation ? selectedConversation.initials : 'DM'}
-                    </span>
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[18px] bg-[#DBEAFE]">
+                    {selectedConversation && resolveAvatarUrl(selectedConversation.user.avatar_url) ? (
+                      <img alt={selectedConversation.user.full_name} className="h-full w-full object-cover" src={resolveAvatarUrl(selectedConversation.user.avatar_url) as string} />
+                    ) : (
+                      <span className="text-sm font-semibold tracking-[0.6px] text-slate-900">
+                        {selectedConversation ? selectedConversation.initials : 'DM'}
+                      </span>
+                    )}
                   </div>
                   <div className="min-w-0">
                     <ThemedText as="p" className="text-base font-semibold text-slate-950">
@@ -436,7 +510,10 @@ export function InboxView() {
                     {messageError}
                   </div>
                 ) : selectedConversation.messages.length ? (
-                  <div className="flex min-h-full flex-col justify-end gap-3">{selectedConversation.messages.map((item) => <MessageBubble key={item.id} item={item} />)}</div>
+                  <div className="flex min-h-full flex-col gap-3">
+                    <div className="mt-auto" aria-hidden="true" />
+                    {selectedConversation.messages.map((item) => <MessageBubble key={item.id} item={item} />)}
+                  </div>
                 ) : (
                   <div className="flex min-h-full flex-1 items-center justify-center rounded-[22px] bg-[#F8FAFC] px-4 py-4 text-sm text-slate-500">
                     Chưa có tin nhắn nào trong cuộc trò chuyện này.
@@ -474,7 +551,13 @@ export function InboxView() {
                 <div className="overflow-hidden rounded-[24px] bg-[#DBEAFE]">
                   <div className="h-[120px] bg-[#BFDBFE]" />
                   <div className="px-4 pb-4">
-                    <div className="-mt-6 flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#E2E8F0] text-sm font-semibold tracking-[0.6px] text-slate-900">{selectedConversation ? selectedConversation.initials : 'DM'}</div>
+                    <div className="-mt-6 flex h-12 w-12 items-center justify-center overflow-hidden rounded-[18px] bg-[#E2E8F0] text-sm font-semibold tracking-[0.6px] text-slate-900">
+                      {selectedConversation && resolveAvatarUrl(selectedConversation.user.avatar_url) ? (
+                        <img alt={selectedConversation.user.full_name} className="h-full w-full object-cover" src={resolveAvatarUrl(selectedConversation.user.avatar_url) as string} />
+                      ) : (
+                        selectedConversation ? selectedConversation.initials : 'DM'
+                      )}
+                    </div>
                     <ThemedText as="h3" className="mt-4 text-[24px] font-semibold text-slate-950">{selectedConversation ? selectedConversation.user.full_name : 'No profile selected'}</ThemedText>
                     <ThemedText as="p" className="mt-2 text-sm leading-6 text-slate-600">{selectedConversation ? selectedConversation.bio : 'Chọn một cuộc trò chuyện để xem thêm ngữ cảnh người nhận.'}</ThemedText>
                   </div>

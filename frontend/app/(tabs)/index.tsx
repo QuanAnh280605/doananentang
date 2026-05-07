@@ -73,16 +73,6 @@ const inboxItems: InboxItem[] = [
   { id: 'at', name: 'Aya Tran', message: 'Dropping sprint references in five minutes.', initials: 'AT', bio: 'Shapes visual systems and tightens typography for product launches.' },
   { id: 'ne', name: 'Nadia Elsner', message: 'Shared fresh type comps for the thread.', initials: 'NE', bio: 'Writes crisp product copy and organizes review-ready profile content.' },
 ];
-
-
-function ActionBubble({ icon, filled = false }: { icon: keyof typeof MaterialIcons.glyphMap; filled?: boolean }) {
-  return (
-    <View className={`h-12 w-12 items-center justify-center rounded-[18px] ${filled ? 'bg-[#0A0A0A]' : 'bg-[#F7F8FA]'}`}>
-      <MaterialIcons color={filled ? '#FFFFFF' : '#666666'} name={icon} size={21} />
-    </View>
-  );
-}
-
 function SectionCard({ title, rightLabel, children }: { title: string; rightLabel?: string; children: React.ReactNode }) {
   return (
     <ThemedView className={`${surfaceClass} p-5`}>
@@ -237,21 +227,6 @@ function RightRail() {
           <ContactRow key={item.name} item={item} />
         ))}
       </SectionCard>
-
-      <ThemedView className={`${surfaceClass} p-5`}>
-        <View className="flex-row items-center gap-3">
-          <View className="rounded-full bg-[#D9ECF8] px-3 py-2">
-            <ThemedText className="text-sm font-semibold text-slate-900">Tonight</ThemedText>
-          </View>
-        </View>
-        <ThemedText className="mt-4 text-[24px] font-semibold leading-8 text-slate-950">
-          Prototype review with motion notes
-        </ThemedText>
-        <ThemedText className="mt-3 text-base text-slate-500">18:30 - 19:15 | Riverside Studio 4</ThemedText>
-        <View className="mt-5 self-start rounded-[20px] bg-[#0A0A0A] px-5 py-4">
-          <ThemedText className="text-base font-medium text-white">View brief</ThemedText>
-        </View>
-      </ThemedView>
 
       <SectionCard title="Messenger" rightLabel="3 unread">
         {inboxItems.map((item) => (
