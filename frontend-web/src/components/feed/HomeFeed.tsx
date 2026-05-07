@@ -122,22 +122,11 @@ export function HomeFeed() {
 
           <div className="mt-4 grid gap-4 xl:grid-cols-[350px_minmax(0,1fr)_360px]">
             {/* Left Rail */}
-            <div className="space-y-5">
-              <ThemedText as="p" className="px-2 text-[13px] font-bold text-slate-400 uppercase tracking-[0.15em]">Shortcuts</ThemedText>
-              <div className="space-y-3">
-                {shortcuts.map((item) => (
-                  <div key={item.label} className="flex items-center gap-4 rounded-[24px] bg-white border border-slate-100 p-4 hover:border-slate-200 hover:shadow-md transition-all duration-300 cursor-pointer group">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-[16px] bg-slate-50 text-slate-400 group-hover:bg-[#EAF4FB] group-hover:text-[#4A9FD8] transition-colors">
-                      <span className="material-icons text-[22px]">{item.icon}</span>
-                    </div>
-                    <ThemedText as="p" className="text-[16px] font-bold text-slate-950 tracking-tight">{item.label}</ThemedText>
-                  </div>
-                ))}
-              </div>
-
+            <div className="space-y-4">
               <section className={`${surfaceClass} overflow-hidden`}>
-                <div className="h-[160px] bg-gradient-to-br from-[#EAF4FB] to-[#D9ECF8]" />
-                <div className="px-6 pb-6">
+                {/* Banner */}
+                <div className="h-[120px] bg-gradient-to-br from-[#EAF4FB] to-[#D9ECF8]" />
+                <div className="px-5 pb-5">
                   <div className="-mt-10">
                     {currentUser?.avatar_url ? (
                       <img
@@ -151,29 +140,41 @@ export function HomeFeed() {
                       </div>
                     )}
                   </div>
-                  <ThemedText as="h2" className="mt-5 text-[26px] font-bold text-slate-950 tracking-tight">
+                  <ThemedText as="h2" className="mt-4 text-[22px] font-bold text-slate-950 tracking-tight">
                     {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : 'Lena Evere'}
                   </ThemedText>
-                  <ThemedText as="p" className="mt-2.5 text-[15px] leading-relaxed text-slate-500 font-medium">
+                  <ThemedText as="p" className="mt-2 text-[14px] leading-relaxed text-slate-500">
                     {currentUser?.bio || 'Chưa có tiểu sử giới thiệu.'}
                   </ThemedText>
-                  <div className="mt-6 grid grid-cols-2 gap-4">
-                    <div className="rounded-[24px] bg-slate-50 p-4 border border-slate-100">
+                  <div className="mt-5 grid grid-cols-2 gap-3">
+                    <div className="rounded-[20px] bg-slate-50 p-4 border border-slate-100">
                       <ThemedText as="p" className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Followers</ThemedText>
-                      <ThemedText as="p" className="mt-1 text-[19px] font-bold text-slate-950">0</ThemedText>
+                      <ThemedText as="p" className="mt-1 text-[22px] font-bold text-slate-950">0</ThemedText>
                     </div>
-                    <div className="rounded-[24px] bg-slate-50 p-4 border border-slate-100">
+                    <div className="rounded-[20px] bg-slate-50 p-4 border border-slate-100">
                       <ThemedText as="p" className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Posts</ThemedText>
-                      <ThemedText as="p" className="mt-1 text-[19px] font-bold text-slate-950">{userPostCount}</ThemedText>
+                      <ThemedText as="p" className="mt-1 text-[22px] font-bold text-slate-950">{userPostCount}</ThemedText>
                     </div>
                   </div>
-                  <div className="mt-6 grid grid-cols-2 gap-3">
-                    <Link className="rounded-[20px] bg-slate-950 px-4 py-4 text-center text-[15px] font-bold !text-white hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-950/10" href={ROUTES.profile}>
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <Link className="rounded-[18px] bg-slate-950 px-4 py-3.5 text-center text-[14px] font-bold !text-white hover:bg-slate-800 transition-all active:scale-95" href={ROUTES.profile}>
                       View profile
                     </Link>
-                    <Link href="/profile/edit" className="rounded-[20px] bg-slate-50 px-4 py-4 text-center text-[15px] font-bold text-slate-900 border border-slate-100 hover:bg-slate-100 transition-all active:scale-95">
+                    <Link href="/profile/edit" className="rounded-[18px] bg-slate-50 px-4 py-3.5 text-center text-[14px] font-bold text-slate-900 border border-slate-100 hover:bg-slate-100 transition-all active:scale-95">
                       Edit profile
                     </Link>
+                  </div>
+
+                  <div className="mt-5 border-t border-slate-100 pt-4 space-y-1">
+                    <ThemedText as="p" className="mb-3 text-[11px] font-bold text-slate-400 uppercase tracking-[0.15em]">Shortcuts</ThemedText>
+                    {shortcuts.map((item) => (
+                      <div key={item.label} className="flex items-center gap-3 rounded-[16px] px-3 py-2.5 hover:bg-slate-50 transition-colors cursor-pointer group">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-slate-100 text-slate-500 group-hover:bg-[#EAF4FB] group-hover:text-[#4A9FD8] transition-colors">
+                          <span className="material-icons text-[18px]">{item.icon}</span>
+                        </div>
+                        <ThemedText as="p" className="text-[14px] font-semibold text-slate-700 group-hover:text-slate-900 transition-colors">{item.label}</ThemedText>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </section>
@@ -185,15 +186,15 @@ export function HomeFeed() {
 
               <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
                 {stories.map((item) => (
-                  <div key={item.id} className={`${item.fill} min-w-[180px] cursor-pointer hover:opacity-95 transition-opacity overflow-hidden rounded-[28px] p-5 shadow-sm`}>
+                  <div key={item.id} className={`${item.fill} relative min-w-[180px] h-[210px] cursor-pointer hover:opacity-95 transition-opacity overflow-hidden rounded-[28px] p-5 shadow-sm flex-shrink-0`}>
                     <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-white/20 text-white">
                       <ThemedText as="span" className="text-xs font-bold">{item.initials}</ThemedText>
                     </div>
-                    <div className="mt-28 space-y-1 relative z-10">
+                    <div className="absolute bottom-5 left-5 right-5 space-y-1">
                       <ThemedText as="p" className="text-[17px] font-bold text-white tracking-tight leading-tight">{item.title}</ThemedText>
                       <ThemedText as="p" className="text-[12px] font-bold text-white/70 uppercase tracking-wider">{item.time}</ThemedText>
                     </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
                   </div>
                 ))}
               </div>

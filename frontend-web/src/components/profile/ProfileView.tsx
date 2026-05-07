@@ -27,11 +27,6 @@ const featuredMedia = [
   { id: '2', title: 'Northfeed launch board', subtitle: 'Signals, rituals, and release checkpoints shaped for distributed teams.', fillClassName: 'bg-[#EEE8FF]' },
 ];
 
-<<<<<<< Updated upstream
-=======
-// Xóa recentPosts vì không dùng
-
->>>>>>> Stashed changes
 type ProfileSnapshot = {
   id: string;
   name: string;
@@ -133,10 +128,7 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
   }, [selectedUser]);
 
   const profile = useMemo(() => buildProfileViewModel(user, selectedUser), [selectedUser, user]);
-<<<<<<< Updated upstream
-=======
 
->>>>>>> Stashed changes
   const handleSaveIntro = async () => {
     setIsSavingIntro(true);
     try {
@@ -161,10 +153,7 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
     setIsEditingIntro(false);
   };
 
-<<<<<<< Updated upstream
 
-=======
->>>>>>> Stashed changes
   useEffect(() => {
     if (!isSelectedUserProfile || selectedUserId === null || Number.isNaN(selectedUserId)) {
       return;
@@ -228,17 +217,17 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
     <ProtectedPage>
       <main className="min-h-screen bg-[#F8FAFC] pb-8">
         {selectedPostId && (
-            <PostDetailModal 
-                postId={selectedPostId}
-                onClose={() => setSelectedPostId(null)}
-                currentUser={user}
-            />
+          <PostDetailModal
+            postId={selectedPostId}
+            onClose={() => setSelectedPostId(null)}
+            currentUser={user}
+          />
         )}
         <div className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-4 md:px-6">
           {/* Back header */}
           <div className="mt-4 flex items-center gap-3 rounded-[28px] border border-[#E4E8EE] bg-white px-5 py-4">
-            <Link 
-              href="/" 
+            <Link
+              href="/"
               className="flex h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA] text-slate-900 hover:bg-slate-100 transition-colors"
             >
               <span className="material-icons">arrow_back</span>
@@ -308,17 +297,10 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
               </div>
               <div className="mt-6 flex flex-wrap gap-3">
                 {tabs.map((tab) => (
-<<<<<<< Updated upstream
-                  <button 
-                    key={tab.key} 
-                    className={`flex min-w-[112px] items-center justify-center gap-2 rounded-[20px] px-6 py-4 text-base font-medium transition-colors ${activeTab === tab.key ? 'bg-[#0A0A0A] !text-white' : 'bg-[#F7F8FA] text-slate-900 hover:bg-slate-200'}`} 
-                    onClick={() => setActiveTab(tab.key)} 
-=======
                   <button
                     key={tab.key}
-                    className={`min-w-[112px] rounded-[20px] px-4 py-4 text-base font-medium transition-colors ${activeTab === tab.key ? 'bg-[#0A0A0A] !text-white' : 'bg-[#F7F8FA] text-slate-900 hover:bg-slate-200'}`}
+                    className={`flex min-w-[112px] items-center justify-center gap-2 rounded-[20px] px-6 py-4 text-base font-medium transition-colors ${activeTab === tab.key ? 'bg-[#0A0A0A] !text-white' : 'bg-[#F7F8FA] text-slate-900 hover:bg-slate-200'}`}
                     onClick={() => setActiveTab(tab.key)}
->>>>>>> Stashed changes
                     type="button"
                   >
                     <span className="material-icons text-[20px]">{tab.icon}</span>
@@ -429,11 +411,11 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
                   ) : (
                     <div className="space-y-4">
                       {posts.map((item) => (
-                        <FeedPost 
-                            key={item.id} 
-                            item={item} 
-                            currentUser={user} 
-                            onPostClick={(id) => setSelectedPostId(id)}
+                        <FeedPost
+                          key={item.id}
+                          item={item}
+                          currentUser={user}
+                          onPostClick={(id) => setSelectedPostId(id)}
                         />
                       ))}
                     </div>

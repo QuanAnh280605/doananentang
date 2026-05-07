@@ -1,12 +1,26 @@
 @import 'tailwindcss';
 
 :root {
+  color-scheme: light;
   --background: #f4f8ff;
   --foreground: #0f172a;
   --surface: #ffffff;
   --surface-muted: #eef4ff;
   --border-soft: rgba(148, 163, 184, 0.24);
   --ring-soft: rgba(56, 189, 248, 0.28);
+}
+
+/* Ép luôn dùng light mode, không theo system dark mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: light;
+    --background: #f4f8ff;
+    --foreground: #0f172a;
+    --surface: #ffffff;
+    --surface-muted: #eef4ff;
+    --border-soft: rgba(148, 163, 184, 0.24);
+    --ring-soft: rgba(56, 189, 248, 0.28);
+  }
 }
 
 @theme inline {
