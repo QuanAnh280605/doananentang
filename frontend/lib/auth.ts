@@ -160,12 +160,15 @@ export async function fetchCurrentUser(): Promise<AuthUser> {
   return apiFetch<AuthUser>('/api/auth/me');
 }
 
-export async function searchUsers(query: string, limit = 20): Promise<SearchUser[]> {
+import type { PaginatedUsers } from './types';
+
+export async function searchUsers(query: string, page = 1, pageSize = 20): Promise<PaginatedUsers<SearchUser>> {
   const params = new URLSearchParams({
     q: query,
-    limit: String(limit),
+    page: String(page),
+    page_size: String(pageSize),
   });
-  return apiFetch<SearchUser[]>(`/api/users/search?${params}`);
+  return apiFetch<PaginatedUsers<SearchUser>>(`/api/users/search?${params}`);
 }
 
 export async function fetchFollowStatus(userId: number): Promise<FollowStatus> {

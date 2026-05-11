@@ -405,3 +405,12 @@ export function unlikeComment(commentId: string): Promise<{ is_liked: boolean; l
     method: 'DELETE',
   });
 }
+
+export function searchPosts(query: string, page = 1, pageSize = 10): Promise<PaginatedPosts> {
+  const params = new URLSearchParams({
+    q: query,
+    page: String(page),
+    page_size: String(pageSize),
+  });
+  return apiFetch<PaginatedPosts>(`/api/posts?${params}`);
+}

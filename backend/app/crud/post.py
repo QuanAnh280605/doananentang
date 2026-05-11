@@ -69,6 +69,7 @@ def get_posts(
   sort_order: Literal['asc', 'desc'] = 'desc',
   current_user_id: int | None = None,
   author_id: int | None = None,
+  q: str | None = None,
 ) -> dict:
   """Lấy danh sách bài viết có phân trang + sắp xếp + stats"""
 
@@ -76,6 +77,9 @@ def get_posts(
   query = db.query(Post).filter(Post.is_deleted == False)
   if author_id is not None:
     query = query.filter(Post.author_id == author_id)
+  
+  if q is not None and q.strip():
+    query = query.filter(Post.content.ilike(f'%{q.strip()}%'))
 
   # Tính tổng số bài viết (không bị xóa mềm)
   total = query.with_entities(func.count(Post.id)).scalar() or 0

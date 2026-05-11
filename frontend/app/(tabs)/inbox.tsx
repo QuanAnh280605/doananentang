@@ -159,7 +159,7 @@ export default function InboxScreen() {
               subtitle="Priority threads and recent updates"
               className={useViewportLayout ? 'h-full' : ''}
               contentClassName={useViewportLayout ? 'min-h-0 flex-1' : ''}>
-              <SearchInput onChangeText={setInboxSearchQuery} placeholder="Search users" value={inboxSearchQuery} />
+              <SearchInput onChangeText={setInboxSearchQuery} placeholder="Search" value={inboxSearchQuery} />
 
               <ScrollView
                 className={useViewportLayout ? 'min-h-0 flex-1' : ''}

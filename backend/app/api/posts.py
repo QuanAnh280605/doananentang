@@ -90,6 +90,7 @@ def list_posts(
   sort_by: Literal['created_at', 'updated_at'] = Query('created_at', description="Sắp xếp theo"),
   sort_order: Literal['asc', 'desc'] = Query('desc', description="Thứ tự sắp xếp"),
   author_id: int | None = Query(None, description="Lọc bài viết theo ID tác giả"),
+  q: str | None = Query(None, description="Từ khóa tìm kiếm theo nội dung"),
   db: Session = Depends(get_db),
   current_user: User | None = Depends(get_current_user_optional),
 ):
@@ -101,7 +102,8 @@ def list_posts(
     sort_by=sort_by, 
     sort_order=sort_order,
     current_user_id=current_user.id if current_user else None,
-    author_id=author_id
+    author_id=author_id,
+    q=q
   )
   return result
 

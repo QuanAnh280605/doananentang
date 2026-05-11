@@ -305,7 +305,7 @@ export default function HomeScreen() {
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerClassName="pb-8">
         <View className="mx-auto w-full max-w-[1720px] px-4 pb-6 pt-4 md:px-6">
-          <AppTopNav isTablet={isTablet} searchPlaceholder="Search users" avatarUrl={currentUser?.avatar_url}
+          <AppTopNav isTablet={isTablet} searchPlaceholder="Search" avatarUrl={currentUser?.avatar_url}
             avatarInitials={currentUser ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase() : 'LE'}
           />
 
