@@ -1,9 +1,9 @@
 'use client';
 
+import { ArrowBendUpLeft, ArrowLeft, ChatCircleDots, DotsThree, PaperPlaneTilt, ShareNetwork, ThumbsUp, Trash, WarningCircle, X } from '@phosphor-icons/react';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ProtectedPage } from '@/components/app/ProtectedPage';
-import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/ui/ThemedText';
 import { ROUTES } from '@/lib/routes';
 import { fetchPostDetail, fetchPostComments, createComment, deleteComment, likeComment, unlikeComment, deletePost, likePost, unlikePost, API_URL } from '@/lib/api';
@@ -103,14 +103,14 @@ function CommentItem({
               onClick={handleLike} 
               className={`flex items-center gap-1 text-xs font-medium transition-opacity hover:opacity-70 active:opacity-60 ${isLiked ? 'text-[#4A9FD8]' : 'text-slate-500'}`}
             >
-              <span className="material-icons text-[14px]">{isLiked ? 'thumb_up' : 'thumb_up_off_alt'}</span>
+              <ThumbsUp size={14} weight={isLiked ? 'fill' : 'regular'} />
               <span>{likeCount > 0 ? `${likeCount} Thích` : 'Thích'}</span>
             </button>
             <button 
               onClick={() => onReply(comment)} 
               className="flex items-center gap-1 text-xs font-medium text-slate-500 transition-opacity hover:opacity-70 active:opacity-60"
             >
-              <span className="material-icons text-[14px]">reply</span>
+              <ArrowBendUpLeft size={14} weight="regular" />
               Trả lời
             </button>
             {canDelete && (
@@ -118,7 +118,7 @@ function CommentItem({
                 onClick={() => onDelete(comment.id)} 
                 className="flex items-center gap-1 text-xs font-medium text-[#D05B5B] transition-opacity hover:opacity-70 active:opacity-60"
               >
-                <span className="material-icons text-[14px]">delete_outline</span>
+                <Trash size={14} weight="regular" />
                 Xóa
               </button>
             )}
@@ -259,7 +259,7 @@ export default function PostDetailPage() {
   if (!post) return (
     <ProtectedPage>
       <div className="flex h-screen flex-col items-center justify-center bg-[#EDF1F5] gap-4">
-        <span className="material-icons text-slate-300 text-[64px]">error_outline</span>
+        <WarningCircle className="text-slate-300" size={64} weight="regular" />
         <ThemedText as="p" className="text-xl font-semibold text-slate-900">Không tìm thấy bài viết</ThemedText>
         <Link href={ROUTES.home} className="rounded-2xl bg-[#0A0A0A] px-6 py-3 text-white font-medium">Quay lại trang chủ</Link>
       </div>
@@ -286,7 +286,7 @@ export default function PostDetailPage() {
                 onClick={() => router.back()} 
                 className="flex h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA] text-slate-900 hover:bg-slate-100 transition-colors"
               >
-                <span className="material-icons">arrow_back</span>
+                <ArrowLeft size={20} weight="bold" />
               </button>
               <div className="flex flex-col">
                 <ThemedText as="h1" className="text-base font-bold text-slate-950">Bài viết</ThemedText>
@@ -311,7 +311,7 @@ export default function PostDetailPage() {
                   onClick={() => setShowMenu(!showMenu)} 
                   className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#F7F8FA] text-[#666666] hover:bg-slate-100 transition-colors"
                 >
-                  <span className="material-icons">{showMenu ? 'close' : 'more_horiz'}</span>
+                  {showMenu ? <X size={20} weight="bold" /> : <DotsThree size={20} weight="bold" />}
                 </button>
                 
                 {showMenu && (
@@ -354,7 +354,7 @@ export default function PostDetailPage() {
             <div className="mt-6 flex items-center justify-between border-b border-[#E4E8EE] pb-4">
               <div className="flex items-center gap-2">
                 <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#4A9FD8] text-white">
-                  <span className="material-icons text-[14px]">thumb_up</span>
+                  <ThumbsUp size={14} weight="fill" />
                 </div>
                 <ThemedText as="p" className="text-sm font-medium text-slate-600">
                   {likeCount > 0 ? `${likeCount} lượt thích` : 'Chưa có lượt thích'}
@@ -372,7 +372,7 @@ export default function PostDetailPage() {
                 disabled={togglingLike}
                 className={`flex flex-1 min-w-[130px] items-center justify-center gap-2 rounded-[20px] px-4 py-4 transition-colors ${liked ? 'bg-[#EAF4FB] text-[#4A9FD8]' : 'bg-[#F7F8FA] text-slate-600 hover:bg-slate-100'}`}
               >
-                <span className="material-icons text-[20px]">{liked ? 'thumb_up' : 'thumb_up_off_alt'}</span>
+                <ThumbsUp size={20} weight={liked ? 'fill' : 'regular'} />
                 <span className="text-base font-medium">{liked ? 'Liked' : 'Like'}</span>
               </button>
 
@@ -380,7 +380,7 @@ export default function PostDetailPage() {
                 onClick={() => document.getElementById('comment-input')?.focus()}
                 className="flex flex-1 min-w-[130px] items-center justify-center gap-2 rounded-[20px] bg-[#F7F8FA] px-4 py-4 text-slate-600 hover:bg-slate-100 transition-colors"
               >
-                <span className="material-icons text-[20px]">chat_bubble_outline</span>
+                <ChatCircleDots size={20} weight="regular" />
                 <span className="text-base font-medium">Comment</span>
               </button>
 
@@ -388,7 +388,7 @@ export default function PostDetailPage() {
                 onClick={handleShare}
                 className="flex flex-1 min-w-[130px] items-center justify-center gap-2 rounded-[20px] bg-[#F7F8FA] px-4 py-4 text-slate-600 hover:bg-slate-100 transition-colors"
               >
-                <span className="material-icons text-[20px]">reply</span>
+                <ShareNetwork size={20} weight="regular" />
                 <span className="text-base font-medium">Share</span>
               </button>
             </div>
@@ -402,7 +402,7 @@ export default function PostDetailPage() {
               </div>
               {comments.length === 0 ? (
               <div className={`${surfaceClass} flex flex-col items-center p-8`}>
-                <span className="material-icons text-[28px] text-[#94A3B8]">chat_bubble_outline</span>
+                <ChatCircleDots className="text-[#94A3B8]" size={28} weight="regular" />
                 <ThemedText as="p" className="mt-3 text-center text-sm text-slate-500">
                   Chưa có bình luận. Hãy là người đầu tiên!
                 </ThemedText>
@@ -430,7 +430,7 @@ export default function PostDetailPage() {
                       Đang trả lời {replyTo.author.first_name}
                     </ThemedText>
                     <button onClick={() => setReplyTo(null)} className="text-slate-400 hover:text-slate-600">
-                      <span className="material-icons text-[18px]">close</span>
+                      <X size={18} weight="bold" />
                     </button>
                   </div>
                 )}
@@ -453,7 +453,7 @@ export default function PostDetailPage() {
                     {isSubmitting ? (
                       <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
                     ) : (
-                      <span className="material-icons">send</span>
+                      <PaperPlaneTilt size={20} weight="fill" />
                     )}
                   </button>
                 </div>
@@ -469,7 +469,7 @@ export default function PostDetailPage() {
                 Đang trả lời <span className="font-semibold text-slate-900">{replyTo.author.first_name}</span>
               </ThemedText>
               <button onClick={() => setReplyTo(null)} className="flex h-6 w-6 items-center justify-center text-[#94A3B8] transition-colors hover:text-slate-600">
-                <span className="material-icons text-[16px]">close</span>
+                <X size={16} weight="bold" />
               </button>
             </div>
           )}
@@ -486,7 +486,7 @@ export default function PostDetailPage() {
               }}
               disabled={isSubmitting}
               placeholder="Viết bình luận..."
-              className="no-focus-ring min-h-11 flex-1 rounded-[22px] border border-transparent bg-[#F7F8FA] px-5 py-3 text-base text-slate-900 outline-none placeholder:text-[#94A3B8] transition-colors focus:border-slate-200 focus:outline-none focus:shadow-none focus:ring-0 [box-shadow:none!important] [outline:none!important]"
+              className="no-focus-ring min-h-11 flex-1 rounded-[22px] border border-transparent bg-[#F7F8FA] px-5 py-3 text-base text-slate-900 outline-none placeholder:text-[#94A3B8] transition-colors focus:border-transparent focus:outline-none focus:shadow-none focus:ring-0 focus-visible:border-transparent focus-visible:outline-none focus-visible:ring-0 [box-shadow:none!important] [outline:none!important]"
             />
             <button
               onClick={handlePostComment}
@@ -496,7 +496,7 @@ export default function PostDetailPage() {
               {isSubmitting ? (
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#94A3B8] border-t-transparent" />
               ) : (
-                <span className="material-icons text-[20px]">send</span>
+                <PaperPlaneTilt size={20} weight="fill" />
               )}
             </button>
           </div>

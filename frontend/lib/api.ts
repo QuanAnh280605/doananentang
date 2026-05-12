@@ -311,6 +311,60 @@ export function fetchHealth(): Promise<HealthResponse> {
   return apiFetch<HealthResponse>('/api/health');
 }
 
+// ─── Users / Social API ───────────────────────────────────────
+
+export type FollowUser = {
+  id: number;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  avatar_url: string | null;
+  bio: string | null;
+  is_following: boolean;
+};
+
+export type PaginatedFollowUsersResponse = {
+  items: FollowUser[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+};
+
+export function fetchFollowingUsers(userId: number, page = 1, pageSize = 4): Promise<PaginatedFollowUsersResponse> {
+  return apiFetch<PaginatedFollowUsersResponse>(`/api/users/${userId}/following?page=${page}&page_size=${pageSize}`);
+}
+
+// ─── Chats API ────────────────────────────────────────────────
+
+export type ChatParticipant = {
+  id: number;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  avatar_url: string | null;
+  bio: string | null;
+};
+
+export type ChatMessageRead = {
+  id: number;
+  chat_id: number;
+  sender_id: number;
+  content: string;
+  created_at: string;
+};
+
+export type ChatListItem = {
+  chat_id: number;
+  participant: ChatParticipant;
+  latest_message: ChatMessageRead | null;
+  updated_at: string;
+};
+
+export function listDirectChats(): Promise<ChatListItem[]> {
+  return apiFetch<ChatListItem[]>('/api/chats');
+}
+
 // ─── Posts API ────────────────────────────────────────────────
 
 export function fetchPosts(page = 1, pageSize = 10, authorId?: string | number): Promise<PaginatedPosts> {

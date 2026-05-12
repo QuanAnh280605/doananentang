@@ -1,5 +1,6 @@
 'use client';
 
+import { Gif, GlobeHemisphereWest, ImageSquare, MapPin, Smiley, UserPlus, VideoCamera, X, DotsThree } from '@phosphor-icons/react';
 import { useState, useRef, useEffect } from 'react';
 import { createPost, uploadPostMedia, API_URL } from '@/lib/api';
 import type { AuthUser } from '@/lib/auth';
@@ -105,7 +106,7 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
                     </div>
                     <div className="flex gap-2">
                         <button className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-slate-50 text-[#41A36D] hover:bg-[#EAFBF0] hover:text-[#2E7D51] transition-all active:scale-90">
-                            <span className="material-icons text-[22px]">image</span>
+                            <ImageSquare size={22} weight="regular" />
                         </button>
                     </div>
                 </div>
@@ -133,7 +134,7 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
                                 onClick={() => setIsFocused(false)}
                                 className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200"
                             >
-                                <span className="material-icons text-[20px]">close</span>
+                                <X size={20} weight="bold" />
                             </button>
                         </div>
 
@@ -146,7 +147,7 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
                                         {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : 'Người dùng'}
                                     </ThemedText>
                                     <div className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                                        <span className="material-icons text-[13px]">public</span>
+                                        <GlobeHemisphereWest size={13} weight="regular" />
                                         Công khai
                                     </div>
                                 </div>
@@ -172,7 +173,7 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
                                         onClick={() => { setSelectedImage(null); setSelectedFile(null); }}
                                         className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
                                     >
-                                        <span className="material-icons text-[18px]">close</span>
+                                        <X size={18} weight="bold" />
                                     </button>
                                 </div>
                             )}
@@ -195,18 +196,18 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
                                             onClick={handlePickPhoto}
                                             className="flex h-10 px-3 items-center gap-2 rounded-xl hover:bg-slate-100 text-[#41A36D] transition-colors"
                                         >
-                                            <span className="material-icons text-[22px]">image</span>
+                                            <ImageSquare size={22} weight="regular" />
                                             <ThemedText as="span" className="text-[13px] font-bold text-slate-700">Ảnh</ThemedText>
                                         </button>
                                         <button className="flex h-10 px-3 items-center gap-2 rounded-xl hover:bg-slate-100 text-[#D05B5B] transition-colors">
-                                            <span className="material-icons text-[22px]">videocam</span>
+                                            <VideoCamera size={22} weight="regular" />
                                             <ThemedText as="span" className="text-[13px] font-bold text-slate-700">Video</ThemedText>
                                         </button>
                                         <button
                                             onClick={() => setShowMoreOptions(!showMoreOptions)}
                                             className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${showMoreOptions ? 'bg-slate-200 text-slate-900' : 'hover:bg-slate-100 text-slate-500'}`}
                                         >
-                                            <span className="material-icons">more_horiz</span>
+                                            <DotsThree size={20} weight="bold" />
                                         </button>
                                     </div>
                                 </div>
@@ -214,19 +215,19 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
                                 {showMoreOptions && (
                                     <div className="mt-2 grid grid-cols-2 gap-2 border-t border-slate-100 pt-2 animate-in slide-in-from-top-2 duration-200">
                                         <button className="flex items-center gap-2 rounded-xl p-2 hover:bg-slate-100 transition-colors">
-                                            <span className="material-icons text-[#F02849]">location_on</span>
+                                            <MapPin className="text-[#F02849]" size={20} weight="fill" />
                                             <ThemedText as="span" className="text-[13px] font-medium text-slate-700">Check in</ThemedText>
                                         </button>
                                         <button className="flex items-center gap-2 rounded-xl p-2 hover:bg-slate-100 transition-colors">
-                                            <span className="material-icons text-[#F9A825]">emoji_emotions</span>
+                                            <Smiley className="text-[#F9A825]" size={20} weight="fill" />
                                             <ThemedText as="span" className="text-[13px] font-medium text-slate-700">Cảm xúc</ThemedText>
                                         </button>
                                         <button className="flex items-center gap-2 rounded-xl p-2 hover:bg-slate-100 transition-colors">
-                                            <span className="material-icons text-[#1877F2]">person_add</span>
+                                            <UserPlus className="text-[#1877F2]" size={20} weight="regular" />
                                             <ThemedText as="span" className="text-[13px] font-medium text-slate-700">Gắn thẻ</ThemedText>
                                         </button>
                                         <button className="flex items-center gap-2 rounded-xl p-2 hover:bg-slate-100 transition-colors">
-                                            <span className="material-icons text-[#2ABBA7]">gif_box</span>
+                                            <Gif className="text-[#2ABBA7]" size={20} weight="fill" />
                                             <ThemedText as="span" className="text-[13px] font-medium text-slate-700">File GIF</ThemedText>
                                         </button>
                                     </div>

@@ -1,5 +1,8 @@
 'use client';
 
+import type { ComponentType } from 'react';
+
+import { Article, EnvelopeSimple, Images, MapPin, SquaresFour, User } from '@phosphor-icons/react';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 
@@ -10,16 +13,18 @@ import { ThemedText } from '@/components/ui/ThemedText';
 import { fetchCurrentUser, updateUserProfile, fetchFollowStatus, followUser, type AuthUser, type FollowStatus, unfollowUser } from '@/lib/auth';
 import { FeedPost } from '@/components/post/FeedPost';
 import { PostDetailModal } from '@/components/post/PostDetailModal';
-import { fetchPosts, deletePost, resolveAvatarUrl } from '@/lib/api';
+import { fetchPosts, resolveAvatarUrl } from '@/lib/api';
 import type { Post } from '@/lib/types';
 import { FollowListModal } from '@/components/profile/FollowListModal';
 
 type ProfileTab = 'posts' | 'about' | 'media';
 
-const tabs: { key: ProfileTab; label: string; icon: string }[] = [
-  { key: 'posts', label: 'Posts', icon: 'grid_view' },
-  { key: 'about', label: 'About', icon: 'person_outline' },
-  { key: 'media', label: 'Media', icon: 'photo_library' },
+type IconComponent = ComponentType<{ className?: string; size?: number; weight?: 'thin' | 'light' | 'regular' | 'bold' | 'fill' | 'duotone' }>;
+
+const tabs: { key: ProfileTab; label: string; Icon: IconComponent }[] = [
+  { key: 'posts', label: 'Posts', Icon: SquaresFour },
+  { key: 'about', label: 'About', Icon: User },
+  { key: 'media', label: 'Media', Icon: Images },
 ];
 
 const featuredMedia = [
@@ -224,16 +229,7 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
           />
         )}
         <div className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-4 md:px-6">
-          {/* Back header */}
-          <div className="mt-4 flex items-center gap-3 rounded-[28px] border border-[#E4E8EE] bg-white px-5 py-4">
-            <Link
-              href="/"
-              className="flex h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA] text-slate-900 hover:bg-slate-100 transition-colors"
-            >
-              <span className="material-icons">arrow_back</span>
-            </Link>
-            <ThemedText as="h1" className="text-lg font-semibold text-slate-900">Profile</ThemedText>
-          </div>
+          <AppTopNav searchPlaceholder="Search users" currentUser={user} />
 
           <section className={`${surfaceClass} mt-4 overflow-hidden`}>
             <div className="h-[210px] bg-[#D9ECF8]" />
@@ -303,7 +299,7 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
                     onClick={() => setActiveTab(tab.key)}
                     type="button"
                   >
-                    <span className="material-icons text-[20px]">{tab.icon}</span>
+                    <tab.Icon size={20} weight={activeTab === tab.key ? 'fill' : 'regular'} />
                     {tab.label}
                   </button>
                 ))}
@@ -373,12 +369,12 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
                     )}
                     <div className="mt-4 space-y-3">
                       {[
-                        { icon: 'mail', value: profile.email },
-                        { icon: 'location_on', value: profile.location },
+                        { Icon: EnvelopeSimple, value: profile.email },
+                        { Icon: MapPin, value: profile.location },
                       ].filter(item => !!item.value).map((item) => (
-                        <div key={item.icon} className="flex items-center gap-3">
+                        <div key={item.value} className="flex items-center gap-3">
                           <div className="flex h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA]">
-                            <span className="material-icons text-[20px] text-slate-500">{item.icon}</span>
+                            <item.Icon className="text-slate-500" size={20} weight="regular" />
                           </div>
                           <ThemedText className="flex-1 truncate text-base font-medium text-slate-800">{item.value}</ThemedText>
                         </div>
@@ -405,7 +401,7 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
                     </div>
                   ) : posts.length === 0 ? (
                     <div className="flex flex-col items-center justify-center p-12 bg-white rounded-[28px] border border-[#E4E8EE]">
-                      <span className="material-icons text-slate-300 text-[48px]">article</span>
+                      <Article className="text-slate-300" size={48} weight="regular" />
                       <ThemedText as="p" className="mt-4 text-slate-500 font-medium">Chưa có bài viết nào</ThemedText>
                     </div>
                   ) : (

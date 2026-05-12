@@ -32,9 +32,6 @@ export default function RootLayout({
       style={{ colorScheme: 'light' }}
       suppressHydrationWarning
     >
-      <head>
-        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-      </head>
       <body suppressHydrationWarning className="min-h-full bg-[var(--background)] text-[var(--foreground)]">
         <AppProviders>{children}</AppProviders>
       </body>

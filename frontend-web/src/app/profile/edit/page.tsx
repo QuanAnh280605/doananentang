@@ -369,16 +369,7 @@ export default function EditProfilePage() {
     <ProtectedPage>
       <main className="min-h-screen bg-[#F8FAFC] pb-8">
         <div className="mx-auto w-full max-w-[1720px] space-y-4 px-4 pb-6 pt-4 md:px-6">
-          {/* Back header */}
-          <div className="flex items-center gap-3 rounded-[28px] border border-[#E4E8EE] bg-white px-5 py-4 mb-4">
-            <button
-              onClick={() => window.history.back()}
-              className="flex h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA] transition-opacity hover:opacity-80"
-            >
-              <span className="text-lg">←</span>
-            </button>
-            <ThemedText as="h1" className="text-lg font-semibold text-slate-900">Edit profile</ThemedText>
-          </div>
+          <AppTopNav searchPlaceholder="Search users" currentUser={user} />
 
           {/* Main 2-col layout */}
           <form onSubmit={handleSave}>

@@ -1,3 +1,6 @@
+import type { ComponentType } from 'react';
+
+import { Aperture, Bell, EnvelopeSimple, SquaresFour } from '@phosphor-icons/react';
 import { useGlobalSearch } from '@/components/search/GlobalSearchProvider';
 import Link from 'next/link';
 
@@ -15,20 +18,22 @@ type AppTopNavProps = {
   currentUser?: AuthUser | null;
 };
 
-function IconBubble({ icon, href, label }: { icon: string; href?: string; label: string }) {
+type IconComponent = ComponentType<{ className?: string; size?: number; weight?: 'thin' | 'light' | 'regular' | 'bold' | 'fill' | 'duotone' }>;
+
+function IconBubble({ icon: Icon, href, label }: { icon: IconComponent; href?: string; label: string }) {
   const className = 'flex h-11 w-11 items-center justify-center rounded-[14px] bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900 active:scale-90 transition-all duration-200 cursor-pointer';
 
   if (href) {
     return (
       <Link aria-label={label} className={className} href={href}>
-        <span className="material-icons text-[20px]">{icon}</span>
+        <Icon size={20} weight="regular" />
       </Link>
     );
   }
 
   return (
     <button aria-label={label} className={className} type="button">
-      <span className="material-icons text-[20px]">{icon}</span>
+      <Icon size={20} weight="regular" />
     </button>
   );
 }
@@ -72,7 +77,7 @@ export function AppTopNav({
           {/* Logo Area */}
           <Link href="/" className="flex items-center gap-3.5 group">
             <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-slate-950 text-white shadow-lg shadow-slate-950/20 group-hover:scale-105 transition-transform duration-300">
-              <span className="material-icons text-[20px]">filter_tilt_shift</span>
+              <Aperture size={20} weight="fill" />
             </div>
             <div className="flex flex-col">
               <ThemedText as="p" className="text-[22px] font-bold tracking-tight text-slate-950 leading-none">
@@ -95,9 +100,9 @@ export function AppTopNav({
 
         {/* Action Buttons & Avatar */}
         <div className="flex items-center gap-2.5">
-          <IconBubble href={ROUTES.inbox} icon="mail_outline" label="Open inbox" />
-          <IconBubble icon="notifications_none" label="Open notifications" />
-          <IconBubble icon="apps" label="Open apps" />
+          <IconBubble href={ROUTES.inbox} icon={EnvelopeSimple} label="Open inbox" />
+          <IconBubble icon={Bell} label="Open notifications" />
+          <IconBubble icon={SquaresFour} label="Open apps" />
           
           <Link href="/profile" className="ml-2 group">
             {avatarUrl ? (

@@ -1,5 +1,6 @@
 'use client';
 
+import { CaretRight, ChatCircleDots, DotsThree, GlobeHemisphereWest, ShareNetwork, ThumbsUp, Trash, WarningCircle, X } from '@phosphor-icons/react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { API_URL, likePost, unlikePost, deletePost, resolveAvatarUrl } from '@/lib/api';
@@ -121,7 +122,7 @@ export function FeedPost({
                         <div className="flex items-center gap-2">
                             <ThemedText as="p" className="text-[13px] font-semibold text-slate-400">{timeAgo}</ThemedText>
                             <span className="h-1 w-1 rounded-full bg-slate-300" />
-                            <span className="material-icons text-[14px] text-slate-400">public</span>
+                            <GlobeHemisphereWest className="text-slate-400" size={14} weight="regular" />
                         </div>
                     </div>
                 </Link>
@@ -131,7 +132,7 @@ export function FeedPost({
                         onClick={() => setShowMenu(!showMenu)}
                         className="flex h-11 w-11 items-center justify-center rounded-[16px] bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-900 active:scale-90 transition-all duration-300"
                     >
-                        <span className="material-icons text-[24px]">{showMenu ? 'close' : 'more_horiz'}</span>
+                        {showMenu ? <X size={24} weight="bold" /> : <DotsThree size={24} weight="bold" />}
                     </button>
 
                     {showMenu && (
@@ -139,12 +140,12 @@ export function FeedPost({
                             <div className="p-2 space-y-1">
                                 {isAuthor && (
                                     <button onClick={handleDelete} className="flex w-full items-center gap-3.5 px-4 py-3.5 text-left text-[15px] font-bold text-red-500 hover:bg-red-50 rounded-[16px] transition-all">
-                                        <span className="material-icons text-[20px]">delete_outline</span>
+                                        <Trash size={20} weight="regular" />
                                         Xóa bài viết
                                     </button>
                                 )}
                                 <button onClick={() => setShowMenu(false)} className="flex w-full items-center gap-3.5 px-4 py-3.5 text-left text-[15px] font-bold text-slate-600 hover:bg-slate-50 rounded-[16px] transition-all">
-                                    <span className="material-icons text-[20px]">report</span>
+                                    <WarningCircle size={20} weight="regular" />
                                     Báo cáo nội dung
                                 </button>
                             </div>
@@ -182,7 +183,7 @@ export function FeedPost({
                     <div className="flex -space-x-2">
                         {count > 0 && (
                             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#4A9FD8] text-white ring-[3px] ring-white shadow-md z-[2] transition-transform group-hover/stats:scale-115 duration-300">
-                                <span className="material-icons text-[14px]">thumb_up</span>
+                                <ThumbsUp size={14} weight="fill" />
                             </div>
                         )}
                     </div>
@@ -202,7 +203,7 @@ export function FeedPost({
                     <ThemedText as="p" className="text-[14px] font-bold text-slate-500 group-hover/comments:text-slate-900 transition-colors">
                         {item.comment_count} bình luận
                     </ThemedText>
-                    <span className="material-icons text-[18px] text-slate-300 group-hover/comments:text-[#4A9FD8] transition-all">chevron_right</span>
+                    <CaretRight className="text-slate-300 group-hover/comments:text-[#4A9FD8] transition-all" size={18} weight="bold" />
                 </button>
             </div>
 
@@ -213,9 +214,7 @@ export function FeedPost({
                     disabled={loading}
                     className={`flex-1 flex items-center justify-center gap-3 rounded-[22px] px-5 py-4.5 transition-all duration-500 ${liked ? 'bg-[#EAF4FB] shadow-[0_8px_20px_-4px_rgba(74,159,216,0.15)]' : 'bg-[#F8FAFC] text-slate-500 hover:bg-slate-100 active:scale-[0.96]'}`}
                 >
-                    <span className={`material-icons text-[24px] ${liked ? 'text-[#4A9FD8] animate-bounce-short' : 'text-slate-400 group-hover/post:rotate-12 transition-transform'}`}>
-                        {liked ? 'thumb_up' : 'thumb_up_off_alt'}
-                    </span>
+                    <ThumbsUp className={` ${liked ? 'text-[#4A9FD8] animate-bounce-short' : 'text-slate-400 group-hover/post:rotate-12 transition-transform'}`} size={24} weight={liked ? 'fill' : 'regular'} />
                     <span className={`text-[16px] font-bold tracking-tight ${liked ? 'text-[#4A9FD8]' : 'text-slate-600'}`}>
                         Thích
                     </span>
@@ -225,7 +224,7 @@ export function FeedPost({
                     onClick={handleItemClick}
                     className="flex flex-1 items-center justify-center gap-3 rounded-[22px] bg-[#F8FAFC] px-5 py-4.5 text-slate-600 hover:bg-slate-100 active:scale-[0.96] transition-all duration-500"
                 >
-                    <span className="material-icons text-[24px] text-slate-400">chat_bubble_outline</span>
+                    <ChatCircleDots className="text-slate-400" size={24} weight="regular" />
                     <span className="text-[16px] font-bold tracking-tight">Bình luận</span>
                 </button>
 
@@ -233,7 +232,7 @@ export function FeedPost({
                     onClick={handleShare}
                     className="flex flex-1 items-center justify-center gap-3 rounded-[22px] bg-[#F8FAFC] px-5 py-4.5 text-slate-600 hover:bg-slate-100 active:scale-[0.96] transition-all duration-500"
                 >
-                    <span className="material-icons text-[24px]">shortcut</span>
+                    <ShareNetwork size={24} weight="regular" />
                     <span className="text-[16px] font-bold tracking-tight">Chia sẻ</span>
                 </button>
             </div>

@@ -1,6 +1,9 @@
 'use client';
 
 
+import type { ComponentType } from 'react';
+
+import { ArrowsClockwise, Article, BookmarkSimple, House } from '@phosphor-icons/react';
 import Link from 'next/link';
 import { useEffect, useState, useCallback } from 'react';
 
@@ -11,14 +14,18 @@ import { ComposerCard } from '@/components/post/ComposerCard';
 import { FeedPost } from '@/components/post/FeedPost';
 import { PostDetailModal } from '@/components/post/PostDetailModal';
 import { fetchPosts, resolveAvatarUrl } from '@/lib/api';
-import { fetchCurrentUser, type AuthUser } from '@/lib/auth';
+import { fetchCurrentUser, fetchFollowing, type AuthUser, type FollowUser } from '@/lib/auth';
+import { listDirectChats } from '@/lib/chat';
+import type { InboxThreadData } from '@/lib/chat.types';
 import { ROUTES } from '@/lib/routes';
 import type { Post } from '@/lib/types';
 
-const shortcuts = [
-  { label: 'Home', icon: 'home' },
-  { label: 'Saved sets', icon: 'bookmark_border' },
-  { label: 'Circle updates', icon: 'autorenew' },
+type IconComponent = ComponentType<{ className?: string; size?: number; weight?: 'thin' | 'light' | 'regular' | 'bold' | 'fill' | 'duotone' }>;
+
+const shortcuts: { label: string; Icon: IconComponent }[] = [
+  { label: 'Home', Icon: House },
+  { label: 'Saved sets', Icon: BookmarkSimple },
+  { label: 'Circle updates', Icon: ArrowsClockwise },
 ];
 
 const stories = [
@@ -27,12 +34,23 @@ const stories = [
   { id: '3', title: 'Client moodboard', time: 'Yesterday', fill: 'bg-[#F24822]', initials: 'KM' },
 ];
 
-const contacts = [
-  { id: 'am', name: 'Ari Mendoza', status: 'Editing new campaign', initials: 'AM', bio: 'Builds campaign systems and keeps launch assets moving.' },
-  { id: 'ne', name: 'Nadia Elsner', status: 'Reviewing typography', initials: 'NE', bio: 'Writes crisp product copy and organizes review-ready profile content.' },
-  { id: 'jt', name: 'Jules Tate', status: 'In Riverside Studio', initials: 'JT', bio: 'Supports studio sessions and visual coordination across teams.' },
-  { id: 'oy', name: 'Owen Ybarra', status: 'Exporting review clips', initials: 'OY', bio: 'Handles review exports, clips, and last-mile production polish.' },
-];
+function buildInitials(firstName?: string | null, lastName?: string | null): string {
+  return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase() || 'US';
+}
+
+function UserAvatar({ user, initials }: { user: { avatar_url: string | null }; initials: string }) {
+  const avatarUrl = resolveAvatarUrl(user.avatar_url);
+
+  if (avatarUrl) {
+    return <img src={avatarUrl} alt="Avatar" className="h-11 w-11 rounded-[14px] object-cover" />;
+  }
+
+  return (
+    <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-slate-50 text-slate-900 font-bold group-hover:bg-[#EAF4FB] transition-colors">
+      {initials}
+    </div>
+  );
+}
 
 const surfaceClass = 'rounded-[32px] border border-slate-200/60 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.02)]';
 
@@ -47,6 +65,130 @@ function SectionCard({ title, rightLabel, children }: { title: string; rightLabe
       </div>
       <div className="mt-5 space-y-3">{children}</div>
     </section>
+  );
+}
+
+function ContactRow({ item }: { item: FollowUser }) {
+  const initials = buildInitials(item.first_name, item.last_name);
+  const preview = item.bio?.trim() || 'Đang theo dõi';
+
+  return (
+    <Link
+      href={ROUTES.profileDetail(String(item.id), {
+        name: item.full_name,
+        initials,
+        preview,
+        bio: preview,
+      })}
+      className="flex items-center gap-4 rounded-[24px] border border-slate-100 bg-white p-4 transition-all duration-300 hover:border-slate-200 hover:shadow-md group"
+    >
+      <UserAvatar user={item} initials={initials} />
+      <div className="min-w-0 flex-1">
+        <ThemedText as="p" className="truncate text-[16px] font-bold tracking-tight text-slate-950">{item.full_name}</ThemedText>
+        <ThemedText as="p" className="truncate text-[13px] font-medium text-slate-400">{preview}</ThemedText>
+      </div>
+      <div className="h-2.5 w-2.5 rounded-full border-2 border-white bg-[#6FC18A] ring-1 ring-slate-100" />
+    </Link>
+  );
+}
+
+function MessengerRow({ item }: { item: InboxThreadData }) {
+  const initials = buildInitials(item.user.first_name, item.user.last_name);
+
+  return (
+    <Link
+      href={ROUTES.profileDetail(String(item.user.id), {
+        name: item.user.full_name,
+        initials,
+        preview: item.preview,
+        bio: item.user.bio?.trim() || item.preview,
+      })}
+      className="flex items-center gap-4 rounded-[24px] border border-slate-100 bg-white p-4 transition-all duration-300 hover:border-slate-200 hover:shadow-md group"
+    >
+      <UserAvatar user={item.user} initials={initials} />
+      <div className="min-w-0 flex-1">
+        <ThemedText as="p" className="truncate text-[16px] font-bold tracking-tight text-slate-950">{item.user.full_name}</ThemedText>
+        <ThemedText as="p" className="truncate text-[13px] font-medium text-slate-400">{item.preview}</ThemedText>
+      </div>
+    </Link>
+  );
+}
+
+function RightRail({ currentUser }: { currentUser: AuthUser | null }) {
+  const [contacts, setContacts] = useState<FollowUser[]>([]);
+  const [threads, setThreads] = useState<InboxThreadData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!currentUser) {
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    queueMicrotask(() => {
+      if (!isMounted) return;
+      setLoading(true);
+      setError(null);
+    });
+
+    void Promise.all([
+      fetchFollowing(currentUser.id, 1, 4),
+      listDirectChats(),
+    ])
+      .then(([followingResponse, directThreads]) => {
+        if (!isMounted) return;
+        setContacts(followingResponse.items);
+        setThreads(directThreads.slice(0, 3));
+      })
+      .catch((err: unknown) => {
+        if (!isMounted) return;
+        setError(err instanceof Error ? err.message : 'Không thể tải dữ liệu liên hệ');
+      })
+      .finally(() => {
+        if (isMounted) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser]);
+
+  return (
+    <div className="space-y-5">
+      <SectionCard title="Contacts" rightLabel={loading ? 'Loading' : `${contacts.length} following`}>
+        {loading ? (
+          <ThemedText as="p" className="text-[14px] font-medium text-slate-400">Đang tải liên hệ...</ThemedText>
+        ) : error ? (
+          <ThemedText as="p" className="text-[14px] font-medium text-red-500">{error}</ThemedText>
+        ) : contacts.length === 0 ? (
+          <ThemedText as="p" className="text-[14px] font-medium text-slate-400">Bạn chưa theo dõi ai.</ThemedText>
+        ) : (
+          contacts.map((item) => <ContactRow key={item.id} item={item} />)
+        )}
+      </SectionCard>
+
+      <SectionCard title="Messenger" rightLabel={loading ? 'Loading' : `${threads.length} threads`}>
+        {loading ? (
+          <ThemedText as="p" className="text-[14px] font-medium text-slate-400">Đang tải hội thoại...</ThemedText>
+        ) : error ? (
+          <ThemedText as="p" className="text-[14px] font-medium text-red-500">{error}</ThemedText>
+        ) : threads.length === 0 ? (
+          <ThemedText as="p" className="text-[14px] font-medium text-slate-400">Chưa có hội thoại nào.</ThemedText>
+        ) : (
+          threads.map((item) => <MessengerRow key={item.id} item={item} />)
+        )}
+
+        <Link href={ROUTES.inbox} className="mt-2 block rounded-[22px] bg-[#0A0A0A] px-5 py-4 text-center text-[14px] font-bold !text-white transition-all hover:bg-slate-800 active:scale-95">
+          Open inbox
+        </Link>
+      </SectionCard>
+    </div>
   );
 }
 
@@ -168,7 +310,7 @@ export function HomeFeed() {
                     {shortcuts.map((item) => (
                       <div key={item.label} className="flex items-center gap-3 rounded-[16px] px-3 py-2.5 hover:bg-slate-50 transition-colors cursor-pointer group">
                         <div className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-slate-100 text-slate-500 group-hover:bg-[#EAF4FB] group-hover:text-[#4A9FD8] transition-colors">
-                          <span className="material-icons text-[18px]">{item.icon}</span>
+                          <item.Icon size={18} weight="regular" />
                         </div>
                         <ThemedText as="p" className="text-[14px] font-semibold text-slate-700 group-hover:text-slate-900 transition-colors">{item.label}</ThemedText>
                       </div>
@@ -205,7 +347,7 @@ export function HomeFeed() {
               ) : posts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-16 bg-white rounded-[32px] border border-slate-200/60 shadow-sm">
                   <div className="h-20 w-20 flex items-center justify-center rounded-[28px] bg-slate-50 mb-6">
-                    <span className="material-icons text-slate-300 text-[36px]">article</span>
+                    <Article className="text-slate-300" size={36} weight="regular" />
                   </div>
                   <ThemedText as="p" className="text-slate-400 font-bold text-lg">No posts yet</ThemedText>
                   <ThemedText as="p" className="text-slate-400 text-sm mt-1">Start by sharing your first update!</ThemedText>
@@ -213,29 +355,19 @@ export function HomeFeed() {
               ) : (
                 <div className="space-y-4">
                   {posts.map((item) => (
-                    <FeedPost key={item.id} item={item} currentUser={currentUser} />
+                    <FeedPost
+                      key={item.id}
+                      item={item}
+                      currentUser={currentUser}
+                      onPostClick={(id) => setSelectedPostId(id)}
+                    />
                   ))}
                 </div>
               )}
             </div>
 
             {/* Right Rail */}
-            <div className="space-y-5">
-              <SectionCard title="Contacts" rightLabel="12 online">
-                {contacts.map((item) => (
-                  <div key={item.name} className="flex items-center gap-4 rounded-[24px] bg-white border border-slate-100 p-4 hover:border-slate-200 hover:shadow-md transition-all duration-300 cursor-pointer group">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-slate-50 text-slate-900 font-bold group-hover:bg-[#EAF4FB] transition-colors">
-                      {item.initials}
-                    </div>
-                    <div className="flex-1">
-                      <ThemedText as="p" className="text-[16px] font-bold text-slate-950 tracking-tight">{item.name}</ThemedText>
-                      <ThemedText as="p" className="text-[13px] font-medium text-slate-400">{item.status}</ThemedText>
-                    </div>
-                    <div className="h-2.5 w-2.5 rounded-full bg-[#6FC18A] border-2 border-white ring-1 ring-slate-100" />
-                  </div>
-                ))}
-              </SectionCard>
-            </div>
+            <RightRail currentUser={currentUser} />
           </div>
         </div>
       </main>
