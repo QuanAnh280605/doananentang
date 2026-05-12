@@ -9,7 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { fetchFollowStatus, followUser, type FollowStatus, unfollowUser } from '@/lib/auth';
 
-const surfaceClass = 'rounded-[28px] border border-[#E4E8EE] bg-white';
+const surfaceClass = 'rounded-surface border border-app-border bg-app-surface';
 
 function getSingleParam(value: string | string[] | undefined, fallback: string): string {
   if (Array.isArray(value)) {

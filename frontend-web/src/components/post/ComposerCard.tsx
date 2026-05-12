@@ -223,7 +223,7 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
                                             <ThemedText as="span" className="text-[13px] font-medium text-slate-700">Cảm xúc</ThemedText>
                                         </button>
                                         <button className="flex items-center gap-2 rounded-xl p-2 hover:bg-slate-100 transition-colors">
-                                            <UserPlus className="text-[#1877F2]" size={20} weight="regular" />
+                                            <UserPlus className="text-[#4A9FD8]" size={20} weight="regular" />
                                             <ThemedText as="span" className="text-[13px] font-medium text-slate-700">Gắn thẻ</ThemedText>
                                         </button>
                                         <button className="flex items-center gap-2 rounded-xl p-2 hover:bg-slate-100 transition-colors">

@@ -5,11 +5,10 @@ import Image from 'next/image';
 import { ProtectedPage } from '@/components/app/ProtectedPage';
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/ui/ThemedText';
+import { surfaceClass } from '@/components/ui/design-system';
 import { fetchCurrentUser, updateUserProfile, changePassword, uploadUserAvatar, type AuthUser, type GenderValue } from '@/lib/auth';
 import { API_URL } from '@/lib/api';
 import { compressToWebP } from '@/lib/image';
-
-const surfaceClass = 'rounded-[28px] border border-[#E4E8EE] bg-white';
 
 /* ------------------------------------------------------------------ */
 /*  Reusable sub-components (matching App UI)                          */
@@ -112,7 +111,7 @@ function PasswordStrengthBar({ strength }: { strength: number }) {
     if (i >= strength) return '#E2E8F0';
     if (strength <= 1) return '#EF4444';
     if (strength <= 2) return '#F59E0B';
-    return '#3B82F6';
+    return '#4A9FD8';
   };
   const label = strength === 0 ? '' : strength <= 1 ? 'Weak' : strength <= 2 ? 'Medium' : 'Strong';
 
@@ -160,7 +159,7 @@ function LivePreviewCard({
       <SectionCard>
         {/* "Live preview" badge */}
         <div className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-[#E0F2FE] px-3 py-1.5">
-          <div className="h-2 w-2 rounded-full bg-[#38BDF8]" />
+          <div className="h-2 w-2 rounded-full bg-[#4A9FD8]" />
           <ThemedText as="span" className="text-xs font-semibold text-[#0284C7]">Live preview</ThemedText>
         </div>
 

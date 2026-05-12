@@ -10,6 +10,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { ProtectedPage } from '@/components/app/ProtectedPage';
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/ui/ThemedText';
+import { elevatedSurfaceClass } from '@/components/ui/design-system';
 import { ComposerCard } from '@/components/post/ComposerCard';
 import { FeedPost } from '@/components/post/FeedPost';
 import { PostDetailModal } from '@/components/post/PostDetailModal';
@@ -52,7 +53,7 @@ function UserAvatar({ user, initials }: { user: { avatar_url: string | null }; i
   );
 }
 
-const surfaceClass = 'rounded-[32px] border border-slate-200/60 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.02)]';
+const surfaceClass = elevatedSurfaceClass;
 
 function SectionCard({ title, rightLabel, children }: { title: string; rightLabel?: string; children: React.ReactNode }) {
   return (

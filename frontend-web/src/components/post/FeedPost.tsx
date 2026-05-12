@@ -163,7 +163,7 @@ export function FeedPost({
                 </button>
 
                 {firstMediaUrl && (
-                    <div className="mt-6 overflow-hidden rounded-[30px] bg-slate-50 border border-slate-100/80 shadow-inner group/media">
+                    <div className="mt-6 overflow-hidden rounded-[32px] bg-slate-50 border border-slate-100/80 shadow-inner group/media">
                         <img
                             onClick={handleItemClick}
                             src={firstMediaUrl}

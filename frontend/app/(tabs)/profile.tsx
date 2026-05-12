@@ -37,7 +37,7 @@ type ProfileViewModel = {
   avatarUrl: string | null;
 };
 
-const surfaceClass = 'rounded-[28px] border border-[#E4E8EE] bg-white';
+const surfaceClass = 'rounded-surface border border-app-border bg-app-surface';
 const mutedSurfaceClass = 'rounded-[24px] bg-[#F7F8FA]';
 
 const tabs: { key: ProfileTab; label: string; icon: keyof typeof MaterialIcons.glyphMap }[] = [
@@ -332,7 +332,7 @@ export default function ProfileScreen() {
         <ScrollView bounces={false} className="flex-1" contentContainerClassName="pb-8">
           <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-4 md:px-6">
             {/* Back header */}
-            <View className="flex-row items-center gap-3 rounded-[28px] border border-[#E4E8EE] bg-white px-5 py-4">
+            <View className="flex-row items-center gap-3 rounded-surface border border-app-border bg-app-surface px-5 py-4">
               <Pressable
                 onPress={() => router.push('/')}
                 className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA] active:opacity-80"
