@@ -190,14 +190,7 @@ export function FeedPost({
                     <ThemedText as="p" className="text-[14px] font-bold text-slate-500 group-hover/stats:text-[#4A9FD8] transition-colors">
                         {count > 0 ? `${count} lượt thích` : 'Hãy là người đầu tiên thích'}
                     </ThemedText>
-                    {item.comment_count > 0 && (
-                        <>
-                            <div className="h-1 w-1 rounded-full bg-slate-300" />
-                            <ThemedText as="p" className="text-sm font-medium text-slate-500">
-                                {item.comment_count} bình luận
-                            </ThemedText>
-                        </>
-                    )}
+
                 </div>
                 <button onClick={handleItemClick} className="flex items-center gap-2 group/comments">
                     <ThemedText as="p" className="text-[14px] font-bold text-slate-500 group-hover/comments:text-slate-900 transition-colors">
