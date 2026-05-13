@@ -96,7 +96,34 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
 
   useEffect(() => {
     if (selectedUser) {
-      return undefined;
+      let isMounted = true;
+      const timeoutId = setTimeout(() => {
+        setUser(null);
+        setPosts([]);
+        setLoadingPosts(true);
+
+        fetchPosts(1, 20, selectedUser.id)
+          .then((res) => {
+            if (isMounted) {
+              setPosts(res.items || []);
+            }
+          })
+          .catch(() => {
+            if (isMounted) {
+              setPosts([]);
+            }
+          })
+          .finally(() => {
+            if (isMounted) {
+              setLoadingPosts(false);
+            }
+          });
+      }, 0);
+
+      return () => {
+        isMounted = false;
+        clearTimeout(timeoutId);
+      };
     }
 
     let isMounted = true;
