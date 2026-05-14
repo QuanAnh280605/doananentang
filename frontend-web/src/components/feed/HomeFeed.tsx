@@ -14,7 +14,11 @@ import { elevatedSurfaceClass } from '@/components/ui/design-system';
 import { ComposerCard } from '@/components/post/ComposerCard';
 import { FeedPost } from '@/components/post/FeedPost';
 import { PostDetailModal } from '@/components/post/PostDetailModal';
-import { fetchPosts, resolveAvatarUrl } from '@/lib/api';
+import { CreateStoryModal } from '@/components/story/CreateStoryModal';
+import { StoryStrip } from '@/components/story/StoryStrip';
+import { StoryViewerModal } from '@/components/story/StoryViewerModal';
+import { mapApiStoryToStoryItem, type StoryItem } from '@/components/story/storyState';
+import { API_URL, fetchPosts, fetchStories, markStoryViewed, resolveAvatarUrl } from '@/lib/api';
 import { fetchCurrentUser, fetchFollowing, type AuthUser, type FollowUser } from '@/lib/auth';
 import { listDirectChats } from '@/lib/chat';
 import type { InboxThreadData } from '@/lib/chat.types';
@@ -27,12 +31,6 @@ const shortcuts: { label: string; Icon: IconComponent }[] = [
   { label: 'Home', Icon: House },
   { label: 'Saved sets', Icon: BookmarkSimple },
   { label: 'Circle updates', Icon: ArrowsClockwise },
-];
-
-const stories = [
-  { id: '1', title: 'Morning run club', time: '2h ago', fill: 'bg-[#66D575]', initials: 'MN' },
-  { id: '2', title: 'Desk setup refresh', time: '5h ago', fill: 'bg-[#874FFF]', initials: 'DS' },
-  { id: '3', title: 'Client moodboard', time: 'Yesterday', fill: 'bg-[#F24822]', initials: 'KM' },
 ];
 
 function buildInitials(firstName?: string | null, lastName?: string | null): string {
@@ -198,6 +196,9 @@ export function HomeFeed() {
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [stories, setStories] = useState<StoryItem[]>([]);
+  const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
+  const [isCreateStoryOpen, setIsCreateStoryOpen] = useState(false);
 
   const loadPosts = useCallback(async () => {
     setLoading(true);
@@ -212,6 +213,7 @@ export function HomeFeed() {
       setLoading(false);
     }
   }, []);
+
   const [userPostCount, setUserPostCount] = useState(0);
 
   useEffect(() => {
@@ -241,6 +243,17 @@ export function HomeFeed() {
         }
       }
     }).catch(() => { });
+
+    fetchStories()
+      .then((response) => {
+        if (isMounted) {
+          setStories(response.map((story) => mapApiStoryToStoryItem(story, API_URL)));
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+
     return () => { isMounted = false; };
   }, [loadPosts]);
 
@@ -248,9 +261,50 @@ export function HomeFeed() {
     ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase()
     : 'LE';
 
+  const handleCreateStory = (story: StoryItem) => {
+    setStories((currentStories) => [story, ...currentStories.filter((item) => item.id !== story.id)]);
+  };
+
+  const handleOpenStory = useCallback((storyId: string) => {
+    setSelectedStoryId(storyId);
+
+    void markStoryViewed(storyId)
+      .then((status) => {
+        setStories((currentStories) => currentStories.map((story) => {
+          if (story.id !== storyId) return story;
+
+          return {
+            ...story,
+            isViewed: true,
+            timeLabel: 'Đã xem',
+            viewCount: status.view_count,
+          };
+        }));
+      })
+      .catch((err: unknown) => {
+        console.error(err);
+      });
+  }, []);
+
   return (
     <ProtectedPage>
       <main className="min-h-screen bg-[#F8FAFC] pb-12">
+        {isCreateStoryOpen && (
+          <CreateStoryModal
+            currentUser={currentUser}
+            onClose={() => setIsCreateStoryOpen(false)}
+            onCreateStory={handleCreateStory}
+          />
+        )}
+        {selectedStoryId && (
+          <StoryViewerModal
+            currentUser={currentUser}
+            onClose={() => setSelectedStoryId(null)}
+            onSelectStory={handleOpenStory}
+            selectedStoryId={selectedStoryId}
+            stories={stories}
+          />
+        )}
         {selectedPostId && (
           <PostDetailModal
             postId={selectedPostId}
@@ -325,20 +379,12 @@ export function HomeFeed() {
             <div className="space-y-6">
               <ComposerCard onPostCreated={loadPosts} currentUser={currentUser} />
 
-              <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-                {stories.map((item) => (
-                  <div key={item.id} className={`${item.fill} relative min-w-[180px] h-[210px] cursor-pointer hover:opacity-95 transition-opacity overflow-hidden rounded-[28px] p-5 shadow-sm flex-shrink-0`}>
-                    <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-white/20 text-white">
-                      <ThemedText as="span" className="text-xs font-bold">{item.initials}</ThemedText>
-                    </div>
-                    <div className="absolute bottom-5 left-5 right-5 space-y-1">
-                      <ThemedText as="p" className="text-[17px] font-bold text-white tracking-tight leading-tight">{item.title}</ThemedText>
-                      <ThemedText as="p" className="text-[12px] font-bold text-white/70 uppercase tracking-wider">{item.time}</ThemedText>
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
-                  </div>
-                ))}
-              </div>
+              <StoryStrip
+                currentUser={currentUser}
+                onCreateStory={() => setIsCreateStoryOpen(true)}
+                onOpenStory={handleOpenStory}
+                stories={stories}
+              />
 
               {loading ? (
                 <div className="flex flex-col items-center justify-center p-16 space-y-4">
@@ -347,7 +393,7 @@ export function HomeFeed() {
                 </div>
               ) : posts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-16 bg-white rounded-[32px] border border-slate-200/60 shadow-sm">
-                  <div className="h-20 w-20 flex items-center justify-center rounded-[28px] bg-slate-50 mb-6">
+                  <div className="h-20 w-20 flex items-center justify-center rounded-[24px] bg-slate-50 mb-6">
                     <Article className="text-slate-300" size={36} weight="regular" />
                   </div>
                   <ThemedText as="p" className="text-slate-400 font-bold text-lg">No posts yet</ThemedText>
