@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { ProtectedPage } from '@/components/app/ProtectedPage';
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/ui/ThemedText';
+import { surfaceClass } from '@/components/ui/design-system';
 import { fetchCurrentUser, updateUserProfile, fetchFollowStatus, followUser, type AuthUser, type FollowStatus, unfollowUser } from '@/lib/auth';
 import { FeedPost } from '@/components/post/FeedPost';
 import { PostDetailModal } from '@/components/post/PostDetailModal';
@@ -74,8 +75,6 @@ function buildProfileViewModel(user: AuthUser | null, selectedUser?: ProfileSnap
   };
 }
 
-const surfaceClass = 'rounded-[28px] border border-[#E4E8EE] bg-white';
-
 export function ProfileView({ selectedUser }: ProfileViewProps) {
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -97,7 +96,34 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
 
   useEffect(() => {
     if (selectedUser) {
-      return undefined;
+      let isMounted = true;
+      const timeoutId = setTimeout(() => {
+        setUser(null);
+        setPosts([]);
+        setLoadingPosts(true);
+
+        fetchPosts(1, 20, selectedUser.id)
+          .then((res) => {
+            if (isMounted) {
+              setPosts(res.items || []);
+            }
+          })
+          .catch(() => {
+            if (isMounted) {
+              setPosts([]);
+            }
+          })
+          .finally(() => {
+            if (isMounted) {
+              setLoadingPosts(false);
+            }
+          });
+      }, 0);
+
+      return () => {
+        isMounted = false;
+        clearTimeout(timeoutId);
+      };
     }
 
     let isMounted = true;

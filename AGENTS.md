@@ -30,7 +30,9 @@
 ## Rules file trong repo
 
 - Rule cho agent nằm ngay trong file này.
-- Không tự suy diễn có rule ẩn khác trong repo.
+- Rule design system/component UI nằm trong `DESIGN_SYSTEM_RULES.md` ở repo root.
+- Khi tạo hoặc sửa UI trong `frontend/` hoặc `frontend-web/`, phải đọc `DESIGN_SYSTEM_RULES.md` trước khi viết code.
+- Không tự suy diễn có rule ẩn khác trong repo ngoài `AGENTS.md` và `DESIGN_SYSTEM_RULES.md`.
 
 ## Quy tắc bắt buộc cho agent
 
@@ -245,6 +247,11 @@
 
 ## Styling và theme
 
+- Trước khi tạo hoặc sửa UI, đọc `DESIGN_SYSTEM_RULES.md` và bám theo token/component contract trong đó.
+- UI mới phải dùng accent chính `#4A9FD8`; không dùng thêm xanh brand khác như `#1877F2` nếu không có lý do tương thích rõ ràng.
+- Không hardcode màu/radius/shadow lặp lại trong component mới; ưu tiên token/shared primitive.
+- Card/Button/Input/Avatar mới phải dùng primitive chung hoặc tạo primitive trước khi nhân bản style local.
+- Radius UI mới chỉ dùng scale 32 / 24 / 18 / 14, trừ avatar circle/pill.
 - Frontend nên tái sử dụng token từ `frontend/constants/theme.ts` khi phù hợp.
 - Dùng `useThemeColor` cho màu phụ thuộc light/dark mode.
 - Giữ spacing và typography nhất quán với code xung quanh.

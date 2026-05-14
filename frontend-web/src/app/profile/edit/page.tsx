@@ -1,15 +1,13 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import Image from 'next/image';
 import { ProtectedPage } from '@/components/app/ProtectedPage';
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/ui/ThemedText';
+import { surfaceClass } from '@/components/ui/design-system';
 import { fetchCurrentUser, updateUserProfile, changePassword, uploadUserAvatar, type AuthUser, type GenderValue } from '@/lib/auth';
-import { API_URL } from '@/lib/api';
+import { resolveAvatarUrl } from '@/lib/api';
 import { compressToWebP } from '@/lib/image';
-
-const surfaceClass = 'rounded-[28px] border border-[#E4E8EE] bg-white';
 
 /* ------------------------------------------------------------------ */
 /*  Reusable sub-components (matching App UI)                          */
@@ -112,7 +110,7 @@ function PasswordStrengthBar({ strength }: { strength: number }) {
     if (i >= strength) return '#E2E8F0';
     if (strength <= 1) return '#EF4444';
     if (strength <= 2) return '#F59E0B';
-    return '#3B82F6';
+    return '#4A9FD8';
   };
   const label = strength === 0 ? '' : strength <= 1 ? 'Weak' : strength <= 2 ? 'Medium' : 'Strong';
 
@@ -160,7 +158,7 @@ function LivePreviewCard({
       <SectionCard>
         {/* "Live preview" badge */}
         <div className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-[#E0F2FE] px-3 py-1.5">
-          <div className="h-2 w-2 rounded-full bg-[#38BDF8]" />
+          <div className="h-2 w-2 rounded-full bg-[#4A9FD8]" />
           <ThemedText as="span" className="text-xs font-semibold text-[#0284C7]">Live preview</ThemedText>
         </div>
 
@@ -171,7 +169,8 @@ function LivePreviewCard({
         <div className="-mt-12 flex items-end gap-3 px-3">
           {avatarSource ? (
             <div className="h-16 w-16 shrink-0 overflow-hidden rounded-[22px] border-[3px] border-white">
-              <Image src={avatarSource} alt={displayName} width={64} height={64} className="h-full w-full object-cover" />
+              {/* eslint-disable-next-line @next/next/no-img-element -- Avatar URLs can be backend-relative or blob previews, which next/image may reject. */}
+              <img src={avatarSource} alt={displayName} className="h-full w-full object-cover" />
             </div>
           ) : (
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] border-[3px] border-white bg-[#EAF4FB]">
@@ -250,7 +249,7 @@ export default function EditProfilePage() {
           setGender((u.gender as GenderValue) || 'custom');
           setCity(u.city || '');
           if (u.avatar_url) {
-            setAvatarPreview(u.avatar_url.startsWith('http') ? u.avatar_url : `${API_URL}${u.avatar_url}`);
+            setAvatarPreview(resolveAvatarUrl(u.avatar_url));
           }
         }
       })
@@ -310,7 +309,9 @@ export default function EditProfilePage() {
     try {
       if (avatarFile) {
         const compressed = await compressToWebP(avatarFile);
-        await uploadUserAvatar(compressed);
+        const avatarResponse = await uploadUserAvatar(compressed);
+        setAvatarPreview(resolveAvatarUrl(avatarResponse.avatar_url));
+        setAvatarFile(null);
       }
 
       await updateUserProfile({
@@ -414,7 +415,8 @@ export default function EditProfilePage() {
                   <div className="mb-6 flex items-center gap-4">
                     {currentAvatarSource ? (
                       <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full">
-                        <Image src={currentAvatarSource} alt="Avatar" width={64} height={64} className="h-full w-full object-cover" />
+                        {/* eslint-disable-next-line @next/next/no-img-element -- Avatar URLs can be backend-relative or blob previews, which next/image may reject. */}
+                        <img src={currentAvatarSource} alt="Avatar" className="h-full w-full object-cover" />
                       </div>
                     ) : (
                       <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#EAF4FB]">

@@ -14,6 +14,7 @@ import {
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { ThemedText } from '@/components/ui/ThemedText';
+import { surfaceClass } from '@/components/ui/design-system';
 import { resolveAvatarUrl } from '@/lib/api';
 import { fetchCurrentUser, searchFollowingUsers, type AuthUser, type SearchUser } from '@/lib/auth';
 import {
@@ -31,8 +32,6 @@ import {
 import type { ChatMessage, ChatMessageResponse, DirectChat, InboxThreadData } from '@/lib/chat.types';
 import { ROUTES } from '@/lib/routes';
 import { connectInboxSocket, disconnectInboxSocket, joinChatRoom, leaveChatRoom } from '@/lib/socket';
-
-const surfaceClass = 'rounded-[28px] border border-[#E2E8F0] bg-white';
 
 const followedUserProfileDetails: InboxThreadData['profileStats'] = [
   { label: 'Source', value: 'Following search' },

@@ -11,8 +11,7 @@ import { fetchCurrentUser, type AuthUser } from '@/lib/auth';
 import type { Post, Comment } from '@/lib/types';
 import Link from 'next/link';
 import Image from 'next/image';
-
-const surfaceClass = 'rounded-[28px] border border-[#E4E8EE] bg-white';
+import { surfaceClass } from '@/components/ui/design-system';
 
 function formatTime(isoStr: string) {
   const diff = Date.now() - new Date(isoStr).getTime();
@@ -280,7 +279,7 @@ export default function PostDetailPage() {
       <main className="min-h-screen bg-[#EDF1F5] pb-32">
         <div className="mx-auto w-full max-w-[860px] px-4 pb-6 pt-4 md:px-6">
           {/* Back header - Premium Sticky Style */}
-          <div className="sticky top-4 z-30 mb-6 flex items-center justify-between gap-3 rounded-[28px] border border-[#E4E8EE] bg-white/80 px-5 py-4 shadow-sm backdrop-blur-md">
+          <div className="sticky top-4 z-30 mb-6 flex items-center justify-between gap-3 rounded-[24px] border border-[#E4E8EE] bg-white/80 px-5 py-4 shadow-sm backdrop-blur-md">
             <div className="flex items-center gap-3">
               <button 
                 onClick={() => router.back()} 
