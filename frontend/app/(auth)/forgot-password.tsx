@@ -25,11 +25,11 @@ function PromoPanel({ isLargeScreen }: PromoPanelProps) {
       <View className="absolute right-10 top-12 h-16 w-16 rounded-[24px] bg-white/80" />
 
       <View className="relative z-10 max-w-[520px]">
-        <View className="self-start rounded-full bg-[#1877F2] px-4 py-2">
+        <View className="self-start rounded-full bg-[#4A9FD8] px-4 py-2">
           <ThemedText className="text-sm font-bold lowercase tracking-[1px] text-white">f</ThemedText>
         </View>
 
-        <ThemedText className="mt-6 text-sm font-semibold uppercase tracking-[2px] text-[#1877F2]">
+        <ThemedText className="mt-6 text-sm font-semibold uppercase tracking-[2px] text-[#4A9FD8]">
           Account support
         </ThemedText>
         <ThemedText
@@ -65,7 +65,7 @@ function PromoPanel({ isLargeScreen }: PromoPanelProps) {
           </>
         ) : (
           <View className="rounded-[24px] border border-[#C9DCFB] bg-white/85 px-4 py-4">
-            <ThemedText className="text-xs font-semibold uppercase tracking-[1.6px] text-[#1877F2]">
+            <ThemedText className="text-xs font-semibold uppercase tracking-[1.6px] text-[#4A9FD8]">
               Recover access
             </ThemedText>
             <ThemedText className="mt-1 text-xl font-bold text-slate-900">Reset in 2 simple steps</ThemedText>
@@ -142,7 +142,7 @@ export default function ForgotPasswordScreen() {
             </View>
 
             <Pressable
-              className={`rounded-2xl bg-[#1877F2] px-4 py-4 active:opacity-90 ${isLargeScreen ? 'mt-5' : 'mt-4'} ${isSubmitting ? 'opacity-70' : ''}`}
+              className={`rounded-2xl bg-[#4A9FD8] px-4 py-4 active:opacity-90 ${isLargeScreen ? 'mt-5' : 'mt-4'} ${isSubmitting ? 'opacity-70' : ''}`}
               disabled={isSubmitting}
               onPress={handleSubmit}>
               <ThemedText className="text-center text-base font-semibold text-white">
@@ -163,7 +163,7 @@ export default function ForgotPasswordScreen() {
 
             <Link asChild href="/login">
               <Pressable className="mt-4 self-center px-3 py-2">
-                <ThemedText className="text-sm font-semibold text-[#1877F2]">Back to login</ThemedText>
+                <ThemedText className="text-sm font-semibold text-[#4A9FD8]">Back to login</ThemedText>
               </Pressable>
             </Link>
           </ThemedView>

@@ -53,6 +53,77 @@ def count_following(db: Session, user_id: int) -> int:
   return int(db.scalar(statement) or 0)
 
 
+def get_followers(db: Session, target_user_id: int, current_user_id: int, skip: int = 0, limit: int = 20) -> list[dict]:
+  statement = (
+    select(User)
+    .join(Follow, Follow.follower_id == User.id)
+    .where(Follow.following_id == target_user_id)
+    .offset(skip)
+    .limit(limit)
+  )
+  users = db.scalars(statement).all()
+  
+  if not users:
+    return []
+    
+  user_ids = [user.id for user in users]
+  following_stmt = select(Follow.following_id).where(
+    and_(
+      Follow.follower_id == current_user_id,
+      Follow.following_id.in_(user_ids)
+    )
+  )
+  following_set = set(db.scalars(following_stmt).all())
+  
+  result = []
+  for user in users:
+    result.append({
+      "id": user.id,
+      "first_name": user.first_name,
+      "last_name": user.last_name,
+      "full_name": user.full_name,
+      "avatar_url": user.avatar_url,
+      "bio": user.bio,
+      "is_following": user.id in following_set
+    })
+  return result
+
+
+def get_following(db: Session, target_user_id: int, current_user_id: int, skip: int = 0, limit: int = 20) -> list[dict]:
+  statement = (
+    select(User)
+    .join(Follow, Follow.following_id == User.id)
+    .where(Follow.follower_id == target_user_id)
+    .offset(skip)
+    .limit(limit)
+  )
+  users = db.scalars(statement).all()
+  
+  if not users:
+    return []
+    
+  user_ids = [user.id for user in users]
+  following_stmt = select(Follow.following_id).where(
+    and_(
+      Follow.follower_id == current_user_id,
+      Follow.following_id.in_(user_ids)
+    )
+  )
+  following_set = set(db.scalars(following_stmt).all())
+  
+  result = []
+  for user in users:
+    result.append({
+      "id": user.id,
+      "first_name": user.first_name,
+      "last_name": user.last_name,
+      "full_name": user.full_name,
+      "avatar_url": user.avatar_url,
+      "bio": user.bio,
+      "is_following": user.id in following_set
+    })
+  return result
+
 def search_following_users(db: Session, follower_id: int, query: str, limit: int = 20) -> list[User]:
   normalized_query = query.strip().lower()
   if not normalized_query:

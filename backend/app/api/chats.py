@@ -1,3 +1,6 @@
+import logging
+
+from anyio import from_thread
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -5,6 +8,7 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.crud.chat import (
   create_chat_message,
+  get_chat_room_name,
   get_chat_by_id,
   get_or_create_direct_chat,
   is_chat_member,
@@ -13,10 +17,23 @@ from app.crud.chat import (
 )
 from app.crud.user import get_user_by_id
 from app.models.user import User
-from app.schemas.chat import ChatListItemRead, CreateDirectChatRequest, DirectChatRead, MessageRead, SendMessageRequest
+from app.realtime import socket_server
+from app.schemas.chat import (
+  MESSAGE_CREATED_EVENT,
+  ChatListItemRead,
+  CreateDirectChatRequest,
+  DirectChatRead,
+  MessageRead,
+  SendMessageRequest,
+)
 from app.schemas.user import UserSearchRead
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+
+async def _emit_message_created(payload: dict[str, object], room: str) -> None:
+  await socket_server.sio.emit(MESSAGE_CREATED_EVENT, payload, room=room)
 
 
 @router.get('', response_model=list[ChatListItemRead])
@@ -88,4 +105,9 @@ def create_chat_message_endpoint(
   except ValueError as error:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
 
-  return MessageRead.model_validate(message)
+  response = MessageRead.model_validate(message)
+  try:
+    from_thread.run(_emit_message_created, response.model_dump(mode='json'), get_chat_room_name(chat_id))
+  except Exception:
+    logger.exception('Failed to emit message-created event', extra={'chat_id': chat_id, 'message_id': response.id})
+  return response

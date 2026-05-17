@@ -1,10 +1,14 @@
+import type { ComponentType } from 'react';
+
+import { Aperture, Bell, EnvelopeSimple, SquaresFour } from '@phosphor-icons/react';
 import { useGlobalSearch } from '@/components/search/GlobalSearchProvider';
 import Link from 'next/link';
-import Image from 'next/image';
+
 import { ThemedText } from '@/components/ui/ThemedText';
 import { SearchInput } from '@/components/ui/SearchInput';
-import { API_URL } from '@/lib/api';
+import { resolveAvatarUrl } from '@/lib/api';
 import type { AuthUser } from '@/lib/auth';
+import { ROUTES } from '@/lib/routes';
 
 type AppTopNavProps = {
   searchPlaceholder?: string;
@@ -14,11 +18,23 @@ type AppTopNavProps = {
   currentUser?: AuthUser | null;
 };
 
-function IconBubble({ icon }: { icon: string }) {
+type IconComponent = ComponentType<{ className?: string; size?: number; weight?: 'thin' | 'light' | 'regular' | 'bold' | 'fill' | 'duotone' }>;
+
+function IconBubble({ icon: Icon, href, label }: { icon: IconComponent; href?: string; label: string }) {
+  const className = 'flex h-11 w-11 items-center justify-center rounded-[14px] bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900 active:scale-90 transition-all duration-200 cursor-pointer';
+
+  if (href) {
+    return (
+      <Link aria-label={label} className={className} href={href}>
+        <Icon size={20} weight="regular" />
+      </Link>
+    );
+  }
+
   return (
-    <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#F7F8FA] text-[#666666] hover:bg-[#E2E8F0] transition-colors cursor-pointer">
-      <span className="material-icons text-[21px]">{icon}</span>
-    </div>
+    <button aria-label={label} className={className} type="button">
+      <Icon size={20} weight="regular" />
+    </button>
   );
 }
 
@@ -37,9 +53,7 @@ export function AppTopNav({
     ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase()
     : avatarInitials;
 
-  const avatarUrl = currentUser?.avatar_url
-    ? (currentUser.avatar_url.startsWith('http') ? currentUser.avatar_url : `${API_URL}${currentUser.avatar_url}`)
-    : null;
+  const avatarUrl = resolveAvatarUrl(currentUser?.avatar_url);
 
   const handleSearchChange = (value: string) => {
     if (isControlled) {
@@ -57,26 +71,26 @@ export function AppTopNav({
   };
 
   return (
-    <nav className="rounded-[28px] border border-[#E4E8EE] bg-white px-5 py-4">
+    <nav className="rounded-[32px] border border-slate-200/60 bg-white/90 backdrop-blur-md px-6 py-4 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex w-full flex-col gap-4 md:flex-1 md:flex-row md:items-center">
           {/* Logo Area */}
-          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#4A9FD8] text-white">
-              <span className="material-icons text-[22px]">filter_tilt_shift</span>
+          <Link href="/" className="flex items-center gap-3.5 group">
+            <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-slate-950 text-white shadow-lg shadow-slate-950/20 group-hover:scale-105 transition-transform duration-300">
+              <Aperture size={20} weight="fill" />
             </div>
-            <div>
-              <ThemedText as="p" className="text-[26px] font-semibold tracking-[-0.5px] text-slate-950">
+            <div className="flex flex-col">
+              <ThemedText as="p" className="text-[22px] font-bold tracking-tight text-slate-950 leading-none">
                 Northfeed
               </ThemedText>
-              <ThemedText as="p" className="text-sm text-slate-500 leading-3">
-                studio
+              <ThemedText as="p" className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                Studio
               </ThemedText>
             </div>
           </Link>
 
           <SearchInput
-            className="md:ml-6 md:max-w-[560px] md:flex-1"
+            className="md:ml-6 md:max-w-[560px] md:flex-1 rounded-[20px] bg-slate-100/50 border border-transparent focus-within:border-slate-200 focus-within:bg-white transition-all duration-300"
             onChange={handleSearchChange}
             onFocus={handleSearchFocus}
             placeholder={searchPlaceholder}
@@ -85,24 +99,21 @@ export function AppTopNav({
         </div>
 
         {/* Action Buttons & Avatar */}
-        <div className="flex items-center gap-3">
-          <IconBubble icon="mail_outline" />
-          <IconBubble icon="notifications_none" />
-          <IconBubble icon="apps" />
+        <div className="flex items-center gap-2.5">
+          <IconBubble href={ROUTES.inbox} icon={EnvelopeSimple} label="Open inbox" />
+          <IconBubble icon={Bell} label="Open notifications" />
+          <IconBubble icon={SquaresFour} label="Open apps" />
           
-          <Link href="/profile" className="ml-1 hover:opacity-80 transition-opacity">
+          <Link href="/profile" className="ml-2 group">
             {avatarUrl ? (
-              <Image 
+              <img 
                 src={avatarUrl} 
                 alt="Avatar"
-                width={56}
-                height={56}
-                className="h-14 w-14 shrink-0 rounded-[22px] object-cover"
-                unoptimized
+                className="h-11 w-11 shrink-0 rounded-[14px] object-cover ring-0 group-hover:ring-4 ring-slate-100 transition-all duration-300"
               />
             ) : (
-              <div className="flex h-14 w-14 items-center justify-center rounded-[22px] bg-[#EAF4FB]">
-                <ThemedText as="span" className="text-base font-semibold tracking-[0.5px] text-slate-900">
+              <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-slate-100 group-hover:bg-[#EAF4FB] transition-colors">
+                <ThemedText as="span" className="text-[14px] font-bold text-slate-900">
                   {initials}
                 </ThemedText>
               </div>

@@ -12,6 +12,12 @@ from app.models.user import User
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
+def get_user_from_access_token(db: Session, token: str) -> User | None:
+  payload = decode_access_token(token)
+  subject = str(payload.get('sub', ''))
+  return get_user_for_token(db, subject)
+
+
 def get_current_user(
   credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
   db: Session = Depends(get_db),
@@ -20,12 +26,10 @@ def get_current_user(
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid credentials')
 
   try:
-    payload = decode_access_token(credentials.credentials)
+    user = get_user_from_access_token(db, credentials.credentials)
   except InvalidTokenError as error:
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid credentials') from error
 
-  subject = str(payload.get('sub', ''))
-  user = get_user_for_token(db, subject)
   if user is None:
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid credentials')
 
@@ -40,8 +44,6 @@ def get_current_user_optional(
     return None
 
   try:
-    payload = decode_access_token(credentials.credentials)
-    subject = str(payload.get('sub', ''))
-    return get_user_for_token(db, subject)
+    return get_user_from_access_token(db, credentials.credentials)
   except InvalidTokenError:
     return None

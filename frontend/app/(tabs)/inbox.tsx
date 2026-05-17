@@ -84,7 +84,7 @@ const profileDetails: ProfilePanelStatData[] = [
 
 const quickActions = ['View brief', 'Shared files', 'Mute thread'];
 
-const surfaceClass = 'rounded-[28px] border border-[#E2E8F0] bg-white';
+const surfaceClass = 'rounded-surface border border-app-border bg-app-surface';
 
 function AvatarPill({ initials, muted = false }: { initials: string; muted?: boolean }) {
   return (

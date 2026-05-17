@@ -7,7 +7,7 @@ import {
   normalizeMessageContent,
   replaceOptimisticMessage,
   runOptimisticMessageSend,
-} from './chat.ts';
+} from './chat';
 
 type InboxThreadLike = {
   id: string;
@@ -19,7 +19,7 @@ type InboxThreadLike = {
 
 type ChatMessageLike = {
   id: string;
-  chatId?: string;
+  chatId: string;
   body: string;
   time: string;
   incoming?: boolean;

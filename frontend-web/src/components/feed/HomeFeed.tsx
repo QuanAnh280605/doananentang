@@ -1,67 +1,193 @@
 'use client';
 
-import Image from 'next/image';
+
+import type { ComponentType } from 'react';
+
+import { ArrowsClockwise, Article, BookmarkSimple, House } from '@phosphor-icons/react';
 import Link from 'next/link';
 import { useEffect, useState, useCallback } from 'react';
 
 import { ProtectedPage } from '@/components/app/ProtectedPage';
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/ui/ThemedText';
+import { elevatedSurfaceClass } from '@/components/ui/design-system';
 import { ComposerCard } from '@/components/post/ComposerCard';
 import { FeedPost } from '@/components/post/FeedPost';
-import { fetchPosts, resolveAvatarUrl } from '@/lib/api';
-import { fetchCurrentUser, type AuthUser } from '@/lib/auth';
+import { PostDetailModal } from '@/components/post/PostDetailModal';
+import { CreateStoryModal } from '@/components/story/CreateStoryModal';
+import { StoryStrip } from '@/components/story/StoryStrip';
+import { StoryViewerModal } from '@/components/story/StoryViewerModal';
+import { mapApiStoryToStoryItem, type StoryItem } from '@/components/story/storyState';
+import { API_URL, fetchPosts, fetchStories, markStoryViewed, resolveAvatarUrl } from '@/lib/api';
+import { fetchCurrentUser, fetchFollowing, type AuthUser, type FollowUser } from '@/lib/auth';
+import { listDirectChats } from '@/lib/chat';
+import type { InboxThreadData } from '@/lib/chat.types';
 import { ROUTES } from '@/lib/routes';
 import type { Post } from '@/lib/types';
 
-const shortcuts = [
-  { label: 'Home', icon: 'home' },
-  { label: 'Saved sets', icon: 'bookmark_border' },
-  { label: 'Circle updates', icon: 'autorenew' },
+type IconComponent = ComponentType<{ className?: string; size?: number; weight?: 'thin' | 'light' | 'regular' | 'bold' | 'fill' | 'duotone' }>;
+
+const shortcuts: { label: string; Icon: IconComponent }[] = [
+  { label: 'Home', Icon: House },
+  { label: 'Saved sets', Icon: BookmarkSimple },
+  { label: 'Circle updates', Icon: ArrowsClockwise },
 ];
 
-const stories = [
-  { id: '1', title: 'Morning run club', time: '2h ago', fill: 'bg-[#66D575]', initials: 'MN' },
-  { id: '2', title: 'Desk setup refresh', time: '5h ago', fill: 'bg-[#874FFF]', initials: 'DS' },
-  { id: '3', title: 'Client moodboard', time: 'Yesterday', fill: 'bg-[#F24822]', initials: 'KM' },
-];
+function buildInitials(firstName?: string | null, lastName?: string | null): string {
+  return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase() || 'US';
+}
 
-const contacts = [
-  { id: 'am', name: 'Ari Mendoza', status: 'Editing new campaign', initials: 'AM', bio: 'Builds campaign systems and keeps launch assets moving.' },
-  { id: 'ne', name: 'Nadia Elsner', status: 'Reviewing typography', initials: 'NE', bio: 'Writes crisp product copy and organizes review-ready profile content.' },
-  { id: 'jt', name: 'Jules Tate', status: 'In Riverside Studio', initials: 'JT', bio: 'Supports studio sessions and visual coordination across teams.' },
-  { id: 'oy', name: 'Owen Ybarra', status: 'Exporting review clips', initials: 'OY', bio: 'Handles review exports, clips, and last-mile production polish.' },
-];
+function UserAvatar({ user, initials }: { user: { avatar_url: string | null }; initials: string }) {
+  const avatarUrl = resolveAvatarUrl(user.avatar_url);
 
-const inboxItems = [
-  { id: 'rm', name: 'Rafi Mercer', message: 'Can you review the revised launch pacing?', initials: 'RM', bio: 'Focuses on motion pacing, interaction polish, and handoff clarity.', unread: true },
-  { id: 'at', name: 'Aya Tran', message: 'Dropping sprint references in five minutes.', initials: 'AT', bio: 'Shapes visual systems and tightens typography for product launches.' },
-  { id: 'ne', name: 'Nadia Elsner', message: 'Shared fresh type comps for the thread.', initials: 'NE', bio: 'Writes crisp product copy and organizes review-ready profile content.' },
-];
+  if (avatarUrl) {
+    return <img src={avatarUrl} alt="Avatar" className="h-11 w-11 rounded-[14px] object-cover" />;
+  }
 
-const surfaceClass = 'rounded-[28px] border border-[#E4E8EE] bg-white';
-
-function Avatar({ initials, soft = false }: { initials: string; soft?: boolean }) {
   return (
-    <div className={`flex h-14 w-14 items-center justify-center rounded-[22px] ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`}>
-      <ThemedText as="span" className="text-base font-semibold tracking-[0.5px] text-slate-900">
-        {initials}
-      </ThemedText>
+    <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-slate-50 text-slate-900 font-bold group-hover:bg-[#EAF4FB] transition-colors">
+      {initials}
     </div>
   );
 }
 
+const surfaceClass = elevatedSurfaceClass;
+
 function SectionCard({ title, rightLabel, children }: { title: string; rightLabel?: string; children: React.ReactNode }) {
   return (
-    <section className={`${surfaceClass} p-5`}>
-      <div className="flex items-center justify-between gap-3">
-        <ThemedText as="h2" className="text-[22px] font-semibold text-slate-950">
+    <section className={`${surfaceClass} p-6`}>
+      <div className="flex items-center justify-between gap-3 px-1">
+        <ThemedText as="h2" className="text-[20px] font-bold text-slate-950 tracking-tight">
           {title}
         </ThemedText>
-        {rightLabel ? <ThemedText as="p" className="text-sm text-slate-500">{rightLabel}</ThemedText> : null}
+        {rightLabel ? <ThemedText as="p" className="text-[12px] font-bold text-slate-400 uppercase tracking-wider">{rightLabel}</ThemedText> : null}
       </div>
-      <div className="mt-4 space-y-3">{children}</div>
+      <div className="mt-5 space-y-3">{children}</div>
     </section>
+  );
+}
+
+function ContactRow({ item }: { item: FollowUser }) {
+  const initials = buildInitials(item.first_name, item.last_name);
+  const preview = item.bio?.trim() || 'Đang theo dõi';
+
+  return (
+    <Link
+      href={ROUTES.profileDetail(String(item.id), {
+        name: item.full_name,
+        initials,
+        preview,
+        bio: preview,
+      })}
+      className="flex items-center gap-4 rounded-[24px] border border-slate-100 bg-white p-4 transition-all duration-300 hover:border-slate-200 hover:shadow-md group"
+    >
+      <UserAvatar user={item} initials={initials} />
+      <div className="min-w-0 flex-1">
+        <ThemedText as="p" className="truncate text-[16px] font-bold tracking-tight text-slate-950">{item.full_name}</ThemedText>
+        <ThemedText as="p" className="truncate text-[13px] font-medium text-slate-400">{preview}</ThemedText>
+      </div>
+      <div className="h-2.5 w-2.5 rounded-full border-2 border-white bg-[#6FC18A] ring-1 ring-slate-100" />
+    </Link>
+  );
+}
+
+function MessengerRow({ item }: { item: InboxThreadData }) {
+  const initials = buildInitials(item.user.first_name, item.user.last_name);
+
+  return (
+    <Link
+      href={ROUTES.profileDetail(String(item.user.id), {
+        name: item.user.full_name,
+        initials,
+        preview: item.preview,
+        bio: item.user.bio?.trim() || item.preview,
+      })}
+      className="flex items-center gap-4 rounded-[24px] border border-slate-100 bg-white p-4 transition-all duration-300 hover:border-slate-200 hover:shadow-md group"
+    >
+      <UserAvatar user={item.user} initials={initials} />
+      <div className="min-w-0 flex-1">
+        <ThemedText as="p" className="truncate text-[16px] font-bold tracking-tight text-slate-950">{item.user.full_name}</ThemedText>
+        <ThemedText as="p" className="truncate text-[13px] font-medium text-slate-400">{item.preview}</ThemedText>
+      </div>
+    </Link>
+  );
+}
+
+function RightRail({ currentUser }: { currentUser: AuthUser | null }) {
+  const [contacts, setContacts] = useState<FollowUser[]>([]);
+  const [threads, setThreads] = useState<InboxThreadData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!currentUser) {
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    queueMicrotask(() => {
+      if (!isMounted) return;
+      setLoading(true);
+      setError(null);
+    });
+
+    void Promise.all([
+      fetchFollowing(currentUser.id, 1, 4),
+      listDirectChats(),
+    ])
+      .then(([followingResponse, directThreads]) => {
+        if (!isMounted) return;
+        setContacts(followingResponse.items);
+        setThreads(directThreads.slice(0, 3));
+      })
+      .catch((err: unknown) => {
+        if (!isMounted) return;
+        setError(err instanceof Error ? err.message : 'Không thể tải dữ liệu liên hệ');
+      })
+      .finally(() => {
+        if (isMounted) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser]);
+
+  return (
+    <div className="space-y-5">
+      <SectionCard title="Contacts" rightLabel={loading ? 'Loading' : `${contacts.length} following`}>
+        {loading ? (
+          <ThemedText as="p" className="text-[14px] font-medium text-slate-400">Đang tải liên hệ...</ThemedText>
+        ) : error ? (
+          <ThemedText as="p" className="text-[14px] font-medium text-red-500">{error}</ThemedText>
+        ) : contacts.length === 0 ? (
+          <ThemedText as="p" className="text-[14px] font-medium text-slate-400">Bạn chưa theo dõi ai.</ThemedText>
+        ) : (
+          contacts.map((item) => <ContactRow key={item.id} item={item} />)
+        )}
+      </SectionCard>
+
+      <SectionCard title="Messenger" rightLabel={loading ? 'Loading' : `${threads.length} threads`}>
+        {loading ? (
+          <ThemedText as="p" className="text-[14px] font-medium text-slate-400">Đang tải hội thoại...</ThemedText>
+        ) : error ? (
+          <ThemedText as="p" className="text-[14px] font-medium text-red-500">{error}</ThemedText>
+        ) : threads.length === 0 ? (
+          <ThemedText as="p" className="text-[14px] font-medium text-slate-400">Chưa có hội thoại nào.</ThemedText>
+        ) : (
+          threads.map((item) => <MessengerRow key={item.id} item={item} />)
+        )}
+
+        <Link href={ROUTES.inbox} className="mt-2 block rounded-[22px] bg-[#0A0A0A] px-5 py-4 text-center text-[14px] font-bold !text-white transition-all hover:bg-slate-800 active:scale-95">
+          Open inbox
+        </Link>
+      </SectionCard>
+    </div>
   );
 }
 
@@ -69,6 +195,10 @@ export function HomeFeed() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [stories, setStories] = useState<StoryItem[]>([]);
+  const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
+  const [isCreateStoryOpen, setIsCreateStoryOpen] = useState(false);
 
   const loadPosts = useCallback(async () => {
     setLoading(true);
@@ -84,186 +214,207 @@ export function HomeFeed() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchCurrentUser().then(setCurrentUser).catch(() => {});
-  }, []);
+  const [userPostCount, setUserPostCount] = useState(0);
 
   useEffect(() => {
-    let cancelled = false;
+    let isMounted = true;
+    void fetchPosts(1, 20)
+      .then((res) => {
+        if (isMounted) {
+          setPosts(res.items || []);
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setLoading(false);
+        }
+      });
 
-    queueMicrotask(() => {
-      if (!cancelled) {
-        void loadPosts();
+    fetchCurrentUser().then(user => {
+      if (isMounted) {
+        setCurrentUser(user);
+        if (user) {
+          fetchPosts(1, 1, user.id).then(res => {
+            if (isMounted) setUserPostCount(res.total || 0);
+          });
+        }
       }
-    });
+    }).catch(() => { });
 
-    return () => {
-      cancelled = true;
-    };
+    fetchStories()
+      .then((response) => {
+        if (isMounted) {
+          setStories(response.map((story) => mapApiStoryToStoryItem(story, API_URL)));
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+
+    return () => { isMounted = false; };
   }, [loadPosts]);
 
-  const initials = currentUser 
+  const initials = currentUser
     ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase()
     : 'LE';
 
+  const handleCreateStory = (story: StoryItem) => {
+    setStories((currentStories) => [story, ...currentStories.filter((item) => item.id !== story.id)]);
+  };
+
+  const handleOpenStory = useCallback((storyId: string) => {
+    setSelectedStoryId(storyId);
+
+    void markStoryViewed(storyId)
+      .then((status) => {
+        setStories((currentStories) => currentStories.map((story) => {
+          if (story.id !== storyId) return story;
+
+          return {
+            ...story,
+            isViewed: true,
+            timeLabel: 'Đã xem',
+            viewCount: status.view_count,
+          };
+        }));
+      })
+      .catch((err: unknown) => {
+        console.error(err);
+      });
+  }, []);
+
   return (
     <ProtectedPage>
-      <main className="min-h-screen bg-[#EDF1F5] pb-8">
+      <main className="min-h-screen bg-[#F8FAFC] pb-12">
+        {isCreateStoryOpen && (
+          <CreateStoryModal
+            currentUser={currentUser}
+            onClose={() => setIsCreateStoryOpen(false)}
+            onCreateStory={handleCreateStory}
+          />
+        )}
+        {selectedStoryId && (
+          <StoryViewerModal
+            currentUser={currentUser}
+            onClose={() => setSelectedStoryId(null)}
+            onSelectStory={handleOpenStory}
+            selectedStoryId={selectedStoryId}
+            stories={stories}
+          />
+        )}
+        {selectedPostId && (
+          <PostDetailModal
+            postId={selectedPostId}
+            onClose={() => setSelectedPostId(null)}
+            currentUser={currentUser}
+          />
+        )}
         <div className="mx-auto w-full max-w-[1720px] px-4 pb-6 pt-4 md:px-6">
           <AppTopNav searchPlaceholder="Search users" currentUser={currentUser} />
 
           <div className="mt-4 grid gap-4 xl:grid-cols-[350px_minmax(0,1fr)_360px]">
             {/* Left Rail */}
             <div className="space-y-4">
-              <ThemedText as="p" className="px-1 text-lg font-semibold text-slate-900">Shortcuts</ThemedText>
-              {shortcuts.map((item) => (
-                <div key={item.label} className="flex items-center gap-4 rounded-[22px] bg-[#F7F8FA] px-4 py-4 hover:bg-slate-100 transition-colors cursor-pointer">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#D9ECF8] text-[#4A9FD8]">
-                    <span className="material-icons text-[22px]">{item.icon}</span>
-                  </div>
-                  <ThemedText as="p" className="text-lg font-medium text-slate-900">{item.label}</ThemedText>
-                </div>
-              ))}
-
-              <section className={`${surfaceClass} overflow-hidden shadow-sm`}>
-                <div className="h-[180px] bg-[#EAF4FB]" />
+              <section className={`${surfaceClass} overflow-hidden`}>
+                {/* Banner */}
+                <div className="h-[120px] bg-gradient-to-br from-[#EAF4FB] to-[#D9ECF8]" />
                 <div className="px-5 pb-5">
-                  <div className="-mt-8">
+                  <div className="-mt-10">
                     {currentUser?.avatar_url ? (
-                      <Image src={resolveAvatarUrl(currentUser.avatar_url) as string} width={64} height={64} className="h-16 w-16 rounded-[22px] border-4 border-white shadow-sm object-cover" alt="Avatar" unoptimized />
+                      <img
+                        src={resolveAvatarUrl(currentUser.avatar_url) as string}
+                        className="h-20 w-20 rounded-[24px] border-[5px] border-white shadow-xl object-cover"
+                        alt="Avatar"
+                      />
                     ) : (
-                      <div className="flex h-16 w-16 items-center justify-center rounded-[22px] border-4 border-white bg-[#EAF4FB] shadow-sm">
-                        <ThemedText as="span" className="text-xl font-bold text-slate-950">{initials}</ThemedText>
+                      <div className="flex h-20 w-20 items-center justify-center rounded-[24px] border-[5px] border-white bg-[#EAF4FB] shadow-xl">
+                        <ThemedText as="span" className="text-2xl font-bold text-slate-950">{initials}</ThemedText>
                       </div>
                     )}
                   </div>
-                  <ThemedText as="h2" className="mt-4 text-[28px] font-semibold text-slate-950">
+                  <ThemedText as="h2" className="mt-4 text-[22px] font-bold text-slate-950 tracking-tight">
                     {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : 'Lena Evere'}
                   </ThemedText>
-                  <ThemedText as="p" className="mt-2 text-base leading-7 text-slate-600">
-                    {currentUser?.bio || 'Leading product design at Northfeed, shaping calmer social tools for creative teams.'}
+                  <ThemedText as="p" className="mt-2 text-[14px] leading-relaxed text-slate-500">
+                    {currentUser?.bio || 'Chưa có tiểu sử giới thiệu.'}
                   </ThemedText>
                   <div className="mt-5 grid grid-cols-2 gap-3">
-                    <div className="rounded-[22px] bg-[#F7F8FA] px-4 py-4">
-                      <ThemedText as="p" className="text-sm text-slate-500">Followers</ThemedText>
-                      <ThemedText as="p" className="mt-1 text-xl font-semibold text-slate-950">2.4k</ThemedText>
+                    <div className="rounded-[20px] bg-slate-50 p-4 border border-slate-100">
+                      <ThemedText as="p" className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Followers</ThemedText>
+                      <ThemedText as="p" className="mt-1 text-[22px] font-bold text-slate-950">0</ThemedText>
                     </div>
-                    <div className="rounded-[22px] bg-[#F7F8FA] px-4 py-4">
-                      <ThemedText as="p" className="text-sm text-slate-500">Posts</ThemedText>
-                      <ThemedText as="p" className="mt-1 text-xl font-semibold text-slate-950">14</ThemedText>
+                    <div className="rounded-[20px] bg-slate-50 p-4 border border-slate-100">
+                      <ThemedText as="p" className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Posts</ThemedText>
+                      <ThemedText as="p" className="mt-1 text-[22px] font-bold text-slate-950">{userPostCount}</ThemedText>
                     </div>
                   </div>
-                  <div className="mt-5 grid grid-cols-2 gap-3">
-                    <Link className="rounded-[22px] bg-[#0A0A0A] px-4 py-4 text-center text-base font-medium !text-white hover:bg-slate-800 transition-colors" href={ROUTES.profile}>
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <Link className="rounded-[18px] bg-slate-950 px-4 py-3.5 text-center text-[14px] font-bold !text-white hover:bg-slate-800 transition-all active:scale-95" href={ROUTES.profile}>
                       View profile
                     </Link>
-                    <Link href="/profile/edit" className="rounded-[22px] bg-[#F7F8FA] px-4 py-4 text-center text-base font-medium text-slate-900 hover:bg-slate-200 transition-colors">
-                      Edit intro
+                    <Link href="/profile/edit" className="rounded-[18px] bg-slate-50 px-4 py-3.5 text-center text-[14px] font-bold text-slate-900 border border-slate-100 hover:bg-slate-100 transition-all active:scale-95">
+                      Edit profile
                     </Link>
+                  </div>
+
+                  <div className="mt-5 border-t border-slate-100 pt-4 space-y-1">
+                    <ThemedText as="p" className="mb-3 text-[11px] font-bold text-slate-400 uppercase tracking-[0.15em]">Shortcuts</ThemedText>
+                    {shortcuts.map((item) => (
+                      <div key={item.label} className="flex items-center gap-3 rounded-[16px] px-3 py-2.5 hover:bg-slate-50 transition-colors cursor-pointer group">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-slate-100 text-slate-500 group-hover:bg-[#EAF4FB] group-hover:text-[#4A9FD8] transition-colors">
+                          <item.Icon size={18} weight="regular" />
+                        </div>
+                        <ThemedText as="p" className="text-[14px] font-semibold text-slate-700 group-hover:text-slate-900 transition-colors">{item.label}</ThemedText>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </section>
             </div>
 
             {/* Center Feed */}
-            <div className="space-y-4">
+            <div className="space-y-6">
               <ComposerCard onPostCreated={loadPosts} currentUser={currentUser} />
 
-              <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-                {stories.map((item) => (
-                  <div key={item.id} className={`${item.fill} min-w-[180px] cursor-pointer hover:opacity-95 transition-opacity overflow-hidden rounded-[28px] p-5 shadow-sm`}>
-                    <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-white/20 text-white">
-                        <ThemedText as="span" className="text-xs font-bold">{item.initials}</ThemedText>
-                    </div>
-                    <div className="mt-24 space-y-1">
-                      <ThemedText as="p" className="text-lg font-semibold text-white">{item.title}</ThemedText>
-                      <ThemedText as="p" className="text-sm text-white/80">{item.time}</ThemedText>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <StoryStrip
+                currentUser={currentUser}
+                onCreateStory={() => setIsCreateStoryOpen(true)}
+                onOpenStory={handleOpenStory}
+                stories={stories}
+              />
 
               {loading ? (
-                <div className="flex flex-col items-center justify-center p-12 space-y-4">
-                  <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#4A9FD8] border-t-transparent" />
-                  <ThemedText as="p" className="text-slate-500">Đang tải bài viết...</ThemedText>
+                <div className="flex flex-col items-center justify-center p-16 space-y-4">
+                  <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-[#4A9FD8] border-t-transparent" />
+                  <ThemedText as="p" className="text-[15px] font-medium text-slate-400">Refreshing your feed...</ThemedText>
                 </div>
               ) : posts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center p-12 bg-white rounded-[28px] border border-[#E4E8EE]">
-                  <span className="material-icons text-slate-300 text-[48px]">article</span>
-                  <ThemedText as="p" className="mt-4 text-slate-500 font-medium">Chưa có bài viết nào</ThemedText>
+                <div className="flex flex-col items-center justify-center p-16 bg-white rounded-[32px] border border-slate-200/60 shadow-sm">
+                  <div className="h-20 w-20 flex items-center justify-center rounded-[24px] bg-slate-50 mb-6">
+                    <Article className="text-slate-300" size={36} weight="regular" />
+                  </div>
+                  <ThemedText as="p" className="text-slate-400 font-bold text-lg">No posts yet</ThemedText>
+                  <ThemedText as="p" className="text-slate-400 text-sm mt-1">Start by sharing your first update!</ThemedText>
                 </div>
               ) : (
                 <div className="space-y-4">
-                    {posts.map((item) => (
-                        <FeedPost key={item.id} item={item} currentUser={currentUser} />
-                    ))}
+                  {posts.map((item) => (
+                    <FeedPost
+                      key={item.id}
+                      item={item}
+                      currentUser={currentUser}
+                      onPostClick={(id) => setSelectedPostId(id)}
+                    />
+                  ))}
                 </div>
               )}
             </div>
 
             {/* Right Rail */}
-            <div className="space-y-4">
-              <SectionCard title="Contacts" rightLabel="12 online">
-                {contacts.map((item) => (
-                  <Link
-                    key={item.id}
-                    className="flex items-center gap-4 rounded-[22px] bg-[#F7F8FA] px-4 py-4 transition hover:opacity-95"
-                    href={ROUTES.profileDetail(item.id, {
-                      name: item.name,
-                      initials: item.initials,
-                      preview: item.status,
-                      bio: item.bio,
-                    })}>
-                    <Avatar initials={item.initials} soft />
-                    <div className="flex-1">
-                      <ThemedText as="p" className="text-lg font-medium text-slate-900">{item.name}</ThemedText>
-                      <ThemedText as="p" className="text-sm text-slate-500">{item.status}</ThemedText>
-                    </div>
-                    <div className="h-3 w-3 rounded-full bg-[#6FC18A]" />
-                  </Link>
-                ))}
-              </SectionCard>
-
-              <section className={`${surfaceClass} p-5 shadow-sm`}>
-                <div className="inline-flex rounded-full bg-[#D9ECF8] px-3 py-2">
-                  <ThemedText as="p" className="text-sm font-semibold text-slate-900">Tonight</ThemedText>
-                </div>
-                <ThemedText as="h2" className="mt-4 text-[24px] font-semibold leading-8 text-slate-950">
-                  Prototype review with motion notes
-                </ThemedText>
-                <ThemedText as="p" className="mt-3 text-base text-slate-500">
-                  18:30 - 19:15 | Riverside Studio 4
-                </ThemedText>
-                <button className="mt-5 rounded-[20px] bg-[#0A0A0A] px-6 py-4 text-base font-medium text-white hover:bg-slate-800 transition-colors" type="button">
-                  View brief
-                </button>
-              </section>
-
-              <SectionCard title="Messenger" rightLabel="3 unread">
-                {inboxItems.map((item) => (
-                  <Link
-                    key={item.id}
-                    className="flex items-center gap-4 rounded-[22px] bg-[#F7F8FA] px-4 py-4 transition hover:opacity-95"
-                    href={ROUTES.profileDetail(item.id, {
-                      name: item.name,
-                      initials: item.initials,
-                      preview: item.message,
-                      bio: item.bio,
-                    })}>
-                    <Avatar initials={item.initials} soft />
-                    <div className="flex-1 space-y-1">
-                      <ThemedText as="p" className="text-lg font-medium text-slate-900">{item.name}</ThemedText>
-                      <ThemedText as="p" className="text-sm text-slate-500 line-clamp-1">{item.message}</ThemedText>
-                    </div>
-                    {item.unread ? <div className="h-3 w-3 rounded-full bg-[#4A9FD8]" /> : null}
-                  </Link>
-                ))}
-                <Link className="mt-2 block rounded-[22px] bg-[#0A0A0A] px-5 py-4 text-center text-base font-medium !text-white hover:bg-slate-800 transition-colors" href={ROUTES.inbox}>
-                  Open inbox
-                </Link>
-              </SectionCard>
-            </div>
+            <RightRail currentUser={currentUser} />
           </div>
         </div>
       </main>

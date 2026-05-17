@@ -1,12 +1,44 @@
-@import 'tailwindcss';
+@import '../../node_modules/tailwindcss';
 
 :root {
-  --background: #f4f8ff;
+  color-scheme: light;
+  --background: #F8FAFC;
   --foreground: #0f172a;
   --surface: #ffffff;
-  --surface-muted: #eef4ff;
-  --border-soft: rgba(148, 163, 184, 0.24);
-  --ring-soft: rgba(56, 189, 248, 0.28);
+  --surface-muted: #F1F5F9;
+  --text-muted: #64748B;
+  --border: #E4E8EE;
+  --border-soft: rgba(148, 163, 184, 0.28);
+  --accent: #4A9FD8;
+  --accent-hover: #2F8BC9;
+  --accent-soft: rgba(74, 159, 216, 0.12);
+  --ring-soft: rgba(74, 159, 216, 0.28);
+  --radius-card: 32px;
+  --radius-surface: 24px;
+  --radius-control: 18px;
+  --radius-avatar: 14px;
+}
+
+/* Ép luôn dùng light mode, không theo system dark mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: light;
+    --background: #F8FAFC;
+    --foreground: #0f172a;
+    --surface: #ffffff;
+    --surface-muted: #F1F5F9;
+    --text-muted: #64748B;
+    --border: #E4E8EE;
+    --border-soft: rgba(148, 163, 184, 0.28);
+    --accent: #4A9FD8;
+    --accent-hover: #2F8BC9;
+    --accent-soft: rgba(74, 159, 216, 0.12);
+    --ring-soft: rgba(74, 159, 216, 0.28);
+    --radius-card: 32px;
+    --radius-surface: 24px;
+    --radius-control: 18px;
+    --radius-avatar: 14px;
+  }
 }
 
 @theme inline {
@@ -49,12 +81,6 @@ input,
 textarea,
 select {
   outline: none;
-}
-
-input:focus,
-textarea:focus,
-select:focus {
-  box-shadow: 0 0 0 4px var(--ring-soft);
 }
 
 input.no-focus-ring:focus,
