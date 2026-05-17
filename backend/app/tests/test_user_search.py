@@ -46,23 +46,24 @@ def test_search_users_matches_first_last_and_full_name() -> None:
     seed_users(db)
 
     first_name_result = search_users(db, 'len')
-    assert [user.email for user in first_name_result] == ['lena@example.com']
+    assert [user.email for user in first_name_result['items']] == ['lena@example.com']
 
     last_name_result = search_users(db, 'merc')
-    assert [user.email for user in last_name_result] == ['rafi@example.com']
+    assert [user.email for user in last_name_result['items']] == ['rafi@example.com']
 
     full_name_result = search_users(db, 'aya tran')
-    assert [user.email for user in full_name_result] == ['aya@example.com']
+    assert [user.email for user in full_name_result['items']] == ['aya@example.com']
 
 
 def test_search_users_returns_empty_for_blank_query() -> None:
   with build_test_session() as db:
     seed_users(db)
-    assert search_users(db, '   ') == []
+    result = search_users(db, '   ')
+    assert result['items'] == []
 
 
 def test_search_users_respects_limit() -> None:
   with build_test_session() as db:
     seed_users(db)
-    results = search_users(db, 'a', limit=1)
-    assert len(results) == 1
+    results = search_users(db, 'a', page_size=1)
+    assert len(results['items']) == 1
