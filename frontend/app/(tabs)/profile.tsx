@@ -9,7 +9,7 @@ import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { API_URL, fetchPosts } from '@/lib/api';
-import { fetchCurrentUser, updateUserProfile, type AuthUser } from '@/lib/auth';
+import { fetchCurrentUser, updateUserProfile, fetchFollowStatus, type AuthUser, type FollowStatus } from '@/lib/auth';
 import type { Post } from '@/lib/types';
 
 type ProfileTab = 'posts' | 'about' | 'media';
@@ -92,7 +92,9 @@ function buildProfileViewModel(user: AuthUser | null): ProfileViewModel {
   const intro = user?.bio || '';
   const location = user?.city || '';
   const email = user?.email || '';
-  const avatarUrl = user?.avatar_url ? `${API_URL}${user.avatar_url}` : null;
+  const avatarUrl = user?.avatar_url
+    ? (user.avatar_url.startsWith('http') ? user.avatar_url : `${API_URL}${user.avatar_url}`)
+    : null;
   return {
     displayName,
     initials: initials || 'N/A',
@@ -235,6 +237,8 @@ export default function ProfileScreen() {
   const { width, height } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [followStatus, setFollowStatus] = useState<FollowStatus | null>(null);
+  const [isLoadingFollowStatus, setIsLoadingFollowStatus] = useState(false);
   const [isEditingIntro, setIsEditingIntro] = useState(false);
   const [tempIntro, setTempIntro] = useState('');
   const [tempCity, setTempCity] = useState('');
@@ -272,6 +276,36 @@ export default function ProfileScreen() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!user) {
+      setFollowStatus(null);
+      return;
+    }
+
+    let isMounted = true;
+    setIsLoadingFollowStatus(true);
+    fetchFollowStatus(user.id)
+      .then((status) => {
+        if (isMounted) {
+          setFollowStatus(status);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setFollowStatus(null);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoadingFollowStatus(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
+
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
 
@@ -294,7 +328,7 @@ export default function ProfileScreen() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [user]);
 
   const handleDeletePost = (postId: string) => {
     setPosts(current => current.filter(p => p.id !== postId));
@@ -356,6 +390,23 @@ export default function ProfileScreen() {
 
                 <View className={`mt-5 gap-5 ${isWide ? 'flex-row items-start justify-between' : ''}`}>
                   <View className={isWide ? 'max-w-[760px] flex-1' : ''}>
+                    {profile.intro ? (
+                      <ThemedText className="mt-1 text-[16px] leading-7 text-slate-600">
+                        {profile.intro}
+                      </ThemedText>
+                    ) : null}
+                    {followStatus ? (
+                      <View className="mt-4 flex-row flex-wrap gap-5">
+                        <View className="flex-row items-center gap-1.5">
+                          <ThemedText className="text-[15px] font-bold text-slate-950">{followStatus.followers_count}</ThemedText>
+                          <ThemedText className="text-[15px] text-slate-500">người theo dõi</ThemedText>
+                        </View>
+                        <View className="flex-row items-center gap-1.5">
+                          <ThemedText className="text-[15px] font-bold text-slate-950">{followStatus.following_count}</ThemedText>
+                          <ThemedText className="text-[15px] text-slate-500">đang theo dõi</ThemedText>
+                        </View>
+                      </View>
+                    ) : null}
                   </View>
 
                   <View className={`${isWide ? 'w-[360px]' : ''} gap-3`}>

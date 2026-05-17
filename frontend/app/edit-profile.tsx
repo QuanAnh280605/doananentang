@@ -385,7 +385,7 @@ export default function EditProfileScreen() {
   const currentAvatarSource = avatarUri
     ? { uri: avatarUri }
     : user?.avatar_url
-      ? { uri: `${API_URL}${user.avatar_url}` }
+      ? { uri: user.avatar_url.startsWith('http') ? user.avatar_url : `${API_URL}${user.avatar_url}` }
       : null;
 
   const initials = `${(firstName || 'N').charAt(0)}${(lastName || 'A').charAt(0)}`.toUpperCase();

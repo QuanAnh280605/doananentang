@@ -160,6 +160,10 @@ export async function fetchCurrentUser(): Promise<AuthUser> {
   return apiFetch<AuthUser>('/api/auth/me');
 }
 
+export async function fetchUserProfile(userId: number): Promise<AuthUser> {
+  return apiFetch<AuthUser>(`/api/users/${userId}`);
+}
+
 import type { PaginatedUsers } from './types';
 
 export async function searchUsers(query: string, page = 1, pageSize = 20): Promise<PaginatedUsers<SearchUser>> {

@@ -29,7 +29,7 @@ function formatTime(isoString: string): string {
     return `${days} ngày trước`;
 }
 
-export function FeedPost({ item }: { item: Post }) {
+export function FeedPost({ item, onDelete }: { item: Post; onDelete?: (postId: string) => void }) {
     const [liked, setLiked] = useState(item.is_liked);
     const [count, setCount] = useState(item.like_count);
     const [loading, setLoading] = useState(false);
@@ -100,6 +100,9 @@ export function FeedPost({ item }: { item: Post }) {
                 try {
                     await deletePost(String(item.id));
                     setIsDeleted(true);
+                    if (onDelete) {
+                        onDelete(String(item.id));
+                    }
                 } catch (err) {
                     window.alert("Lỗi: Không thể xóa bài viết.");
                 }
@@ -114,6 +117,9 @@ export function FeedPost({ item }: { item: Post }) {
                         try {
                             await deletePost(String(item.id));
                             setIsDeleted(true);
+                            if (onDelete) {
+                                onDelete(String(item.id));
+                            }
                         } catch (err) {
                             Alert.alert("Lỗi", "Không thể xóa bài viết.");
                         }
@@ -256,7 +262,6 @@ export function FeedPost({ item }: { item: Post }) {
                         <Image
                             source={{ uri: firstMediaUrl }}
                             className="w-full h-full"
-                            pointerEvents="none"
                             resizeMode="contain"
                         />
                     )}
