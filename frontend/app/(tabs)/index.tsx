@@ -500,6 +500,7 @@ export default function HomeScreen() {
                 </View>
               )}
             </View>
+
           </View>
         }
         renderItem={({ item }) => {

@@ -341,30 +341,26 @@ export default function EditProfileScreen() {
   useEffect(() => {
     let mounted = true;
     fetchCurrentUser()
-      .then((u) => {
-        if (!u || !mounted) return;
+      .then((user) => {
+        if (!user || !mounted) return;
         
-        setFirstName(u.first_name || '');
-        setLastName(u.last_name || '');
-        setBio(u.bio || '');
-        setPhone(u.phone || '');
-        setGender(u.gender || 'custom');
-        setCity(u.city || '');
-        setEmail(u.email || '');
-        
-        let aUri = u.avatar_url ?? null;
-        if (aUri && !aUri.startsWith('http')) {
-          aUri = `${API_URL}${aUri}`;
+        setFirstName(user.first_name || '');
+        setLastName(user.last_name || '');
+        setBio(user.bio || '');
+        setPhone(user.phone || '');
+        setGender(user.gender || 'custom');
+        setCity(user.city || '');
+        setEmail(user.email || '');
+        if (user.avatar_url) {
+          setAvatarUri(user.avatar_url.startsWith('http') ? user.avatar_url : `${API_URL}${user.avatar_url}`);
         }
-        setAvatarUri(aUri);
-        setHasNewAvatar(false);
 
-        fetchFollowStatus(u.id)
+        fetchFollowStatus(user.id)
           .then((status) => {
             if (mounted) setFollowerCount(status.followers_count);
           })
           .catch(() => {});
-        fetchPosts(1, 1, u.id)
+        fetchPosts(1, 1, user.id)
           .then((res) => {
             if (mounted) setPostCount(res.total);
           })

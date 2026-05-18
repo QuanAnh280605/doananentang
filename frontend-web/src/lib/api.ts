@@ -403,6 +403,7 @@ export function createChatMessage(chatId: string, payload: SendChatMessageReques
   });
 }
 
+<<<<<<< HEAD
 // ─── Admin ──────────────────────────────────────────────────────────────────
 
 export type AdminUser = {
@@ -549,6 +550,8 @@ export function uploadChatMedia(file: File): Promise<{ url: string; media_type: 
   });
 }
 
+=======
+>>>>>>> 4df61f6 (update UI profile)
 export function markChatRead(chatId: string): Promise<ChatReadStatusResponse> {
   return apiFetch<ChatReadStatusResponse>(`/api/chats/${chatId}/read`, { method: 'POST' });
 }
