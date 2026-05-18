@@ -1,0 +1,144 @@
+'use client';
+
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
+
+import { restoreAuthSession } from '@/lib/api';
+import type { ChatMessageResponse } from '@/lib/chat.types';
+import { getAccessToken, subscribeToAuthSessionChanges } from '@/lib/session';
+import { connectAppSocket, disconnectAppSocket, getConnectedAppSocket } from '@/lib/socket';
+import { useToast } from '@/hooks/useToast';
+import { hasUnreadMessages } from '@/lib/chat';
+import { getCurrentUserIdFromToken } from '@/lib/shared-auth';
+
+type RealtimeProviderProps = {
+  children: ReactNode;
+};
+
+type PresenceChangedPayload = {
+  user_id: number;
+  is_online: boolean;
+};
+
+type OnlineUsersSnapshotPayload = {
+  user_ids: number[];
+};
+
+type RealtimeContextValue = {
+  isUserOnline: (userId: number) => boolean;
+  hasNewMessage: boolean; 
+  setHasNewMessage: (value: boolean) => void; 
+};
+
+const RealtimeContext = createContext<RealtimeContextValue | null>(null);
+
+export function useRealtimePresence(): RealtimeContextValue {
+  const context = useContext(RealtimeContext);
+
+  if (!context) {
+    throw new Error('useRealtimePresence must be used within RealtimeProvider');
+  }
+
+  return context;
+}
+
+export function RealtimeProvider({ children }: RealtimeProviderProps) {
+  const pathname = usePathname();
+  const toast = useToast();
+  const pathnameRef = useRef(pathname);
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<number>>(() => new Set());
+  const [hasNewMessage, setHasNewMessage] = useState(false);
+
+  const isUserOnline = useCallback((userId: number) => onlineUserIds.has(userId), [onlineUserIds]);
+  const value = useMemo<RealtimeContextValue>(() => (
+    { 
+      isUserOnline, 
+      hasNewMessage, 
+      setHasNewMessage 
+    }), 
+    [
+      isUserOnline, 
+      hasNewMessage, 
+      setHasNewMessage
+    ]);
+
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const handleGlobalMessageCreated = (payload: ChatMessageResponse) => {
+      const token = getAccessToken();
+      const currentUserId = getCurrentUserIdFromToken(token);
+
+      if (payload.sender_id !== currentUserId) {
+        setHasNewMessage(true);
+      }
+    };
+
+    const handleOnlineUsersSnapshot = (payload: OnlineUsersSnapshotPayload) => {
+      setOnlineUserIds(new Set(payload.user_ids));
+    };
+
+    const handleUserPresenceChanged = (payload: PresenceChangedPayload) => {
+      setOnlineUserIds((currentUserIds) => {
+        const nextUserIds = new Set(currentUserIds);
+
+        if (payload.is_online) {
+          nextUserIds.add(payload.user_id);
+        } else {
+          nextUserIds.delete(payload.user_id);
+        }
+
+        return nextUserIds;
+      });
+    };
+
+    const syncSocketConnection = () => {
+      if (getAccessToken()) {
+        const socket = connectAppSocket();
+        if (socket) {
+          socket.off('message-created', handleGlobalMessageCreated);
+          socket.off('online-users-snapshot', handleOnlineUsersSnapshot);
+          socket.off('user-presence-changed', handleUserPresenceChanged);
+          socket.on('message-created', handleGlobalMessageCreated);
+          socket.on('online-users-snapshot', handleOnlineUsersSnapshot);
+          socket.on('user-presence-changed', handleUserPresenceChanged);
+        }
+        return;
+      }
+
+      disconnectAppSocket();
+    };
+
+    restoreAuthSession()
+      .then((token) => {
+        if (!isMounted || !token) {
+          syncSocketConnection();
+          return;
+        }
+
+        syncSocketConnection();
+        hasUnreadMessages().then(setHasNewMessage).catch(() => undefined);
+      })
+      .catch(() => {
+        disconnectAppSocket();
+      });
+
+    const unsubscribe = subscribeToAuthSessionChanges(syncSocketConnection);
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+      const socket = getConnectedAppSocket();
+      socket?.off('message-created', handleGlobalMessageCreated);
+      socket?.off('online-users-snapshot', handleOnlineUsersSnapshot);
+      socket?.off('user-presence-changed', handleUserPresenceChanged);
+      disconnectAppSocket();
+    };
+  }, [toast]);
+
+  return <RealtimeContext.Provider value={value}>{children}</RealtimeContext.Provider>;
+}

@@ -26,6 +26,14 @@ class MessageRead(BaseModel):
   model_config = ConfigDict(from_attributes=True)
 
 
+class PaginatedMessagesResponse(BaseModel):
+  items: list[MessageRead]
+  total: int
+  page: int
+  page_size: int
+  total_pages: int
+
+
 class DirectChatRead(BaseModel):
   chat_id: int
   participant_user_id: int
@@ -37,3 +45,17 @@ class ChatListItemRead(BaseModel):
   participant: UserSearchRead
   latest_message: MessageRead | None = None
   updated_at: datetime
+  unread_count: int
+
+
+class PaginatedChatsResponse(BaseModel):
+  items: list[ChatListItemRead]
+  total: int
+  page: int
+  page_size: int
+  total_pages: int
+
+
+class ChatReadStatusRead(BaseModel):
+  chat_id: int
+  unread_count: int

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 
+import { RealtimeProvider } from '@/components/providers/RealtimeProvider';
 import { GlobalSearchProvider } from '@/components/search/GlobalSearchProvider';
 import { ToastProvider } from '@/components/toast/ToastProvider';
 
@@ -12,7 +13,9 @@ type AppProvidersProps = {
 export function AppProviders({ children }: AppProvidersProps) {
   return (
     <ToastProvider>
-      <GlobalSearchProvider>{children}</GlobalSearchProvider>
+      <RealtimeProvider>
+        <GlobalSearchProvider>{children}</GlobalSearchProvider>
+      </RealtimeProvider>
     </ToastProvider>
   );
 }

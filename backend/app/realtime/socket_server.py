@@ -13,6 +13,54 @@ from app.core.config import get_settings
 settings = get_settings()
 sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins=settings.cors_origins_list)
 logger = logging.getLogger(__name__)
+USER_PRESENCE_CHANGED_EVENT = 'user-presence-changed'
+ONLINE_USERS_SNAPSHOT_EVENT = 'online-users-snapshot'
+
+
+class PresenceRegistry:
+  def __init__(self) -> None:
+    self._user_ids_by_sid: dict[str, int] = {}
+    self._sids_by_user_id: dict[int, set[str]] = {}
+
+  def connect(self, sid: str, user_id: int) -> bool:
+    existing_user_id = self._user_ids_by_sid.get(sid)
+    if existing_user_id is not None:
+      self.disconnect(sid)
+
+    self._user_ids_by_sid[sid] = user_id
+    user_sids = self._sids_by_user_id.setdefault(user_id, set())
+    was_offline = len(user_sids) == 0
+    user_sids.add(sid)
+    return was_offline
+
+  def disconnect(self, sid: str) -> tuple[int | None, bool]:
+    user_id = self._user_ids_by_sid.pop(sid, None)
+    if user_id is None:
+      return None, False
+
+    user_sids = self._sids_by_user_id.get(user_id)
+    if user_sids is None:
+      return user_id, False
+
+    user_sids.discard(sid)
+    if user_sids:
+      return user_id, False
+
+    self._sids_by_user_id.pop(user_id, None)
+    return user_id, True
+
+  def is_online(self, user_id: int) -> bool:
+    return bool(self._sids_by_user_id.get(user_id))
+
+  def get_online_user_ids(self) -> list[int]:
+    return sorted(self._sids_by_user_id)
+
+
+presence_registry = PresenceRegistry()
+
+
+def get_user_room_name(user_id: int) -> str:
+  return f'user:{user_id}'
 
 
 def create_socket_app(other_asgi_app: Any = None) -> socketio.ASGIApp:
@@ -42,6 +90,20 @@ async def connect(sid: str, environ: dict[str, Any], auth: dict[str, Any] | None
     raise ConnectionRefusedError('Invalid credentials')
 
   await sio.save_session(sid, {'user_id': user.id})
+  await sio.enter_room(sid, get_user_room_name(user.id))
+  became_online = presence_registry.connect(sid, user.id)
+  await sio.emit(ONLINE_USERS_SNAPSHOT_EVENT, {'user_ids': presence_registry.get_online_user_ids()}, to=sid)
+  if became_online:
+    await sio.emit(USER_PRESENCE_CHANGED_EVENT, {'user_id': user.id, 'is_online': True})
+
+
+@sio.event
+async def disconnect(sid: str) -> None:
+  user_id, became_offline = presence_registry.disconnect(sid)
+  if user_id is not None:
+    await sio.leave_room(sid, get_user_room_name(user_id))
+  if user_id is not None and became_offline:
+    await sio.emit(USER_PRESENCE_CHANGED_EVENT, {'user_id': user_id, 'is_online': False})
 
 
 async def _get_socket_user_id(sid: str) -> int | None:
