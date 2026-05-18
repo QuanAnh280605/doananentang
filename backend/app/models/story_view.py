@@ -6,7 +6,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import Base
 from app.models.db_types import UUID_TYPE
 
-
 class StoryView(Base):
   __tablename__ = 'story_views'
   __table_args__ = (

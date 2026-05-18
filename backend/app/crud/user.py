@@ -47,25 +47,45 @@ def list_users(db: Session) -> list[User]:
   return list(db.scalars(statement).all())
 
 
-def search_users(db: Session, query: str, limit: int = 20) -> list[User]:
+import math
+
+def search_users(db: Session, query: str, page: int = 1, page_size: int = 20) -> dict:
   normalized_query = query.strip().lower()
   if not normalized_query:
-    return []
+    return {
+      'items': [],
+      'total': 0,
+      'page': page,
+      'page_size': page_size,
+      'total_pages': 0,
+    }
 
   pattern = f'%{normalized_query}%'
   full_name = func.lower(User.first_name + ' ' + User.last_name)
 
-  statement = (
-    select(User)
-    .where(
-      or_(
-        func.lower(User.first_name).like(pattern),
-        func.lower(User.last_name).like(pattern),
-        full_name.like(pattern),
-      )
+  base_query = select(User).where(
+    or_(
+      func.lower(User.first_name).like(pattern),
+      func.lower(User.last_name).like(pattern),
+      full_name.like(pattern),
     )
-    .order_by(User.first_name, User.last_name, User.id)
-    .limit(max(1, min(limit, 50)))
   )
-  return list(db.scalars(statement).all())
-  
+
+  total = db.scalar(select(func.count()).select_from(base_query.subquery())) or 0
+  total_pages = math.ceil(total / page_size) if total > 0 else 1
+
+  statement = (
+    base_query
+    .order_by(User.first_name, User.last_name, User.id)
+    .offset((page - 1) * page_size)
+    .limit(page_size)
+  )
+  items = list(db.scalars(statement).all())
+
+  return {
+    'items': items,
+    'total': total,
+    'page': page,
+    'page_size': page_size,
+    'total_pages': total_pages,
+  }

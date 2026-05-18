@@ -13,8 +13,9 @@ from app.core.database import get_db
 from app.crud.follow import count_followers, count_following, create_follow, delete_follow, is_following, get_followers, get_following, search_following_users
 from app.crud.user import create_user, get_user_by_email, get_user_by_id, get_user_by_phone, list_users, search_users
 from app.models.user import User
-from app.schemas.user import FollowStatusRead, UserCreate, UserRead, UserSearchRead, FollowUserRead, PaginatedFollowUsersResponse
+from app.schemas.user import FollowStatusRead, UserCreate, UserRead, UserSearchRead, FollowUserRead, PaginatedUsersResponse, PaginatedFollowUsersResponse
 from app.schemas.user import UserUpdate
+
 
 router = APIRouter()
 AVATAR_UPLOAD_DIR = Path('uploads') / 'avatars'
@@ -44,14 +45,17 @@ def list_users_endpoint(db: Session = Depends(get_db)) -> list[UserRead]:
   return [UserRead.model_validate(user) for user in users]
 
 
-@router.get('/search', response_model=list[UserSearchRead])
+@router.get('/search', response_model=PaginatedUsersResponse)
 def search_users_endpoint(
   q: str = Query(..., min_length=1),
-  limit: int = Query(20, ge=1, le=50),
+  page: int = Query(1, ge=1),
+  page_size: int = Query(20, ge=1, le=50),
   db: Session = Depends(get_db)
-) -> list[UserSearchRead]:
-  users = search_users(db, q, limit)
-  return [
+):
+  result = search_users(db, q, page, page_size)
+  
+  # Format items to UserSearchRead schema
+  formatted_items = [
     UserSearchRead(
       id=user.id,
       first_name=user.first_name,
@@ -59,9 +63,11 @@ def search_users_endpoint(
       full_name=user.full_name,
       avatar_url=user.avatar_url,
       bio=user.bio,
-    )
-    for user in users
+    ) for user in result['items']
   ]
+  
+  result['items'] = formatted_items
+  return result
 
 
 @router.get('/following/search', response_model=list[UserSearchRead])

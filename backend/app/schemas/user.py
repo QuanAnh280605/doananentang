@@ -99,6 +99,15 @@ class UserUpdate(BaseModel):
   city: str | None = None
 
 
+
+class PaginatedUsersResponse(BaseModel):
+  items: list[UserSearchRead]
+  total: int
+  page: int
+  page_size: int
+  total_pages: int
+
+
 class PaginatedFollowUsersResponse(BaseModel):
   items: list[FollowUserRead]
   total: int

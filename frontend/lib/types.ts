@@ -43,6 +43,15 @@ export type PaginatedPosts = {
   total_pages: number;
 };
 
+/** Response phân trang cho Users */
+export type PaginatedUsers<T> = {
+  items: T[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+};
+
 // ─── Like ────────────────────────────────────────────────────
 
 export type LikeStatus = {
