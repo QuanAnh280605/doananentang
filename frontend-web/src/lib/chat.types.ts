@@ -57,9 +57,31 @@ export type ChatMessageResponse = {
   created_at: string;
 };
 
+export type PaginatedChatMessagesResponse = {
+  items: ChatMessageResponse[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+};
+
+export type PaginatedDirectChatsResponse = {
+  items: DirectChatListItemResponse[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+};
+
 export type DirectChatListItemResponse = {
   chat_id: number;
   participant: SearchUser;
   latest_message: ChatMessageResponse | null;
   updated_at: string;
+  unread_count: number;
+};
+
+export type ChatReadStatusResponse = {
+  chat_id: number;
+  unread_count: number;
 };

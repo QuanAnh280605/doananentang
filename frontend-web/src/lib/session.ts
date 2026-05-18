@@ -2,6 +2,7 @@ import { isJwtTokenValid } from '@/lib/shared-auth';
 
 const ACCESS_TOKEN_STORAGE_KEY = 'auth.accessToken';
 const REFRESH_TOKEN_STORAGE_KEY = 'auth.refreshToken';
+const AUTH_SESSION_CHANGED_EVENT = 'auth-session-changed';
 
 let accessToken: string | null = null;
 
@@ -28,6 +29,14 @@ function writePersistedToken(storageKey: string, token: string | null): void {
   }
 
   window.localStorage.setItem(storageKey, token);
+}
+
+function emitAuthSessionChanged(): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.dispatchEvent(new Event(AUTH_SESSION_CHANGED_EVENT));
 }
 
 function isTokenValid(token: string | null): boolean {
@@ -76,14 +85,27 @@ export async function hydrateAccessToken(): Promise<string | null> {
 export async function setAccessToken(token: string | null): Promise<void> {
   accessToken = token;
   writePersistedToken(ACCESS_TOKEN_STORAGE_KEY, token);
+  emitAuthSessionChanged();
 }
 
 export async function setAuthTokens(nextAccessToken: string | null, refreshToken: string | null): Promise<void> {
   accessToken = nextAccessToken;
   writePersistedToken(ACCESS_TOKEN_STORAGE_KEY, nextAccessToken);
   writePersistedToken(REFRESH_TOKEN_STORAGE_KEY, refreshToken);
+  emitAuthSessionChanged();
 }
 
 export async function clearAuthTokens(): Promise<void> {
   await setAuthTokens(null, null);
+}
+
+export function subscribeToAuthSessionChanges(listener: () => void): () => void {
+  if (typeof window === 'undefined') {
+    return () => {};
+  }
+
+  window.addEventListener(AUTH_SESSION_CHANGED_EVENT, listener);
+  return () => {
+    window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, listener);
+  };
 }
