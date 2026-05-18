@@ -3,6 +3,7 @@ import type { ComponentType } from 'react';
 import { Aperture, Bell, EnvelopeSimple, SquaresFour } from '@phosphor-icons/react';
 import { useGlobalSearch } from '@/components/search/GlobalSearchProvider';
 import Link from 'next/link';
+import { useRealtimePresence } from '@/components/providers/RealtimeProvider';
 
 import { ThemedText } from '@/components/ui/ThemedText';
 import { SearchInput } from '@/components/ui/SearchInput';
@@ -16,17 +17,26 @@ type AppTopNavProps = {
   searchValue?: string;
   onSearchChange?: (value: string) => void;
   currentUser?: AuthUser | null;
+  hideInboxAction?: boolean;
 };
 
 type IconComponent = ComponentType<{ className?: string; size?: number; weight?: 'thin' | 'light' | 'regular' | 'bold' | 'fill' | 'duotone' }>;
 
-function IconBubble({ icon: Icon, href, label }: { icon: IconComponent; href?: string; label: string }) {
-  const className = 'flex h-11 w-11 items-center justify-center rounded-[14px] bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900 active:scale-90 transition-all duration-200 cursor-pointer';
+function IconBubble({ icon: Icon, href, label, hasBadge }: { icon: IconComponent; href?: string; label: string; hasBadge?: boolean }) {
+  const className = 'group relative flex h-11 w-11 items-center justify-center rounded-[14px] bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900 active:scale-90 transition-all duration-200 cursor-pointer';
+
+  const badgeNode = hasBadge && (
+    <>
+      <span className="absolute top-[7px] right-[7px] block h-2 w-2 rounded-full bg-red-500 ring-2 ring-slate-50 group-hover:ring-slate-100 transition-colors duration-200 z-10" />
+      <span className="absolute top-[7px] right-[7px] block h-2 w-2 rounded-full bg-red-500 animate-ping opacity-75 z-0" />
+    </>
+  );
 
   if (href) {
     return (
       <Link aria-label={label} className={className} href={href}>
         <Icon size={20} weight="regular" />
+        {badgeNode}
       </Link>
     );
   }
@@ -34,6 +44,7 @@ function IconBubble({ icon: Icon, href, label }: { icon: IconComponent; href?: s
   return (
     <button aria-label={label} className={className} type="button">
       <Icon size={20} weight="regular" />
+      {badgeNode}
     </button>
   );
 }
@@ -44,16 +55,19 @@ export function AppTopNav({
   searchValue,
   onSearchChange,
   currentUser,
+  hideInboxAction = false,
 
 }: AppTopNavProps) {
   const globalSearch = useGlobalSearch();
   const isControlled = typeof onSearchChange === 'function';
   const resolvedSearchValue = isControlled ? (searchValue ?? '') : globalSearch.query;
-  const initials = currentUser 
+  const initials = currentUser
     ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase()
     : avatarInitials;
 
   const avatarUrl = resolveAvatarUrl(currentUser?.avatar_url);
+
+  const { hasNewMessage } = useRealtimePresence();
 
   const handleSearchChange = (value: string) => {
     if (isControlled) {
@@ -100,14 +114,14 @@ export function AppTopNav({
 
         {/* Action Buttons & Avatar */}
         <div className="flex items-center gap-2.5">
-          <IconBubble href={ROUTES.inbox} icon={EnvelopeSimple} label="Open inbox" />
+          {!hideInboxAction ? <IconBubble href={ROUTES.inbox} icon={EnvelopeSimple} label="Open inbox" hasBadge={hasNewMessage} /> : null}
           <IconBubble icon={Bell} label="Open notifications" />
           <IconBubble icon={SquaresFour} label="Open apps" />
-          
+
           <Link href="/profile" className="ml-2 group">
             {avatarUrl ? (
-              <img 
-                src={avatarUrl} 
+              <img
+                src={avatarUrl}
                 alt="Avatar"
                 className="h-11 w-11 shrink-0 rounded-[14px] object-cover ring-0 group-hover:ring-4 ring-slate-100 transition-all duration-300"
               />

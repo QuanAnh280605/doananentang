@@ -57,12 +57,24 @@ export function connectInboxSocket() {
   return socket;
 }
 
+export const connectAppSocket = connectInboxSocket;
+
 export function disconnectInboxSocket() {
   if (inboxSocket === null) {
     return;
   }
 
   inboxSocket.disconnect();
+}
+
+export const disconnectAppSocket = disconnectInboxSocket;
+
+export function getConnectedAppSocket(): Socket | null {
+  if (!inboxSocket?.connected) {
+    return null;
+  }
+
+  return inboxSocket;
 }
 
 export async function joinChatRoom(chatId: string) {

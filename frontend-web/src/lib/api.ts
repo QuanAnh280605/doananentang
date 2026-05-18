@@ -1,9 +1,11 @@
 import { ROUTES } from '@/lib/routes';
 import type {
   ChatMessageResponse,
+  ChatReadStatusResponse,
   CreateDirectChatRequest,
-  DirectChatListItemResponse,
   DirectChatResponse,
+  PaginatedChatMessagesResponse,
+  PaginatedDirectChatsResponse,
   SendChatMessageRequest,
 } from '@/lib/chat.types';
 import { formatApiErrorDetail, normalizeApiUrl, type ApiUrlSource, type TokenRefreshResponse } from '@/lib/shared-api';
@@ -370,8 +372,9 @@ export function unlikeComment(commentId: string): Promise<{ liked: boolean; like
   return apiFetch<{ liked: boolean; like_count: number }>(`/api/comments/${commentId}/like`, { method: 'DELETE' });
 }
 
-export function fetchDirectChats(): Promise<DirectChatListItemResponse[]> {
-  return apiFetch<DirectChatListItemResponse[]>('/api/chats');
+export function fetchDirectChats(page = 1, pageSize = 20): Promise<PaginatedDirectChatsResponse> {
+  const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
+  return apiFetch<PaginatedDirectChatsResponse>(`/api/chats?${params.toString()}`);
 }
 
 export function createDirectChat(payload: CreateDirectChatRequest): Promise<DirectChatResponse> {
@@ -381,8 +384,9 @@ export function createDirectChat(payload: CreateDirectChatRequest): Promise<Dire
   });
 }
 
-export function fetchChatMessages(chatId: string): Promise<ChatMessageResponse[]> {
-  return apiFetch<ChatMessageResponse[]>(`/api/chats/${chatId}/messages`);
+export function fetchChatMessages(chatId: string, page = 1, pageSize = 30): Promise<PaginatedChatMessagesResponse> {
+  const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
+  return apiFetch<PaginatedChatMessagesResponse>(`/api/chats/${chatId}/messages?${params.toString()}`);
 }
 
 export function createChatMessage(chatId: string, payload: SendChatMessageRequest): Promise<ChatMessageResponse> {
@@ -390,4 +394,12 @@ export function createChatMessage(chatId: string, payload: SendChatMessageReques
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+export function markChatRead(chatId: string): Promise<ChatReadStatusResponse> {
+  return apiFetch<ChatReadStatusResponse>(`/api/chats/${chatId}/read`, { method: 'POST' });
+}
+
+export function hasUnreadMessages(): Promise<boolean> {
+  return apiFetch<boolean>('/api/chats/has-unread-messages');
 }

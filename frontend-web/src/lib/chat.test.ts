@@ -15,6 +15,7 @@ type InboxThreadLike = {
   preview: string;
   time: string;
   activityLabel: string;
+  unread?: number;
 };
 
 type ChatMessageLike = {
@@ -210,4 +211,31 @@ test('applyMessagePreviewToThreads updates the matching thread preview with the 
     activityLabel: 'Updated 10:45',
   });
   assert.deepEqual(nextThreads[1], threads[1]);
+});
+
+test('applyMessagePreviewToThreads increments unread when incoming message is not open', () => {
+  const threads: InboxThreadLike[] = [
+    {
+      id: 'thread-1',
+      chatId: 'chat-1',
+      preview: 'Tin nhắn cũ',
+      time: '09:10',
+      activityLabel: 'Tin nhắn trước đó',
+      unread: 1,
+    },
+  ];
+
+  const nextThreads = applyMessagePreviewToThreads(threads, {
+    id: 'message-99',
+    chatId: 'chat-1',
+    body: 'Preview mới từ server',
+    time: '10:45',
+    senderUserId: 2,
+    createdAt: '2026-01-01T10:45:00.000Z',
+  }, {
+    currentUserId: 1,
+    selectedChatId: 'chat-2',
+  });
+
+  assert.equal(nextThreads[0]?.unread, 2);
 });

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { UIEvent } from 'react';
 
 import { ProtectedPage } from '@/components/app/ProtectedPage';
 import { InboxListItem } from '@/components/inbox/InboxListItem';
@@ -12,26 +13,32 @@ import {
   resolveInboxSelectionAfterThreadRefresh,
 } from '@/components/inbox/inboxSelectionState';
 import { AppTopNav } from '@/components/navigation/AppTopNav';
+import { useRealtimePresence } from '@/components/providers/RealtimeProvider';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { ThemedText } from '@/components/ui/ThemedText';
 import { surfaceClass } from '@/components/ui/design-system';
 import { resolveAvatarUrl } from '@/lib/api';
 import { fetchCurrentUser, searchFollowingUsers, type AuthUser, type SearchUser } from '@/lib/auth';
 import {
+  appendMessageById,
   applyMessagePreviewToThreads,
   createSingleFlightMessageSender,
   getOrCreateDirectChat,
-  listDirectChats,
+  listDirectChatsPage,
   listMessages,
+  listMessagesPage,
+  markDirectChatRead,
   mapRealtimeMessage,
-  mergeMessagesById,
+  mergeThreadsByChatId,
   normalizeMessageContent,
+  prependMessagesById,
   runOptimisticMessageSend,
   sendMessage,
+  hasUnreadMessages,
 } from '@/lib/chat';
 import type { ChatMessage, ChatMessageResponse, DirectChat, InboxThreadData } from '@/lib/chat.types';
 import { ROUTES } from '@/lib/routes';
-import { connectInboxSocket, disconnectInboxSocket, joinChatRoom, leaveChatRoom } from '@/lib/socket';
+import { connectAppSocket, joinChatRoom, leaveChatRoom } from '@/lib/socket';
 
 const followedUserProfileDetails: InboxThreadData['profileStats'] = [
   { label: 'Source', value: 'Following search' },
@@ -39,6 +46,9 @@ const followedUserProfileDetails: InboxThreadData['profileStats'] = [
   { label: 'Conversation', value: 'Direct message' },
   { label: 'State', value: 'Live backend sync' },
 ];
+
+const MESSAGES_PAGE_SIZE = 30;
+const THREADS_PAGE_SIZE = 20;
 
 function buildInitials(firstName: string, lastName: string): string {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || 'US';
@@ -86,8 +96,12 @@ function buildThreadFromFollowedUser(user: SearchUser): InboxThreadData {
 }
 
 export function InboxView() {
+  const { isUserOnline, setHasNewMessage } = useRealtimePresence();
   const [threads, setThreads] = useState<InboxThreadData[]>([]);
+  const [threadsPage, setThreadsPage] = useState(1);
+  const [threadsTotalPages, setThreadsTotalPages] = useState(0);
   const [isLoadingThreads, setIsLoadingThreads] = useState(true);
+  const [isLoadingMoreThreads, setIsLoadingMoreThreads] = useState(false);
   const [threadsErrorMessage, setThreadsErrorMessage] = useState<string | null>(null);
   const [inboxSearchQuery, setInboxSearchQuery] = useState('');
   const [matchingFollowedUsers, setMatchingFollowedUsers] = useState<SearchUser[]>([]);
@@ -96,7 +110,10 @@ export function InboxView() {
   const [selectedUser, setSelectedUser] = useState<SearchUser | null>(null);
   const [selectedChat, setSelectedChat] = useState<DirectChat | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messagesPage, setMessagesPage] = useState(1);
+  const [messagesTotalPages, setMessagesTotalPages] = useState(0);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [isLoadingMoreMessages, setIsLoadingMoreMessages] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [messageError, setMessageError] = useState<string | null>(null);
   const [draftMessage, setDraftMessage] = useState('');
@@ -106,8 +123,11 @@ export function InboxView() {
   const latestThreadsRequestRef = useRef(0);
   const latestMessageRequestRef = useRef(0);
   const composerTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const messagesScrollRef = useRef<HTMLDivElement | null>(null);
+  const shouldScrollToLatestRef = useRef(false);
   const sendMessageGuardRef = useRef(createSingleFlightMessageSender(sendMessage));
   const selectedChatIdRef = useRef<string | null>(null);
+  const currentUserIdRef = useRef<number | null>(null);
   const normalizedInboxSearchQuery = inboxSearchQuery.trim();
   const normalizedDraftMessage = draftMessage.trim();
   const selectedUserId = selectedUser?.id ?? null;
@@ -126,24 +146,43 @@ export function InboxView() {
     }
     : null;
 
-  const refreshThreads = useCallback(async (): Promise<InboxThreadData[]> => {
+  const refreshThreads = useCallback(async (options?: {
+    preserveLoadedPages?: boolean;
+    silent?: boolean;
+  }): Promise<InboxThreadData[]> => {
+    const isSilentRefresh = Boolean(options?.silent);
     const requestId = latestThreadsRequestRef.current + 1;
-    latestThreadsRequestRef.current = requestId;
-    setIsLoadingThreads(true);
+
+    if (!isSilentRefresh) {
+      latestThreadsRequestRef.current = requestId;
+    }
+
+    if (!isSilentRefresh) {
+      setIsLoadingThreads(true);
+    }
     setThreadsErrorMessage(null);
 
     try {
-      const nextThreads = await listDirectChats();
+      const response = await listDirectChatsPage(1, THREADS_PAGE_SIZE);
+      const nextThreads = response.items;
 
-      if (latestThreadsRequestRef.current !== requestId) {
+      if (!isSilentRefresh && latestThreadsRequestRef.current !== requestId) {
         return nextThreads;
       }
 
-      setThreads(nextThreads);
-      setSelectedUser((currentUser) => resolveInboxSelectionAfterThreadRefresh(currentUser, nextThreads));
+      setThreads((currentThreads) => (
+        options?.preserveLoadedPages ? mergeThreadsByChatId(nextThreads, currentThreads) : nextThreads
+      ));
+      setThreadsPage((currentPage) => (options?.preserveLoadedPages ? Math.max(currentPage, response.page) : response.page));
+      setThreadsTotalPages(response.totalPages);
+
+      if (!options?.preserveLoadedPages) {
+        setSelectedUser((currentUser) => resolveInboxSelectionAfterThreadRefresh(currentUser, nextThreads));
+      }
+
       return nextThreads;
     } catch (error: unknown) {
-      if (latestThreadsRequestRef.current !== requestId) {
+      if (!isSilentRefresh && latestThreadsRequestRef.current !== requestId) {
         return [];
       }
 
@@ -151,7 +190,7 @@ export function InboxView() {
       setThreadsErrorMessage(nextMessage);
       return [];
     } finally {
-      if (latestThreadsRequestRef.current === requestId) {
+      if (!isSilentRefresh && latestThreadsRequestRef.current === requestId) {
         setIsLoadingThreads(false);
       }
     }
@@ -195,12 +234,22 @@ export function InboxView() {
     };
   }, []);
 
+  const clearThreadUnread = useCallback((chatId: string) => {
+    setThreads((currentThreads) => currentThreads.map((thread) => (
+      thread.chatId === chatId ? { ...thread, unread: 0 } : thread
+    )));
+  }, []);
+
   useEffect(() => {
     selectedChatIdRef.current = selectedChat?.id ?? null;
   }, [selectedChat?.id]);
 
   useEffect(() => {
-    const socket = connectInboxSocket();
+    currentUserIdRef.current = currentUser?.id ?? null;
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    const socket = connectAppSocket();
 
     if (!socket) {
       return;
@@ -210,19 +259,40 @@ export function InboxView() {
       const nextMessage = mapRealtimeMessage(payload);
 
       if (selectedChatIdRef.current === nextMessage.chatId) {
-        setMessages((currentMessages) => mergeMessagesById(currentMessages, nextMessage));
+        shouldScrollToLatestRef.current = true;
+        setMessages((currentMessages) => appendMessageById(currentMessages, nextMessage));
+
+        if (nextMessage.senderUserId !== null && nextMessage.senderUserId !== currentUserIdRef.current) {
+          void markDirectChatRead(nextMessage.chatId)
+            .then(() => {
+              clearThreadUnread(nextMessage.chatId);
+              hasUnreadMessages().then(setHasNewMessage).catch(() => undefined);
+            })
+            .catch(() => undefined);
+        }
       }
 
-      setThreads((currentThreads) => applyMessagePreviewToThreads(currentThreads, nextMessage));
+      setThreads((currentThreads) => {
+        const hasLocalThread = currentThreads.some((thread) => thread.chatId === nextMessage.chatId);
+
+        if (!hasLocalThread) {
+          void refreshThreads({ preserveLoadedPages: true, silent: true });
+          return currentThreads;
+        }
+
+        return applyMessagePreviewToThreads(currentThreads, nextMessage, {
+          currentUserId: currentUserIdRef.current,
+          selectedChatId: selectedChatIdRef.current,
+        });
+      });
     };
 
     socket.on('message-created', handleMessageCreated);
 
     return () => {
       socket.off('message-created', handleMessageCreated);
-      disconnectInboxSocket();
     };
-  }, []);
+  }, [clearThreadUnread, refreshThreads, setHasNewMessage]);
 
   useEffect(() => {
     const chatId = selectedChat?.id ?? null;
@@ -237,6 +307,20 @@ export function InboxView() {
       void leaveChatRoom(chatId);
     };
   }, [selectedChat?.id]);
+
+  useEffect(() => {
+    if (!shouldScrollToLatestRef.current) {
+      return;
+    }
+
+    const scrollElement = messagesScrollRef.current;
+    if (!scrollElement) {
+      return;
+    }
+
+    scrollElement.scrollTop = scrollElement.scrollHeight;
+    shouldScrollToLatestRef.current = false;
+  }, [messages]);
 
   useEffect(() => {
     if (selectedUserId === null) {
@@ -259,15 +343,26 @@ export function InboxView() {
         }
 
         setSelectedChat(chat);
-        void refreshThreads();
+        void markDirectChatRead(chat.id)
+          .then(() => {
+            clearThreadUnread(chat.id);
+            hasUnreadMessages().then(setHasNewMessage).catch(() => undefined);
+            void refreshThreads();
+          })
+          .catch(() => {
+            void refreshThreads();
+          });
 
-        const existingMessages = await listMessages(chat.id);
+        const existingMessages = await listMessagesPage(chat.id, 1, MESSAGES_PAGE_SIZE);
 
         if (latestMessageRequestRef.current !== requestId) {
           return;
         }
 
-        setMessages(existingMessages);
+        shouldScrollToLatestRef.current = true;
+        setMessages(existingMessages.items);
+        setMessagesPage(existingMessages.page);
+        setMessagesTotalPages(existingMessages.totalPages);
       })
       .catch((error: unknown) => {
         if (latestMessageRequestRef.current !== requestId) {
@@ -277,6 +372,9 @@ export function InboxView() {
         const nextMessage = error instanceof Error ? error.message : 'Không thể tải hội thoại lúc này.';
         setSelectedChat(null);
         setMessages([]);
+        setMessagesPage(1);
+        setMessagesTotalPages(0);
+        setIsLoadingMoreMessages(false);
         setMessageError(nextMessage);
       })
       .finally(() => {
@@ -284,7 +382,7 @@ export function InboxView() {
           setIsLoadingMessages(false);
         }
       });
-  }, [refreshThreads, selectedUserId]);
+  }, [clearThreadUnread, refreshThreads, selectedUserId, setHasNewMessage]);
 
   const handleInboxSearchChange = (value: string) => {
     setInboxSearchQuery(value);
@@ -349,7 +447,86 @@ export function InboxView() {
     setMessageError(null);
     setSelectedChat(null);
     setMessages([]);
+    setMessagesPage(1);
+    setMessagesTotalPages(0);
+    setIsLoadingMoreMessages(false);
     setSelectedUser(user);
+  };
+
+  const handleThreadsScroll = (event: UIEvent<HTMLDivElement>) => {
+    if (
+      normalizedInboxSearchQuery.length > 0
+      || isLoadingThreads
+      || isLoadingMoreThreads
+      || threadsPage >= threadsTotalPages
+    ) {
+      return;
+    }
+
+    const element = event.currentTarget;
+    const isNearBottom = element.scrollHeight - element.scrollTop - element.clientHeight <= 120;
+
+    if (!isNearBottom) {
+      return;
+    }
+
+    const nextPage = threadsPage + 1;
+    setIsLoadingMoreThreads(true);
+
+    listDirectChatsPage(nextPage, THREADS_PAGE_SIZE)
+      .then((response) => {
+        setThreads((currentThreads) => mergeThreadsByChatId(currentThreads, response.items));
+        setThreadsPage(response.page);
+        setThreadsTotalPages(response.totalPages);
+      })
+      .catch((error: unknown) => {
+        setThreadsErrorMessage(error instanceof Error ? error.message : 'Không thể tải thêm hội thoại lúc này.');
+      })
+      .finally(() => {
+        setIsLoadingMoreThreads(false);
+      });
+  };
+
+  const handleMessagesScroll = (event: UIEvent<HTMLDivElement>) => {
+    if (!selectedChat || isLoadingMessages || isLoadingMoreMessages || messagesPage >= messagesTotalPages) {
+      return;
+    }
+
+    const element = event.currentTarget;
+    const isNearTop = element.scrollTop <= 96;
+
+    if (!isNearTop) {
+      return;
+    }
+
+    const nextPage = messagesPage + 1;
+    const previousScrollHeight = element.scrollHeight;
+    setIsLoadingMoreMessages(true);
+
+    listMessagesPage(selectedChat.id, nextPage, MESSAGES_PAGE_SIZE)
+      .then((response) => {
+        if (selectedChatIdRef.current !== selectedChat.id) {
+          return;
+        }
+
+        setMessages((currentMessages) => prependMessagesById(currentMessages, response.items));
+        setMessagesPage(response.page);
+        setMessagesTotalPages(response.totalPages);
+
+        requestAnimationFrame(() => {
+          if (selectedChatIdRef.current === selectedChat.id) {
+            element.scrollTop = element.scrollHeight - previousScrollHeight;
+          }
+        });
+      })
+      .catch((error: unknown) => {
+        setMessageError(error instanceof Error ? error.message : 'Không thể tải thêm tin nhắn lúc này.');
+      })
+      .finally(() => {
+        if (selectedChatIdRef.current === selectedChat.id) {
+          setIsLoadingMoreMessages(false);
+        }
+      });
   };
 
   const handleSendMessage = async () => {
@@ -388,7 +565,11 @@ export function InboxView() {
       });
 
       setMessages(workflowResult.finalMessages);
-      setThreads((currentThreads) => applyMessagePreviewToThreads(currentThreads, workflowResult.serverMessage));
+      setMessagesPage(1);
+      setThreads((currentThreads) => applyMessagePreviewToThreads(currentThreads, workflowResult.serverMessage, {
+        currentUserId: currentUser?.id ?? null,
+        selectedChatId: selectedChat.id,
+      }));
       await refreshThreads();
     } catch (error: unknown) {
       setMessages((currentMessages) => currentMessages.filter((message) => message.id !== optimisticMessage.id));
@@ -410,6 +591,7 @@ export function InboxView() {
         initials: buildInitials(item.user.first_name, item.user.last_name),
         avatarUrl: item.user.avatar_url,
         bio: item.user.bio?.trim() || item.preview,
+        isOnline: isUserOnline(item.user.id),
         unread: item.unread,
         active: item.user.id === selectedConversation?.user.id,
       }}
@@ -421,13 +603,13 @@ export function InboxView() {
     <ProtectedPage>
       <main className="min-h-[100dvh] bg-[#F8FAFC] xl:h-[100dvh] xl:overflow-hidden">
         <div className="mx-auto flex min-h-[100dvh] w-full max-w-[1720px] flex-col px-4 pb-4 pt-4 md:px-6 xl:h-full xl:min-h-0">
-          <AppTopNav searchPlaceholder="Search people, notes, or screenshots" currentUser={currentUser} />
+          <AppTopNav searchPlaceholder="Search people, notes, or screenshots" currentUser={currentUser} hideInboxAction />
           <div className="mt-4 grid min-h-0 flex-1 gap-4 xl:h-[calc(100dvh-112px)] xl:grid-cols-[336px_minmax(0,1fr)_248px]">
             <section className={`${surfaceClass} min-h-0 overflow-hidden p-5`}>
               <ThemedText as="h1" className="text-[24px] font-semibold text-slate-950">Inbox</ThemedText>
               <ThemedText as="p" className="mt-1 text-sm text-slate-500">Priority threads and recent updates</ThemedText>
               <SearchInput className="mt-5" onChange={handleInboxSearchChange} placeholder="Search followed users" value={inboxSearchQuery} />
-              <div className="mt-4 max-h-[calc(100dvh-260px)] space-y-3 overflow-y-auto pr-1 xl:max-h-none">
+              <div className="mt-4 max-h-[calc(100dvh-260px)] space-y-3 overflow-y-auto pr-1 xl:max-h-none" onScroll={handleThreadsScroll}>
                 {normalizedInboxSearchQuery.length === 0 ? (
                   isLoadingThreads ? (
                     <div className="rounded-[22px] bg-[#F8FAFC] px-4 py-4 text-sm text-slate-500">
@@ -438,7 +620,14 @@ export function InboxView() {
                       {threadsErrorMessage}
                     </div>
                   ) : defaultVisibleThreads.length ? (
-                    defaultVisibleThreads.map(renderThreadButton)
+                    <>
+                      {defaultVisibleThreads.map(renderThreadButton)}
+                      {isLoadingMoreThreads ? (
+                        <div className="rounded-[18px] bg-[#F8FAFC] px-4 py-3 text-center text-sm text-slate-500">
+                          Đang tải thêm hội thoại...
+                        </div>
+                      ) : null}
+                    </>
                   ) : (
                     <div className="rounded-[22px] bg-[#F8FAFC] px-4 py-4 text-sm text-slate-500">
                       Bạn chưa có cuộc trò chuyện nào. Hãy tìm người bạn đang theo dõi để bắt đầu.
@@ -495,7 +684,7 @@ export function InboxView() {
                 </div>
                 {selectedConversation ? <Link className="shrink-0 rounded-[18px] bg-white px-4 py-3 text-sm font-semibold text-slate-900" href={selectedConversation.profileHref}>View profile</Link> : null}
               </div>
-              <div className="mt-3 flex min-h-0 flex-1 overflow-y-auto flex-col rounded-[24px] bg-[#FCFDFE] px-4 py-4">
+              <div className="mt-3 flex min-h-0 flex-1 overflow-y-auto flex-col rounded-[24px] bg-[#FCFDFE] px-4 py-4" onScroll={handleMessagesScroll} ref={messagesScrollRef}>
                 {!selectedConversation ? (
                   <div className="flex min-h-full flex-1 items-center justify-center rounded-[22px] bg-[#F8FAFC] px-4 py-4 text-sm text-slate-500">
                     Chọn một cuộc trò chuyện để xem tin nhắn.
@@ -510,6 +699,11 @@ export function InboxView() {
                   </div>
                 ) : selectedConversation.messages.length ? (
                   <div className="flex min-h-full flex-col gap-3">
+                    {isLoadingMoreMessages ? (
+                      <div className="rounded-[18px] bg-[#F8FAFC] px-4 py-3 text-center text-sm text-slate-500">
+                        Đang tải thêm tin nhắn...
+                      </div>
+                    ) : null}
                     <div className="mt-auto" aria-hidden="true" />
                     {selectedConversation.messages.map((item) => <MessageBubble key={item.id} item={item} />)}
                   </div>

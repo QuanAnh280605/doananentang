@@ -12,6 +12,7 @@ export type InboxListItemData = {
   avatarUrl?: string | null;
   bio?: string;
   active?: boolean;
+  isOnline?: boolean;
   unread?: number;
 };
 
@@ -26,22 +27,29 @@ export function InboxListItem({ item, href, onClick }: InboxListItemProps) {
   const content = (
     <>
       <div className="flex items-start gap-3">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[18px] bg-[#DBEAFE]">
+        <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[18px] bg-[#DBEAFE]">
           {avatarUrl ? (
             <img alt={item.name} className="h-full w-full object-cover" src={avatarUrl} />
           ) : (
             <ThemedText as="span" className="text-sm font-semibold tracking-[0.6px] text-slate-900">{item.initials}</ThemedText>
           )}
+          {item.isOnline ? <span aria-label="Online" className="absolute bottom-0.5 right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" /> : null}
         </div>
-        <div className="flex-1 space-y-1">
-          <div className="flex items-center justify-between gap-3">
-            <ThemedText as="p" className="text-base font-semibold text-slate-950">{item.name}</ThemedText>
-            <ThemedText as="p" className="text-xs font-medium text-slate-400">{item.time}</ThemedText>
+        <div className="flex flex-1 items-start justify-between gap-3 min-w-0">
+          <div className="min-w-0 flex-1 space-y-1">
+            <ThemedText as="p" className={`text-base font-semibold truncate ${item.unread ? 'text-slate-950' : 'text-slate-800'}`}>{item.name}</ThemedText>
+            <ThemedText as="p" className={`text-sm leading-6 line-clamp-2 ${item.unread ? 'font-medium text-slate-900' : 'text-slate-500'}`}>{item.preview}</ThemedText>
           </div>
-          <ThemedText as="p" className="text-sm leading-6 text-slate-500">{item.preview}</ThemedText>
+          <div className="flex shrink-0 flex-col items-end gap-2 pt-0.5">
+            <ThemedText as="p" className={`text-xs font-medium ${item.unread ? 'text-red-500' : 'text-slate-400'}`}>{item.time}</ThemedText>
+            {item.unread ? <span className="block h-2.5 w-2.5 rounded-full bg-red-500 shadow-sm" /> : null}
+          </div>
+
+
+
         </div>
       </div>
-      {item.unread ? <div className="mt-3 inline-flex rounded-full bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white">{item.unread} new</div> : null}
+
     </>
   );
 
