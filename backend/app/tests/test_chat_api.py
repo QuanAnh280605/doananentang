@@ -12,7 +12,10 @@ from app.core.database import get_db
 from app.models.group import Chat
 from app.models.group_member import ChatMember
 from app.models.message import Message
+<<<<<<< HEAD
 from app.models.message_media import MessageMedia
+=======
+>>>>>>> 4df61f6 (update UI profile)
 from app.models.message_read import MessageStatus
 from app.crud.chat import get_chat_member_user_ids
 from app.models.user import User
@@ -30,7 +33,10 @@ def build_test_session() -> Session:
   Chat.__table__.create(bind=engine)
   ChatMember.__table__.create(bind=engine)
   Message.__table__.create(bind=engine)
+<<<<<<< HEAD
   MessageMedia.__table__.create(bind=engine)
+=======
+>>>>>>> 4df61f6 (update UI profile)
   MessageStatus.__table__.create(bind=engine)
   return Session(bind=engine, expire_on_commit=False)
 

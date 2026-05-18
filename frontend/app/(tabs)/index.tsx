@@ -345,6 +345,7 @@ export default function HomeScreen() {
             tintColor="#4A9FD8"
             colors={['#4A9FD8']}
           />
+<<<<<<< HEAD
         }
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.4}
@@ -429,9 +430,36 @@ export default function HomeScreen() {
               {isDesktop && (
                 <View className="w-[360px]">
                   <RightRail currentUser={currentUser} />
+=======
+
+          <View className={`mt-4 gap-4 ${isDesktop ? 'flex-row justify-center items-start' : ''}`}>
+            <View className={`${isDesktop ? 'w-[680px]' : 'w-full'} gap-4`}>
+              <ComposerCard onPostCreated={loadPosts} currentUser={currentUser} />
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="pr-4">
+                {stories.map((item) => (
+                  <StoryCard key={item.id} item={item} />
+                ))}
+              </ScrollView>
+
+              {/* Trạng thái loading / error / danh sách bài viết */}
+              {loading ? (
+                <View className="items-center py-12">
+                  <ActivityIndicator size="large" color="#4A9FD8" />
+                  <ThemedText className="mt-3 text-sm text-slate-500">Đang tải bài viết...</ThemedText>
+>>>>>>> 4df61f6 (update UI profile)
                 </View>
               )}
             </View>
+<<<<<<< HEAD
+=======
+
+            {isDesktop && (
+              <View className="w-[360px]">
+                <RightRail currentUser={currentUser} />
+              </View>
+            )}
+>>>>>>> 4df61f6 (update UI profile)
           </View>
         }
         renderItem={({ item }) => {

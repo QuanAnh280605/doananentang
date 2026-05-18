@@ -16,8 +16,21 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Image } from 'expo-image';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+<<<<<<< HEAD
 import { fetchCurrentUser, fetchFollowStatus, updateUserProfile, uploadUserAvatar, changePassword, type GenderValue } from '@/lib/auth';
 import { fetchPosts, API_URL } from '@/lib/api';
+=======
+import { API_URL, fetchPosts } from '@/lib/api';
+import {
+  fetchCurrentUser,
+  updateUserProfile,
+  uploadUserAvatar,
+  changePassword,
+  fetchFollowStatus,
+  type AuthUser,
+  type GenderValue,
+} from '@/lib/auth';
+>>>>>>> 4df61f6 (update UI profile)
 
 const surfaceClass = 'rounded-surface border border-app-border bg-app-surface';
 
@@ -263,6 +276,7 @@ function LivePreviewCard({
         {/* Stats */}
         <View className="mt-4 flex-row gap-6 px-1">
           <View>
+<<<<<<< HEAD
             <ThemedText className="text-lg font-semibold text-slate-950">
               {typeof followerCount === 'number' && followerCount >= 1000 
                 ? (followerCount / 1000).toFixed(1) + 'k' 
@@ -273,6 +287,14 @@ function LivePreviewCard({
           <View>
             <ThemedText className="text-lg font-semibold text-slate-950">{postCount}</ThemedText>
             <ThemedText className="text-xs text-slate-500">Bài viết</ThemedText>
+=======
+            <ThemedText className="text-lg font-semibold text-slate-950">{followerCount}</ThemedText>
+            <ThemedText className="text-xs text-slate-500">Followers</ThemedText>
+          </View>
+          <View>
+            <ThemedText className="text-lg font-semibold text-slate-950">{postCount}</ThemedText>
+            <ThemedText className="text-xs text-slate-500">Posts</ThemedText>
+>>>>>>> 4df61f6 (update UI profile)
           </View>
         </View>
       </SectionCard>
@@ -316,8 +338,17 @@ export default function EditProfileScreen() {
   const [email, setEmail] = useState('');
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
 
+<<<<<<< HEAD
   // Profile inline errors
   const [profileErrors, setProfileErrors] = useState<ProfileErrors>({});
+=======
+  // Stats
+  const [followerCount, setFollowerCount] = useState<number | string>('...');
+  const [postCount, setPostCount] = useState<number | string>('...');
+
+  // Contact fields (UI-only for now)
+  const [city, setCity] = useState('');
+>>>>>>> 4df61f6 (update UI profile)
 
   // Visibility toggles
   const [showRole, setShowRole] = useState(true);
@@ -338,6 +369,7 @@ export default function EditProfileScreen() {
   // Load user data
   useEffect(() => {
     let mounted = true;
+<<<<<<< HEAD
     fetchCurrentUser()
       .then((user) => {
         if (!user || !mounted) return;
@@ -351,6 +383,36 @@ export default function EditProfileScreen() {
         setEmail(user.email || '');
         if (user.avatar_url) {
           setAvatarUri(user.avatar_url.startsWith('http') ? user.avatar_url : `${API_URL}${user.avatar_url}`);
+=======
+    async function loadData() {
+      try {
+        const u = await fetchCurrentUser();
+        if (mounted && u) {
+          setUser(u);
+          setFirstName(u.first_name || '');
+          setLastName(u.last_name || '');
+          setBio(u.bio || '');
+          setPhone(u.phone || '');
+          setGender(u.gender || 'custom');
+          setCity(u.city || '');
+
+          Promise.all([
+            fetchFollowStatus(u.id).catch(() => null),
+            fetchPosts(1, 1, u.id).catch(() => null),
+          ]).then(([followStatus, postsResponse]) => {
+            if (!mounted) return;
+            if (followStatus) {
+              setFollowerCount(followStatus.followers_count);
+            } else {
+              setFollowerCount(0);
+            }
+            if (postsResponse) {
+              setPostCount(postsResponse.total ?? 0);
+            } else {
+              setPostCount(0);
+            }
+          });
+>>>>>>> 4df61f6 (update UI profile)
         }
 
         fetchFollowStatus(user.id)
