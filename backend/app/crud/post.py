@@ -78,29 +78,17 @@ def get_posts(
   if author_id is not None:
     query = query.filter(Post.author_id == author_id)
   
-  search_vector = None
-  search_query = None
-
   if q is not None and q.strip():
-    # Sử dụng PostgreSQL Full-Text Search
-    # 'simple' phù hợp cho tìm kiếm đa ngôn ngữ/không dấu
-    search_vector = func.to_tsvector('simple', Post.content)
-    search_query = func.plainto_tsquery('simple', q.strip())
-    query = query.filter(search_vector.op('@@')(search_query))
+    pattern = f"%{q.strip()}%"
+    query = query.filter(Post.content.ilike(pattern))
 
   # Tính tổng số bài viết
   total = query.with_entities(func.count(Post.id)).scalar() or 0
   total_pages = math.ceil(total / page_size) if total > 0 else 1
 
-  # Xác định cột sắp xếp
-  if sort_by == 'relevance' and search_vector is not None and search_query is not None:
-    # Sắp xếp theo độ liên quan (rank)
-    rank = func.ts_rank(search_vector, search_query)
-    order = rank.asc() if sort_order == 'asc' else rank.desc()
-  else:
-    # Sắp xếp theo thời gian
-    sort_column = getattr(Post, sort_by if sort_by != 'relevance' else 'created_at', Post.created_at)
-    order = sort_column.asc() if sort_order == 'asc' else sort_column.desc()
+  # Xác định cột sắp xếp (bỏ relevance vì không dùng ts_rank nữa)
+  sort_column = getattr(Post, sort_by if sort_by != 'relevance' else 'created_at', Post.created_at)
+  order = sort_column.asc() if sort_order == 'asc' else sort_column.desc()
 
   # Query có eager load media + author
   items = (
