@@ -330,6 +330,9 @@ export default function ProfileScreen() {
       setLoadingPosts(true);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> f664091 (update UI profile)
       fetchPosts(1, 10, user.id)
         .then((res) => {
           if (isMounted) setPosts(res.items);
@@ -338,12 +341,15 @@ export default function ProfileScreen() {
         .finally(() => {
           if (isMounted) setLoadingPosts(false);
         });
+<<<<<<< HEAD
 =======
 <<<<<<< HEAD
 =======
     if (!user) return;
 >>>>>>> a2cdf5f (merge main into profile_app)
 >>>>>>> 1bedbf9 (merge main into profile_app)
+=======
+>>>>>>> f664091 (update UI profile)
 
       return () => {
         isMounted = false;
@@ -355,6 +361,7 @@ export default function ProfileScreen() {
     setPosts((current) => current.filter((p) => p.id !== postId));
   };
 
+<<<<<<< HEAD
   const handleSaveIntro = async () => {
     setIsSavingIntro(true);
     try {
@@ -380,6 +387,8 @@ export default function ProfileScreen() {
   };
 
 >>>>>>> a2cdf5f (merge main into profile_app)
+=======
+>>>>>>> f664091 (update UI profile)
   const profile = useMemo(() => buildProfileViewModel(user), [user]);
 
   if (isLoadingUser) {
@@ -397,7 +406,7 @@ export default function ProfileScreen() {
         <ScrollView bounces={false} className="flex-1" contentContainerClassName="pb-8">
           <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-2 md:px-6">
             {/* Back header */}
-            <View 
+            <View
               className="flex-row items-center gap-3 bg-white px-5 py-4 border border-app-border mx-0 rounded-3xl shadow-sm"
               style={{ marginTop: Math.max(insets.top, 0) + 10 }}
             >
@@ -407,11 +416,7 @@ export default function ProfileScreen() {
               >
                 <ThemedText className="text-xl">←</ThemedText>
               </Pressable>
-<<<<<<< HEAD
               <ThemedText className="text-[20px] font-bold text-slate-900">Hồ sơ</ThemedText>
-=======
-              <ThemedText className="text-lg font-semibold text-slate-900">Hồ sơ</ThemedText>
->>>>>>> a2cdf5f (merge main into profile_app)
             </View>
 
             {/* Profile card */}
@@ -465,6 +470,9 @@ export default function ProfileScreen() {
                       </ThemedText>
                     ) : null}
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> f664091 (update UI profile)
                     <View className="mt-4 flex-row flex-wrap gap-5">
                       {followStatus ? (
                         <>
@@ -484,7 +492,11 @@ export default function ProfileScreen() {
                           </Pressable>
                         </>
                       ) : null}
+<<<<<<< HEAD
                       <Pressable 
+=======
+                      <Pressable
+>>>>>>> f664091 (update UI profile)
                         className="flex-row items-center gap-1.5 active:opacity-70"
                         onPress={() => {
                           if (activeTab !== 'posts') {
@@ -501,6 +513,7 @@ export default function ProfileScreen() {
                         <ThemedText className="text-[15px] text-slate-500">bài viết</ThemedText>
                       </Pressable>
                     </View>
+<<<<<<< HEAD
 =======
                     {followStatus ? (
                       <View className="mt-4 flex-row flex-wrap gap-5">
@@ -532,42 +545,49 @@ export default function ProfileScreen() {
                       </View>
                     ) : null}
 >>>>>>> 1bedbf9 (merge main into profile_app)
+=======
+>>>>>>> f664091 (update UI profile)
                   </View>
 
                   <View className={`${isWide ? 'w-[360px]' : ''} gap-3`}>
-                      <View className="flex-row flex-wrap gap-3">
-                        <ActionButton
-                          icon="edit"
-                          label="Chỉnh sửa hồ sơ"
-                          filled
-                          onPress={() => router.push('/edit-profile')}
-                        />
-                      </View>
+                    <View className="flex-row flex-wrap gap-3">
+                      <ActionButton
+                        icon="edit"
+                        label="Chỉnh sửa hồ sơ"
+                        filled
+                        onPress={() => router.push('/edit-profile')}
+                      />
                     </View>
                   </View>
-
-                  <View className="mt-6 flex-row flex-wrap gap-3">
-                    {tabs.map((tab) => (
-                      <ProfileTabButton
-                        key={tab.key}
-                        active={activeTab === tab.key}
-                        icon={tab.icon}
-                        label={tab.label}
-                        onPress={() => setActiveTab(tab.key)}
-                      />
-                    ))}
-                  </View>
                 </View>
+
+                <View className="mt-6 flex-row flex-wrap gap-3">
+                  {tabs.map((tab) => (
+                    <ProfileTabButton
+                      key={tab.key}
+                      active={activeTab === tab.key}
+                      icon={tab.icon}
+                      label={tab.label}
+                      onPress={() => setActiveTab(tab.key)}
+                    />
+                  ))}
+                </View>
+              </View>
             </ThemedView>
 
             {/* Body: sidebar + main */}
+<<<<<<< HEAD
             <View 
+=======
+            <View
+>>>>>>> f664091 (update UI profile)
               className={isWide ? 'flex-row items-start gap-4' : 'gap-4'}
               onLayout={(e) => postsSectionY.current = e.nativeEvent.layout.y}
             >
               {/* Sidebar */}
               {activeTab !== 'media' && (
                 <View className={isWide ? 'w-[320px] gap-4' : 'gap-4'}>
+<<<<<<< HEAD
                 <SidebarCard title="Giới thiệu">
                   <View className="gap-3">
                     {[
@@ -580,12 +600,36 @@ export default function ProfileScreen() {
                         let privacyIcon: keyof typeof MaterialIcons.glyphMap | null = null;
                         if (item.privacy === 'onlyme') privacyIcon = 'lock';
                         else if (item.privacy === 'followersonly') privacyIcon = 'group';
+=======
+                  <SidebarCard title="Giới thiệu">
+                    <View className="gap-3">
+                      {[
+                        { icon: 'mail-outline' as const, value: profile.email, privacy: profile.emailPrivacy },
+                        { icon: 'phone' as const, value: profile.phone, privacy: profile.contactPrivacy },
+                        { icon: 'location-on' as const, value: profile.location, privacy: profile.locationPrivacy },
+                      ]
+                        .filter((item) => !!item.value)
+                        .map((item) => {
+                          let privacyIcon: keyof typeof MaterialIcons.glyphMap | null = null;
+                          if (item.privacy === 'onlyme') privacyIcon = 'lock';
+                          else if (item.privacy === 'followersonly') privacyIcon = 'group';
+>>>>>>> f664091 (update UI profile)
 
-                        return (
-                          <View key={item.icon} className="flex-row items-center gap-3">
-                            <View className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA]">
-                              <MaterialIcons name={item.icon} size={20} color="#64748B" />
+                          return (
+                            <View key={item.icon} className="flex-row items-center gap-3">
+                              <View className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA]">
+                                <MaterialIcons name={item.icon} size={20} color="#64748B" />
+                              </View>
+                              <View className="flex-1 flex-row items-center gap-2">
+                                <ThemedText className="text-base font-medium text-slate-800" numberOfLines={1}>
+                                  {item.value}
+                                </ThemedText>
+                                {privacyIcon && (
+                                  <MaterialIcons name={privacyIcon} size={14} color="#94A3B8" />
+                                )}
+                              </View>
                             </View>
+<<<<<<< HEAD
                             <View className="flex-1 flex-row items-center gap-2">
                               <ThemedText className="text-base font-medium text-slate-800" numberOfLines={1}>
                                 {item.value}
@@ -602,6 +646,15 @@ export default function ProfileScreen() {
 
 
               </View>
+=======
+                          );
+                        })}
+                    </View>
+                  </SidebarCard>
+
+
+                </View>
+>>>>>>> f664091 (update UI profile)
               )}
 
               {/* Main content area */}
@@ -609,7 +662,11 @@ export default function ProfileScreen() {
                 {activeTab === 'posts' ? (
                   <View className="gap-4">
                     <MediaPanel posts={posts} />
+<<<<<<< HEAD
                     <ThemedText 
+=======
+                    <ThemedText
+>>>>>>> f664091 (update UI profile)
                       onLayout={(e) => feedY.current = e.nativeEvent.layout.y}
                       className="px-1 text-[26px] font-semibold text-slate-950"
                     >
