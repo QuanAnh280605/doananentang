@@ -7,7 +7,7 @@ import {
   ensureThreadStaysInInboxContext,
   resolveInboxSelectionAfterSearchClears,
   resolveInboxSelectionAfterThreadRefresh,
-} from './inboxSelectionState.ts';
+} from './inboxSelectionState';
 
 type InboxSelectableUser = {
   id: number;

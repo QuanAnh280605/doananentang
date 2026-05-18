@@ -5,6 +5,9 @@ from pydantic import BaseModel, ConfigDict
 from app.schemas.user import UserSearchRead
 
 
+MESSAGE_CREATED_EVENT = 'message-created'
+
+
 class CreateDirectChatRequest(BaseModel):
   target_user_id: int
 
@@ -17,7 +20,7 @@ class MessageRead(BaseModel):
   id: int
   chat_id: int
   sender_id: int
-  content: str | None
+  content: str
   created_at: datetime
 
   model_config = ConfigDict(from_attributes=True)

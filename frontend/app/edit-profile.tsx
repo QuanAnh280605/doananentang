@@ -26,7 +26,7 @@ import {
   type GenderValue,
 } from '@/lib/auth';
 
-const surfaceClass = 'rounded-[28px] border border-[#E4E8EE] bg-white';
+const surfaceClass = 'rounded-surface border border-app-border bg-app-surface';
 
 function SectionCard({ children }: { children: React.ReactNode }) {
   return (
@@ -110,7 +110,7 @@ function ToggleRow({
       <Switch
         value={value}
         onValueChange={onValueChange}
-        trackColor={{ false: '#E2E8F0', true: '#3B82F6' }}
+        trackColor={{ false: '#E2E8F0', true: '#4A9FD8' }}
         thumbColor="#FFFFFF"
       />
     </View>
@@ -123,7 +123,7 @@ function PasswordStrengthBar({ strength }: { strength: number }) {
     if (i >= strength) return '#E2E8F0';
     if (strength <= 1) return '#EF4444';
     if (strength <= 2) return '#F59E0B';
-    return '#3B82F6';
+    return '#4A9FD8';
   };
   const label = strength === 0 ? '' : strength <= 1 ? 'Weak' : strength <= 2 ? 'Medium' : 'Strong';
 
@@ -172,7 +172,7 @@ function LivePreviewCard({
         {/* "Live preview" badge */}
         <View className="mb-4 self-start rounded-full bg-[#E0F2FE] px-3 py-1.5">
           <View className="flex-row items-center gap-1.5">
-            <View className="h-2 w-2 rounded-full bg-[#38BDF8]" />
+            <View className="h-2 w-2 rounded-full bg-[#4A9FD8]" />
             <ThemedText className="text-xs font-semibold text-[#0284C7]">Live preview</ThemedText>
           </View>
         </View>
@@ -397,7 +397,7 @@ export default function EditProfileScreen() {
         <ScrollView bounces={false} className="flex-1" contentContainerClassName="pb-8">
           <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-4 md:px-6">
             {/* Simple back header */}
-            <View className="flex-row items-center gap-3 rounded-[28px] border border-[#E4E8EE] bg-white px-5 py-4">
+            <View className="flex-row items-center gap-3 rounded-surface border border-app-border bg-app-surface px-5 py-4">
               <Pressable onPress={() => router.back()} className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA] active:opacity-80">
                 <ThemedText className="text-lg">←</ThemedText>
               </Pressable>

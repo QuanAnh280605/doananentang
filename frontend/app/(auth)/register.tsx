@@ -35,11 +35,11 @@ function PromoPanel({ isLargeScreen }: PromoPanelProps) {
       <View className="absolute right-10 top-12 h-16 w-16 rounded-[24px] bg-white/80" />
 
       <View className="relative z-10 max-w-[520px]">
-        <View className="self-start rounded-full bg-[#1877F2] px-4 py-2">
+        <View className="self-start rounded-full bg-[#4A9FD8] px-4 py-2">
           <ThemedText className="text-sm font-bold lowercase tracking-[1px] text-white">f</ThemedText>
         </View>
 
-        <ThemedText className="mt-6 text-sm font-semibold uppercase tracking-[2px] text-[#1877F2]">
+        <ThemedText className="mt-6 text-sm font-semibold uppercase tracking-[2px] text-[#4A9FD8]">
           Stay in touch
         </ThemedText>
         <ThemedText
@@ -82,7 +82,7 @@ function PromoPanel({ isLargeScreen }: PromoPanelProps) {
                 <View className="rounded-2xl bg-white/90 px-4 py-3">
                   <ThemedText className="text-sm text-slate-700">Dinner on Friday? I can bring dessert.</ThemedText>
                 </View>
-                <View className="self-end rounded-2xl bg-[#1877F2] px-4 py-3">
+                <View className="self-end rounded-2xl bg-[#4A9FD8] px-4 py-3">
                   <ThemedText className="text-sm text-white">Perfect, see you at 7.</ThemedText>
                 </View>
               </View>
@@ -92,7 +92,7 @@ function PromoPanel({ isLargeScreen }: PromoPanelProps) {
           <View className="rounded-[24px] border border-[#C9DCFB] bg-white/85 px-4 py-4">
             <View className="flex-row items-center justify-between gap-3">
               <View>
-                <ThemedText className="text-xs font-semibold uppercase tracking-[1.6px] text-[#1877F2]">
+                <ThemedText className="text-xs font-semibold uppercase tracking-[1.6px] text-[#4A9FD8]">
                   Shared today
                 </ThemedText>
                 <ThemedText className="mt-1 text-xl font-bold text-slate-900">24 stories</ThemedText>
@@ -256,9 +256,9 @@ export default function RegisterScreen() {
                     return (
                       <Pressable
                         key={option}
-                        className={`rounded-2xl border px-4 py-3 ${selected ? 'border-[#1877F2] bg-[#EAF2FF]' : 'border-slate-200 bg-slate-50'}`}
+                        className={`rounded-2xl border px-4 py-3 ${selected ? 'border-[#4A9FD8] bg-[#EAF4FB]' : 'border-slate-200 bg-slate-50'}`}
                         onPress={() => setGender(option)}>
-                        <ThemedText className={`font-semibold ${selected ? 'text-[#1877F2]' : 'text-slate-700'}`}>
+                        <ThemedText className={`font-semibold ${selected ? 'text-[#4A9FD8]' : 'text-slate-700'}`}>
                           {option}
                         </ThemedText>
                       </Pressable>
@@ -269,7 +269,7 @@ export default function RegisterScreen() {
             </View>
 
             <Pressable
-              className={`rounded-2xl bg-[#1877F2] px-4 py-4 active:opacity-90 ${isLargeScreen ? 'mt-5' : 'mt-4'} ${isSubmitting ? 'opacity-70' : ''}`}
+              className={`rounded-2xl bg-[#4A9FD8] px-4 py-4 active:opacity-90 ${isLargeScreen ? 'mt-5' : 'mt-4'} ${isSubmitting ? 'opacity-70' : ''}`}
               disabled={isSubmitting}
               onPress={handleRegister}>
               <ThemedText className="text-center text-base font-semibold text-white">
@@ -295,7 +295,7 @@ export default function RegisterScreen() {
 
             <Link asChild href="/login">
               <Pressable className="mt-4 self-center px-3 py-2">
-                <ThemedText className="text-sm font-semibold text-[#1877F2]">Already have an account? Log in</ThemedText>
+                <ThemedText className="text-sm font-semibold text-[#4A9FD8]">Already have an account? Log in</ThemedText>
               </Pressable>
             </Link>
           </ThemedView>

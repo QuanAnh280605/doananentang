@@ -24,6 +24,7 @@ class Settings(BaseSettings):
   refresh_token_expire_days: int = 7
 
   frontend_base_url: str = 'http://localhost:8081'
+  socketio_path: str = 'socket.io'
   web_refresh_cookie_name: str = 'refresh_token'
   web_refresh_cookie_secure: bool = False
   web_refresh_cookie_samesite: str = 'lax'

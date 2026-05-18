@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, Text, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -7,11 +9,20 @@ from app.models.base import Base
 from app.models.db_enums import VisibilityLevel, visibility_level_enum
 from app.models.db_types import UUID_TYPE, uuid_pk
 
+if TYPE_CHECKING:
+  from app.models.post_media import PostMedia
+  from app.models.user import User
+
 
 class Post(Base):
   __tablename__ = 'posts'
   __table_args__ = (
     Index('idx_posts_author_created_at', 'author_id', 'created_at'),
+    Index(
+      'idx_posts_content_fts',
+      func.to_tsvector(text("'simple'"), text('content')),
+      postgresql_using='gin'
+    ),
   )
 
   id: Mapped[int] = uuid_pk('id')

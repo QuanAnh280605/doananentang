@@ -15,6 +15,8 @@ import {
   setAuthTokens,
 } from '@/lib/session';
 
+import type { Comment, LikeStatus, PaginatedPosts, Post, PostLiker, Story, StoryCreatePayload, StoryViewStatus } from './types';
+
 const FALLBACK_PORT = '8000';
 const LOCALHOST_API_URL = `http://localhost:${FALLBACK_PORT}`;
 
@@ -79,7 +81,12 @@ export function resolveAvatarUrl(avatarUrl: string | null | undefined): string |
     return avatarUrl;
   }
   // Relative path — prefix with backend base URL
-  return `${API_URL}${avatarUrl}`;
+  const hasLeadingSlash = avatarUrl.startsWith('/');
+  return `${API_URL}${hasLeadingSlash ? '' : '/'}${avatarUrl}`;
+}
+
+export function resolveStaticUrl(fileUrl: string | null | undefined): string | null {
+  return resolveAvatarUrl(fileUrl);
 }
 
 function canAttemptRefresh(path: string, hasCustomAuthorization: boolean): boolean {
@@ -258,8 +265,6 @@ export function fetchHealth(): Promise<HealthResponse> {
   return apiFetch<HealthResponse>('/api/health');
 }
 
-import type { PaginatedPosts, Post, LikeStatus } from './types';
-
 export function fetchPosts(page = 1, pageSize = 10, authorId?: string | number): Promise<PaginatedPosts> {
   let url = `/api/posts?page=${page}&page_size=${pageSize}&sort_order=desc`;
   if (authorId) {
@@ -272,8 +277,8 @@ export function fetchPostDetail(postId: string): Promise<Post> {
   return apiFetch<Post>(`/api/posts/${postId}`);
 }
 
-export function likePost(postId: string): Promise<LikeStatus> {
-  return apiFetch<LikeStatus>(`/api/posts/${postId}/like`, { method: 'POST' });
+export function likePost(postId: string, reactionType: string = 'like'): Promise<LikeStatus> {
+  return apiFetch<LikeStatus>(`/api/posts/${postId}/like?reaction_type=${reactionType}`, { method: 'POST' });
 }
 
 export function unlikePost(postId: string): Promise<LikeStatus> {
@@ -282,6 +287,16 @@ export function unlikePost(postId: string): Promise<LikeStatus> {
 
 export function deletePost(postId: string): Promise<void> {
   return apiFetch<void>(`/api/posts/${postId}`, { method: 'DELETE' });
+}
+
+export type PostLikersResponse = {
+  post_id: string;
+  like_count: number;
+  users: PostLiker[];
+};
+
+export function fetchPostLikers(postId: string): Promise<PostLikersResponse> {
+  return apiFetch<PostLikersResponse>(`/api/posts/${postId}/likes`);
 }
 
 export function createPost(content: string, mediaUrls: string[] = []): Promise<Post> {
@@ -304,7 +319,30 @@ export async function uploadPostMedia(file: File): Promise<{ data: string[] }> {
   });
 }
 
-import type { Comment } from './types';
+export function fetchStories(): Promise<Story[]> {
+  return apiFetch<Story[]>('/api/stories');
+}
+
+export async function uploadStoryMedia(file: File): Promise<{ file_url: string }> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  return apiFetch<{ file_url: string }>('/api/stories/upload-media', {
+    method: 'POST',
+    body: formData,
+  });
+}
+
+export function createStory(payload: StoryCreatePayload): Promise<Story> {
+  return apiFetch<Story>('/api/stories', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function markStoryViewed(storyId: string): Promise<StoryViewStatus> {
+  return apiFetch<StoryViewStatus>(`/api/stories/${storyId}/views`, { method: 'POST' });
+}
 
 export function fetchPostComments(postId: string): Promise<Comment[]> {
   return apiFetch<Comment[]>(`/api/comments/post/${postId}`);

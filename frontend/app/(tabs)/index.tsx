@@ -10,7 +10,8 @@ import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Avatar, surfaceClass } from '@/components/ui/core';
-import { fetchPosts } from '@/lib/api';
+import { fetchFollowingUsers, fetchPosts, listDirectChats } from '@/lib/api';
+import type { ChatListItem, FollowUser } from '@/lib/api';
 import { fetchCurrentUser } from '@/lib/auth';
 import type { AuthUser } from '@/lib/auth';
 import type { Post } from '@/lib/types';
@@ -31,20 +32,22 @@ type Story = {
 
 
 type Contact = {
-  id: string;
+  id: number;
   name: string;
   status: string;
   initials: string;
   bio: string;
+  avatarUrl: string | null;
 };
 
 type InboxItem = {
-  id: string;
+  id: number;
+  participantId: number;
   name: string;
   message: string;
   initials: string;
   bio: string;
-  unread?: boolean;
+  avatarUrl: string | null;
 };
 
 const shortcuts: Shortcut[] = [
@@ -61,28 +64,32 @@ const stories: Story[] = [
 
 
 
-const contacts: Contact[] = [
-  { id: 'am', name: 'Ari Mendoza', status: 'Editing new campaign', initials: 'AM', bio: 'Builds campaign systems and keeps launch assets moving.' },
-  { id: 'ne', name: 'Nadia Elsner', status: 'Reviewing typography', initials: 'NE', bio: 'Writes crisp product copy and organizes review-ready profile content.' },
-  { id: 'jt', name: 'Jules Tate', status: 'In Riverside Studio', initials: 'JT', bio: 'Supports studio sessions and visual coordination across teams.' },
-  { id: 'oy', name: 'Owen Ybarra', status: 'Exporting review clips', initials: 'OY', bio: 'Handles review exports, clips, and last-mile production polish.' },
-];
-
-const inboxItems: InboxItem[] = [
-  { id: 'rm', name: 'Rafi Mercer', message: 'Can you review the revised launch pacing?', initials: 'RM', bio: 'Focuses on motion pacing, interaction polish, and handoff clarity.', unread: true },
-  { id: 'at', name: 'Aya Tran', message: 'Dropping sprint references in five minutes.', initials: 'AT', bio: 'Shapes visual systems and tightens typography for product launches.' },
-  { id: 'ne', name: 'Nadia Elsner', message: 'Shared fresh type comps for the thread.', initials: 'NE', bio: 'Writes crisp product copy and organizes review-ready profile content.' },
-];
-
-
-function ActionBubble({ icon, filled = false }: { icon: keyof typeof MaterialIcons.glyphMap; filled?: boolean }) {
-  return (
-    <View className={`h-12 w-12 items-center justify-center rounded-[18px] ${filled ? 'bg-[#0A0A0A]' : 'bg-[#F7F8FA]'}`}>
-      <MaterialIcons color={filled ? '#FFFFFF' : '#666666'} name={icon} size={21} />
-    </View>
-  );
+function buildInitials(firstName?: string | null, lastName?: string | null): string {
+  return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase() || 'US';
 }
 
+function mapFollowUserToContact(user: FollowUser): Contact {
+  return {
+    id: user.id,
+    name: user.full_name,
+    status: user.bio?.trim() || 'Đang theo dõi',
+    initials: buildInitials(user.first_name, user.last_name),
+    bio: user.bio?.trim() || 'Người dùng đang được bạn theo dõi.',
+    avatarUrl: user.avatar_url,
+  };
+}
+
+function mapChatToInboxItem(thread: ChatListItem): InboxItem {
+  return {
+    id: thread.chat_id,
+    participantId: thread.participant.id,
+    name: thread.participant.full_name,
+    message: thread.latest_message?.content || 'Chưa có tin nhắn',
+    initials: buildInitials(thread.participant.first_name, thread.participant.last_name),
+    bio: thread.participant.bio?.trim() || 'Hội thoại trực tiếp',
+    avatarUrl: thread.participant.avatar_url,
+  };
+}
 function SectionCard({ title, rightLabel, children }: { title: string; rightLabel?: string; children: React.ReactNode }) {
   return (
     <ThemedView className={`${surfaceClass} p-5`}>
@@ -137,7 +144,7 @@ function ContactRow({ item }: { item: Contact }) {
         },
       }}>
       <Pressable className="flex-row items-center gap-4 rounded-[22px] bg-[#F7F8FA] px-4 py-4 active:opacity-90">
-        <Avatar initials={item.initials} soft />
+        <Avatar initials={item.initials} avatarUrl={item.avatarUrl} soft />
         <View className="flex-1">
           <ThemedText className="text-lg font-medium text-slate-900">{item.name}</ThemedText>
           <ThemedText className="text-sm text-slate-500">{item.status}</ThemedText>
@@ -155,7 +162,7 @@ function MessengerRow({ item }: { item: InboxItem }) {
       href={{
         pathname: '/profile/[userId]',
         params: {
-          userId: item.id,
+          userId: item.participantId,
           name: item.name,
           initials: item.initials,
           preview: item.message,
@@ -163,12 +170,11 @@ function MessengerRow({ item }: { item: InboxItem }) {
         },
       }}>
       <Pressable className="flex-row items-center gap-4 rounded-[22px] bg-[#F7F8FA] px-4 py-4 active:opacity-90">
-        <Avatar initials={item.initials} soft />
+        <Avatar initials={item.initials} avatarUrl={item.avatarUrl} soft />
         <View className="flex-1 gap-1">
           <ThemedText className="text-lg font-medium text-slate-900">{item.name}</ThemedText>
           <ThemedText className="text-sm text-slate-500">{item.message}</ThemedText>
         </View>
-        {item.unread ? <View className="h-3 w-3 rounded-full bg-[#4A9FD8]" /> : null}
       </Pressable>
     </Link>
   );
@@ -229,34 +235,79 @@ function ProfileRail({ currentUser }: { currentUser: AuthUser | null }) {
   );
 }
 
-function RightRail() {
+function RightRail({ currentUser }: { currentUser: AuthUser | null }) {
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!currentUser) {
+      setContacts([]);
+      setInboxItems([]);
+      setLoading(false);
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    setLoading(true);
+    setError(null);
+
+    Promise.all([
+      fetchFollowingUsers(currentUser.id, 1, 4),
+      listDirectChats(),
+    ])
+      .then(([followingResponse, chatThreads]) => {
+        if (!isMounted) return;
+        setContacts(followingResponse.items.map(mapFollowUserToContact));
+        setInboxItems(chatThreads.slice(0, 3).map(mapChatToInboxItem));
+      })
+      .catch((err: unknown) => {
+        if (!isMounted) return;
+        setError(err instanceof Error ? err.message : 'Không thể tải dữ liệu liên hệ');
+      })
+      .finally(() => {
+        if (isMounted) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser]);
+
   return (
     <View className="gap-4">
-      <SectionCard title="Contacts" rightLabel="12 online">
-        {contacts.map((item) => (
-          <ContactRow key={item.name} item={item} />
-        ))}
+      <SectionCard title="Contacts" rightLabel={loading ? 'Loading' : `${contacts.length} following`}>
+        {loading ? (
+          <ThemedText className="text-sm text-slate-500">Đang tải liên hệ...</ThemedText>
+        ) : error ? (
+          <ThemedText className="text-sm text-[#D05B5B]">{error}</ThemedText>
+        ) : contacts.length === 0 ? (
+          <ThemedText className="text-sm text-slate-500">Bạn chưa theo dõi ai.</ThemedText>
+        ) : (
+          contacts.map((item) => (
+            <ContactRow key={item.id} item={item} />
+          ))
+        )}
       </SectionCard>
 
-      <ThemedView className={`${surfaceClass} p-5`}>
-        <View className="flex-row items-center gap-3">
-          <View className="rounded-full bg-[#D9ECF8] px-3 py-2">
-            <ThemedText className="text-sm font-semibold text-slate-900">Tonight</ThemedText>
-          </View>
-        </View>
-        <ThemedText className="mt-4 text-[24px] font-semibold leading-8 text-slate-950">
-          Prototype review with motion notes
-        </ThemedText>
-        <ThemedText className="mt-3 text-base text-slate-500">18:30 - 19:15 | Riverside Studio 4</ThemedText>
-        <View className="mt-5 self-start rounded-[20px] bg-[#0A0A0A] px-5 py-4">
-          <ThemedText className="text-base font-medium text-white">View brief</ThemedText>
-        </View>
-      </ThemedView>
-
-      <SectionCard title="Messenger" rightLabel="3 unread">
-        {inboxItems.map((item) => (
-          <MessengerRow key={item.name} item={item} />
-        ))}
+      <SectionCard title="Messenger" rightLabel={loading ? 'Loading' : `${inboxItems.length} threads`}>
+        {loading ? (
+          <ThemedText className="text-sm text-slate-500">Đang tải hội thoại...</ThemedText>
+        ) : error ? (
+          <ThemedText className="text-sm text-[#D05B5B]">{error}</ThemedText>
+        ) : inboxItems.length === 0 ? (
+          <ThemedText className="text-sm text-slate-500">Chưa có hội thoại nào.</ThemedText>
+        ) : (
+          inboxItems.map((item) => (
+            <MessengerRow key={item.id} item={item} />
+          ))
+        )}
 
         <Link asChild href="/(tabs)/inbox">
           <Pressable className="mt-2 rounded-[22px] bg-[#0A0A0A] px-5 py-4 active:opacity-90">
@@ -350,7 +401,7 @@ export default function HomeScreen() {
             </View>
 
             <View className={isDesktop ? 'w-[360px]' : 'w-full'}>
-              <RightRail />
+              <RightRail currentUser={currentUser} />
             </View>
           </View>
         </View>

@@ -65,29 +65,42 @@ def get_posts(
   *,
   page: int = 1,
   page_size: int = 10,
-  sort_by: Literal['created_at', 'updated_at'] = 'created_at',
+  sort_by: Literal['created_at', 'updated_at', 'relevance'] = 'created_at',
   sort_order: Literal['asc', 'desc'] = 'desc',
   current_user_id: int | None = None,
   author_id: int | None = None,
   q: str | None = None,
 ) -> dict:
-  """Lấy danh sách bài viết có phân trang + sắp xếp + stats"""
+  """Lấy danh sách bài viết có phân trang + sắp xếp + stats (hỗ trợ Full-Text Search)"""
 
   # Xây dựng query cơ bản
   query = db.query(Post).filter(Post.is_deleted == False)
   if author_id is not None:
     query = query.filter(Post.author_id == author_id)
   
-  if q is not None and q.strip():
-    query = query.filter(Post.content.ilike(f'%{q.strip()}%'))
+  search_vector = None
+  search_query = None
 
-  # Tính tổng số bài viết (không bị xóa mềm)
+  if q is not None and q.strip():
+    # Sử dụng PostgreSQL Full-Text Search
+    # 'simple' phù hợp cho tìm kiếm đa ngôn ngữ/không dấu
+    search_vector = func.to_tsvector('simple', Post.content)
+    search_query = func.plainto_tsquery('simple', q.strip())
+    query = query.filter(search_vector.op('@@')(search_query))
+
+  # Tính tổng số bài viết
   total = query.with_entities(func.count(Post.id)).scalar() or 0
   total_pages = math.ceil(total / page_size) if total > 0 else 1
 
   # Xác định cột sắp xếp
-  sort_column = getattr(Post, sort_by, Post.created_at)
-  order = sort_column.asc() if sort_order == 'asc' else sort_column.desc()
+  if sort_by == 'relevance' and search_vector is not None and search_query is not None:
+    # Sắp xếp theo độ liên quan (rank)
+    rank = func.ts_rank(search_vector, search_query)
+    order = rank.asc() if sort_order == 'asc' else rank.desc()
+  else:
+    # Sắp xếp theo thời gian
+    sort_column = getattr(Post, sort_by if sort_by != 'relevance' else 'created_at', Post.created_at)
+    order = sort_column.asc() if sort_order == 'asc' else sort_column.desc()
 
   # Query có eager load media + author
   items = (

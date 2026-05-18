@@ -14,12 +14,12 @@ function PromoPanel() {
   return (
     <>
       <div className="relative z-10 max-w-[520px]">
-        <div className="inline-flex rounded-full bg-[#1877F2] px-4 py-2">
+        <div className="inline-flex rounded-full bg-[#4A9FD8] px-4 py-2">
           <ThemedText as="span" className="text-sm font-bold lowercase tracking-[1px] text-white">
             f
           </ThemedText>
         </div>
-        <ThemedText as="p" className="mt-6 text-sm font-semibold uppercase tracking-[2px] text-[#1877F2]">
+        <ThemedText as="p" className="mt-6 text-sm font-semibold uppercase tracking-[2px] text-[#4A9FD8]">
           Stay in touch
         </ThemedText>
         <ThemedText as="h2" className="mt-4 text-[26px] font-bold leading-8 text-slate-900 md:text-5xl md:leading-[56px]">
@@ -35,7 +35,7 @@ function PromoPanel() {
         <div className="rounded-[24px] border border-[#C9DCFB] bg-white/85 px-4 py-4 md:hidden">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <ThemedText as="p" className="text-xs font-semibold uppercase tracking-[1.6px] text-[#1877F2]">
+              <ThemedText as="p" className="text-xs font-semibold uppercase tracking-[1.6px] text-[#4A9FD8]">
                 Shared today
               </ThemedText>
               <ThemedText as="p" className="mt-1 text-xl font-bold text-slate-900">
@@ -87,7 +87,7 @@ function PromoPanel() {
                   Dinner on Friday? I can bring dessert.
                 </ThemedText>
               </div>
-              <div className="ml-auto w-fit rounded-2xl bg-[#1877F2] px-4 py-3">
+              <div className="ml-auto w-fit rounded-2xl bg-[#4A9FD8] px-4 py-3">
                 <ThemedText as="p" className="text-sm text-white">
                   Perfect, see you at 7.
                 </ThemedText>
@@ -173,7 +173,7 @@ export function LoginForm() {
           </div>
 
           <button
-            className={`mt-4 w-full rounded-2xl bg-[#1877F2] px-4 py-4 text-base font-semibold text-white md:mt-5 ${isSubmitting ? 'opacity-70' : ''}`}
+            className={`mt-4 w-full rounded-2xl bg-[#4A9FD8] px-4 py-4 text-base font-semibold text-white md:mt-5 ${isSubmitting ? 'opacity-70' : ''}`}
             disabled={isSubmitting}
             onClick={handleLogin}
             type="button"
@@ -201,7 +201,7 @@ export function LoginForm() {
           ) : null}
 
           <div className="mt-4 text-center">
-            <Link className="text-sm font-semibold text-[#1877F2]" href={ROUTES.forgotPassword}>
+            <Link className="text-sm font-semibold text-[#4A9FD8]" href={ROUTES.forgotPassword}>
               Forgotten password?
             </Link>
           </div>

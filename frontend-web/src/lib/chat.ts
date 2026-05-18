@@ -71,6 +71,12 @@ function mapChatMessageResponse(message: ChatMessageResponse, participantUserId:
   };
 }
 
+export function mapRealtimeMessage(message: ChatMessageResponse): ChatMessage {
+  const chatId = normalizeChatId(message.chat_id);
+  const participantUserId = participantUserIdByChatId.get(chatId) ?? null;
+  return mapChatMessageResponse(message, participantUserId);
+}
+
 function mapDirectChatListItemToThread(item: DirectChatListItemResponse): InboxThreadData {
   const chatId = normalizeChatId(item.chat_id);
   trackParticipant(chatId, item.participant.id);
@@ -121,6 +127,19 @@ export function replaceOptimisticMessage<TMessage extends { id: string }>(
   serverMessage: TMessage,
 ): TMessage[] {
   return messages.map((message) => (message.id === optimisticId ? serverMessage : message));
+}
+
+export function mergeMessagesById<TMessage extends { id: string }>(
+  messages: readonly TMessage[],
+  incomingMessage: TMessage,
+): TMessage[] {
+  const existingMessageIndex = messages.findIndex((message) => message.id === incomingMessage.id);
+
+  if (existingMessageIndex === -1) {
+    return [...messages, incomingMessage];
+  }
+
+  return messages.map((message, index) => (index === existingMessageIndex ? incomingMessage : message));
 }
 
 export function applyMessagePreviewToThreads<TThread extends {

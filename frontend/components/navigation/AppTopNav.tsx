@@ -73,7 +73,7 @@ export function AppTopNav({
   };
 
   return (
-    <ThemedView className="rounded-[28px] border border-[#E4E8EE] bg-white px-5 py-4">
+    <ThemedView className="rounded-surface border border-app-border bg-app-surface px-5 py-4">
       <View className={`items-center gap-4 ${isTablet ? 'flex-row justify-between' : 'flex-col'}`}>
         <View className={`items-center gap-4 ${isTablet ? 'flex-1 flex-row' : 'w-full flex-row'}`}>
           <View className="flex-row items-center gap-3">

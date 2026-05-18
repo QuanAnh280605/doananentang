@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
 import { ThemedText } from '@/components/ui/ThemedText';
+import { resolveAvatarUrl } from '@/lib/api';
 
 export type InboxListItemData = {
   id: string;
@@ -8,6 +9,7 @@ export type InboxListItemData = {
   preview: string;
   time: string;
   initials: string;
+  avatarUrl?: string | null;
   bio?: string;
   active?: boolean;
   unread?: number;
@@ -20,11 +22,16 @@ type InboxListItemProps = {
 };
 
 export function InboxListItem({ item, href, onClick }: InboxListItemProps) {
+  const avatarUrl = resolveAvatarUrl(item.avatarUrl);
   const content = (
     <>
       <div className="flex items-start gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#DBEAFE]">
-          <ThemedText as="span" className="text-sm font-semibold tracking-[0.6px] text-slate-900">{item.initials}</ThemedText>
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[18px] bg-[#DBEAFE]">
+          {avatarUrl ? (
+            <img alt={item.name} className="h-full w-full object-cover" src={avatarUrl} />
+          ) : (
+            <ThemedText as="span" className="text-sm font-semibold tracking-[0.6px] text-slate-900">{item.initials}</ThemedText>
+          )}
         </div>
         <div className="flex-1 space-y-1">
           <div className="flex items-center justify-between gap-3">

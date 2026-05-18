@@ -23,7 +23,7 @@ export function ThemedText<T extends ElementType = 'p'>({
     type === 'title' ? 'text-3xl font-bold leading-9' : '',
     type === 'defaultSemiBold' ? 'text-base font-semibold leading-6' : '',
     type === 'subtitle' ? 'text-xl font-bold leading-7' : '',
-    type === 'link' ? 'text-base leading-6 text-blue-600' : '',
+    type === 'link' ? 'text-base leading-6 text-[#4A9FD8]' : '',
     type === 'eyebrow' ? 'text-xs font-semibold uppercase tracking-[1.5px] text-slate-500' : '',
     className,
   ]

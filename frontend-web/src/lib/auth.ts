@@ -34,11 +34,23 @@ export type SearchUser = {
   bio: string | null;
 };
 
+export type FollowUser = SearchUser & {
+  is_following: boolean;
+};
+
 export type FollowStatus = {
   user_id: number;
   is_following: boolean;
   followers_count: number;
   following_count: number;
+};
+
+export type PaginatedFollowUsersResponse = {
+  items: FollowUser[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
 };
 
 export type RegisterFormState = {
@@ -178,6 +190,16 @@ export async function searchFollowingUsers(query: string, limit = 20): Promise<S
 
 export async function fetchFollowStatus(userId: number): Promise<FollowStatus> {
   return apiFetch<FollowStatus>(`/api/users/${userId}/follow-status`);
+}
+
+export async function fetchFollowers(userId: number, page = 1, pageSize = 20): Promise<PaginatedFollowUsersResponse> {
+  const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
+  return apiFetch<PaginatedFollowUsersResponse>(`/api/users/${userId}/followers?${params}`);
+}
+
+export async function fetchFollowing(userId: number, page = 1, pageSize = 20): Promise<PaginatedFollowUsersResponse> {
+  const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
+  return apiFetch<PaginatedFollowUsersResponse>(`/api/users/${userId}/following?${params}`);
 }
 
 export async function followUser(userId: number): Promise<FollowStatus> {

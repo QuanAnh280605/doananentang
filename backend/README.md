@@ -12,6 +12,7 @@ REST API xây dựng bằng **FastAPI**, sử dụng **PostgreSQL**, **SQLAlchem
 - [API Endpoints](#-api-endpoints)
 - [Database & Migration](#-database--migration)
 - [Testing](#-testing)
+- [Realtime inbox (local dev)](#-realtime-inbox-local-dev)
 - [Lệnh tham khảo nhanh](#-lệnh-tham-khảo-nhanh)
 
 ---
@@ -148,6 +149,16 @@ pytest app/tests/test_users.py::test_create_user -q
 # Chạy tests với output chi tiết
 pytest -v
 ```
+
+---
+
+## ⚡ Realtime inbox (local dev)
+
+- Socket.IO path: `/socket.io`
+- Client phải gửi JWT access token qua handshake auth: `{ token: '<access-token>' }`
+- Room cho từng hội thoại dùng format: `chat:{chat_id}`
+- Event đồng bộ tin nhắn mới: `message-created`
+- Luồng ghi chính vẫn là `POST /api/chats/{chat_id}/messages`; Socket.IO chỉ dùng để sync tin nhắn mới tới client đang join room.
 
 ---
 
