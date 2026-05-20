@@ -19,7 +19,12 @@ class LoginSession(Base):
   device_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
   ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
   expired_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+  revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
   created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+  @property
+  def is_revoked(self) -> bool:
+    return self.revoked_at is not None
 
   @property
   def token_id(self) -> str:
