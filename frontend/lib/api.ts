@@ -459,3 +459,63 @@ export function unlikeComment(commentId: string): Promise<{ is_liked: boolean; l
     method: 'DELETE',
   });
 }
+
+// ─── Notifications API ────────────────────────────────────────
+
+export type NotificationActor = {
+  id: number;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  avatar_url: string | null;
+};
+
+export type NotificationType = 'like' | 'comment' | 'follow' | 'message' | 'tag';
+
+export type Notification = {
+  id: number;
+  type: NotificationType;
+  is_read: boolean;
+  created_at: string;
+  actor: NotificationActor;
+  post_id: number | null;
+  comment_id: number | null;
+  message_id: number | null;
+  related_user_id: number | null;
+};
+
+export type PaginatedNotificationsResponse = {
+  items: Notification[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  unread_count: number;
+};
+
+export type UnreadCountResponse = {
+  unread_count: number;
+};
+
+export function fetchNotifications(page = 1, pageSize = 30): Promise<PaginatedNotificationsResponse> {
+  return apiFetch<PaginatedNotificationsResponse>(
+    `/api/notifications?page=${page}&page_size=${pageSize}`,
+  );
+}
+
+export function fetchUnreadCount(): Promise<UnreadCountResponse> {
+  return apiFetch<UnreadCountResponse>('/api/notifications/unread-count');
+}
+
+export function markNotificationRead(id: number, isRead = true): Promise<Notification> {
+  return apiFetch<Notification>(`/api/notifications/${id}/read`, {
+    method: 'PATCH',
+    body: JSON.stringify({ is_read: isRead }),
+  });
+}
+
+export function markAllNotificationsRead(): Promise<UnreadCountResponse> {
+  return apiFetch<UnreadCountResponse>('/api/notifications/read-all', {
+    method: 'PATCH',
+  });
+}
