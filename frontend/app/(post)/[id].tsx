@@ -1,5 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -9,6 +9,7 @@ import {
     ScrollView,
     TextInput,
     View,
+    RefreshControl,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
@@ -17,6 +18,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Avatar, surfaceClass } from '@/components/ui/core';
 import { createComment, deleteComment, fetchComments, fetchPostDetail, likeComment, unlikeComment } from '@/lib/api';
+import { fetchCurrentUser } from '@/lib/auth';
+import type { AuthUser } from '@/lib/auth';
 import type { Comment, Post } from '@/lib/types';
 
 /** Tính initials từ tên tác giả comment */
@@ -81,6 +84,10 @@ function CommentItem({
             alert('Không thể xóa bình luận');
         }
     };
+
+    if (comment.is_deleted) {
+        return null;
+    }
 
     return (
         <View className="gap-3">
@@ -161,17 +168,23 @@ export default function PostDetailScreen() {
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+    const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+    const [refreshing, setRefreshing] = useState(false);
 
     const loadData = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            const [postData, commentsData] = await Promise.all([
+            const [postData, commentsData, me] = await Promise.all([
                 fetchPostDetail(postId),
                 fetchComments(postId),
+                fetchCurrentUser(),
             ]);
             setPost(postData);
             setComments(commentsData);
+            setCurrentUser(me);
+            setCurrentUserId(me.id);
         } catch (err: any) {
             setError(err.message ?? 'Không thể tải bài viết');
         } finally {
@@ -182,6 +195,22 @@ export default function PostDetailScreen() {
     useEffect(() => {
         loadData();
     }, [loadData]);
+
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        try {
+            const [postData, commentsData] = await Promise.all([
+                fetchPostDetail(postId),
+                fetchComments(postId),
+            ]);
+            setPost(postData);
+            setComments(commentsData);
+        } catch (err) {
+            console.error('Refresh error:', err);
+        } finally {
+            setRefreshing(false);
+        }
+    };
 
     const handleSendComment = async () => {
         if (!newComment.trim() || sending) return;
@@ -229,10 +258,21 @@ export default function PostDetailScreen() {
                     </View>
                 ) : (
                     <>
-                        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+                        <ScrollView 
+                            className="flex-1" 
+                            showsVerticalScrollIndicator={false}
+                            refreshControl={
+                                <RefreshControl 
+                                    refreshing={refreshing} 
+                                    onRefresh={handleRefresh} 
+                                    tintColor="#4A9FD8"
+                                    colors={['#4A9FD8']}
+                                />
+                            }
+                        >
                             <View className="mx-auto w-full max-w-[800px] px-4 py-6">
                                 {/* Bài viết gốc */}
-                                <FeedPost item={post} />
+                                <FeedPost item={post} onDeleteSuccess={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')} />
 
                                 {/* Phần bình luận */}
                                 <View className="mt-6">
@@ -255,7 +295,14 @@ export default function PostDetailScreen() {
                                                     comment={comment} 
                                                     onReply={(c) => setReplyTo(c)}
                                                     onDelete={() => loadData()}
-                                                    canDelete={post?.author_id === comment.author_id || post?.author_id === 'ME_PLACEHOLDER'} // Sẽ check thật ở Backend
+                                                    canDelete={
+                                                        currentUserId !== null && (
+                                                            // Tác giả của comment
+                                                            String(comment.author_id) === String(currentUserId) ||
+                                                            // Tác giả của bài viết (chủ post xóa được comment trên post của mình)
+                                                            String(post?.author_id) === String(currentUserId)
+                                                        )
+                                                    }
                                                 />
                                             ))}
                                         </ThemedView>
@@ -277,7 +324,11 @@ export default function PostDetailScreen() {
                                 </View>
                             )}
                             <View className="mx-auto w-full max-w-[800px] flex-row items-center gap-3">
-                                <Avatar initials="BN" soft />
+                                <Avatar 
+                                    initials={currentUser ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase() : 'ME'} 
+                                    soft 
+                                    avatarUrl={currentUser?.avatar_url} 
+                                />
                                 <TextInput
                                     className="flex-1 rounded-[22px] bg-[#F7F8FA] px-5 py-3 text-base text-slate-900"
                                     cursorColor="#0F172A"

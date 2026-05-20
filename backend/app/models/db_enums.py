@@ -39,6 +39,15 @@ class MessageStatusType(str, Enum):
   READ = 'read'
 
 
+class ReactionType(str, Enum):
+  LIKE = 'like'
+  LOVE = 'love'
+  HAHA = 'haha'
+  WOW = 'wow'
+  SAD = 'sad'
+  ANGRY = 'angry'
+
+
 user_role_enum = SqlEnum(UserRole, name='user_role', native_enum=False, values_callable=_enum_values)
 visibility_level_enum = SqlEnum(VisibilityLevel, name='visibility_level', native_enum=False, values_callable=_enum_values)
 media_type_enum = SqlEnum(MediaType, name='media_type', native_enum=False, values_callable=_enum_values)
@@ -49,3 +58,4 @@ message_status_type_enum = SqlEnum(
   native_enum=False,
   values_callable=_enum_values,
 )
+reaction_type_enum = SqlEnum(ReactionType, name='reaction_type', native_enum=False, values_callable=_enum_values)

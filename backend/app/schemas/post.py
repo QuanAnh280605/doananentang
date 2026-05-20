@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.db_enums import MediaType, VisibilityLevel
+from app.models.db_enums import MediaType, VisibilityLevel, ReactionType
 
 
 class PostBase(BaseModel):
@@ -49,6 +49,7 @@ class PostRead(PostBase):
   like_count: int = 0
   comment_count: int = 0
   is_liked: bool = False
+  user_reaction: ReactionType | None = None
 
   model_config = ConfigDict(from_attributes=True)
 

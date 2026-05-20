@@ -1,6 +1,10 @@
 // Định nghĩa kiểu dữ liệu dùng chung cho toàn bộ ứng dụng
 // Các type này khớp với schema backend
 
+export type ReactionType = 'like' | 'love' | 'haha' | 'wow' | 'sad' | 'angry';
+
+export type VisibilityLevel = 'public' | 'followersonly' | 'custom' | 'onlyme';
+
 // ─── Post ────────────────────────────────────────────────────
 
 export type PostAuthor = {
@@ -32,6 +36,7 @@ export type Post = {
   like_count: number;
   comment_count: number;
   is_liked: boolean;
+  user_reaction?: ReactionType | null;
 };
 
 /** Response phân trang từ GET /api/posts */
@@ -58,6 +63,7 @@ export type LikeStatus = {
   post_id: string;
   liked: boolean;
   like_count: number;
+  reaction_type?: ReactionType | null;
 };
 
 // ─── Comment ─────────────────────────────────────────────────

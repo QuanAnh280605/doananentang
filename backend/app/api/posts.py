@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, get_current_user_optional
 from app.core.database import get_db
 from app.crud.like import get_like_count, get_users_who_liked, is_liked_by_user, like_post, unlike_post
-from app.crud.post import create_post, delete_post, get_post, get_posts, update_post
-from app.models.db_enums import UserRole
+from app.crud.post import create_post, delete_post, get_post, get_posts, get_feed_posts, update_post
+from app.models.db_enums import UserRole, ReactionType
 from app.models.user import User
 from app.schemas.like import LikeStatusResponse, PostLikersResponse
 from app.schemas.post import (
@@ -109,6 +109,26 @@ def list_posts(
 
 
 # ──────────────────────────────────────────────────────────────
+# GET /api/posts/feed — Bảng tin (Bài viết từ người đang theo dõi)
+# ──────────────────────────────────────────────────────────────
+@router.get('/feed', response_model=PaginatedPostsResponse)
+def get_feed(
+  page: int = Query(1, ge=1, description="Trang hiện tại"),
+  page_size: int = Query(10, ge=1, le=50, description="Số bài mỗi trang"),
+  db: Session = Depends(get_db),
+  current_user: User = Depends(get_current_user),
+):
+  """Lấy bảng tin bài viết từ những người dùng đang theo dõi và của chính tác giả."""
+  result = get_feed_posts(
+    db, 
+    current_user_id=current_user.id,
+    page=page, 
+    page_size=page_size
+  )
+  return result
+
+
+# ──────────────────────────────────────────────────────────────
 # GET /api/posts/{post_id} — Chi tiết bài viết
 # ──────────────────────────────────────────────────────────────
 @router.get('/{post_id}', response_model=PostReadWithAuthor)
@@ -186,17 +206,18 @@ def delete_post_endpoint(
 @router.post('/{post_id}/like', response_model=LikeStatusResponse)
 def like_post_endpoint(
   post_id: int,
+  reaction_type: ReactionType = Query(ReactionType.LIKE, description="Loại cảm xúc (like, love, haha, wow, sad, angry)"),
   current_user: User = Depends(get_current_user),
   db: Session = Depends(get_db),
 ):
-  """Thích bài viết."""
+  """Thích bài viết hoặc cập nhật cảm xúc."""
   post = get_post(db, post_id)
   if not post:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Post not found')
 
-  like_post(db, post_id, current_user.id)
+  like_post(db, post_id, current_user.id, reaction_type)
   count = get_like_count(db, post_id)
-  return LikeStatusResponse(post_id=post_id, liked=True, like_count=count)
+  return LikeStatusResponse(post_id=post_id, liked=True, like_count=count, reaction_type=reaction_type)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -231,7 +252,17 @@ def get_post_likers(
   if not post:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Post not found')
 
-  users = get_users_who_liked(db, post_id)
+  db_users = get_users_who_liked(db, post_id)
+  users = []
+  for user, r_type in db_users:
+    users.append({
+      "id": user.id,
+      "first_name": user.first_name,
+      "last_name": user.last_name,
+      "avatar_url": user.avatar_url,
+      "reaction_type": r_type
+    })
+    
   count = get_like_count(db, post_id)
   
   return PostLikersResponse(

@@ -498,7 +498,7 @@ export default function ProfileScreen() {
                       <ThemedText className="text-slate-500 text-center py-4">Chưa có bài viết nào.</ThemedText>
                     ) : (
                       posts.map((post) => (
-                        <FeedPost key={post.id} item={post} onDelete={handleDeletePost} />
+                        <FeedPost key={post.id} item={post} onDeleteSuccess={() => handleDeletePost(post.id)} />
                       ))
                     )}
                   </View>

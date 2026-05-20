@@ -20,7 +20,7 @@ import {
   hydrateAccessToken,
   setAuthTokens,
 } from '@/lib/session';
-import type { Comment, LikeStatus, PaginatedPosts, Post } from '@/lib/types';
+import type { Comment, LikeStatus, PaginatedPosts, Post, ReactionType, VisibilityLevel } from '@/lib/types';
 
 const FALLBACK_PORT = '8000';
 const LOCALHOST_API_URL = `http://127.0.0.1:${FALLBACK_PORT}`;
@@ -160,7 +160,7 @@ async function performRequest(path: string, init: RequestInit | undefined, token
     headers: requestHeaders,
     method: init?.method as Method | undefined,
     responseType: 'text',
-    signal: init?.signal,
+    ...(init?.signal ? { signal: init.signal } : {}),
     transformResponse: [(value) => value],
     url: `${API_URL}${path}`,
     validateStatus: () => true,
@@ -361,8 +361,17 @@ export type ChatListItem = {
   updated_at: string;
 };
 
-export function listDirectChats(): Promise<ChatListItem[]> {
-  return apiFetch<ChatListItem[]>('/api/chats');
+export type PaginatedChatsResponse = {
+  items: ChatListItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+};
+
+export async function listDirectChats(): Promise<ChatListItem[]> {
+  const res = await apiFetch<PaginatedChatsResponse>('/api/chats');
+  return res?.items || [];
 }
 
 // ─── Posts API ────────────────────────────────────────────────
@@ -375,17 +384,29 @@ export function fetchPosts(page = 1, pageSize = 10, authorId?: string | number):
   return apiFetch<PaginatedPosts>(url);
 }
 
+export function fetchFeed(page = 1, pageSize = 10): Promise<PaginatedPosts> {
+  return apiFetch<PaginatedPosts>(`/api/posts/feed?page=${page}&page_size=${pageSize}`);
+}
+
 export function fetchPostDetail(postId: string): Promise<Post> {
   return apiFetch<Post>(`/api/posts/${postId}`);
 }
 
-export function createPost(content: string, mediaUrls: string[] = []): Promise<Post> {
+export function createPost(content: string, mediaUrls: string[] = [], visibility: VisibilityLevel = 'public'): Promise<Post> {
   return apiFetch<Post>('/api/posts', {
     method: 'POST',
     body: JSON.stringify({
       content,
       media_urls: mediaUrls,
+      visibility,
     }),
+  });
+}
+
+export function updatePost(postId: string, content: string): Promise<Post> {
+  return apiFetch<Post>(`/api/posts/${postId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ content }),
   });
 }
 
@@ -393,23 +414,26 @@ export function deletePost(postId: string): Promise<void> {
   return apiFetch<void>(`/api/posts/${postId}`, { method: 'DELETE' });
 }
 
-export async function uploadPostMedia(uri: string): Promise<{ data: string[] }> {
+export async function uploadPostMedia(uris: string[]): Promise<{ data: string[] }> {
   const formData = new FormData();
-  const filename = uri.split('/').pop() || 'image.jpg';
-  const match = /\.(\w+)$/.exec(filename);
-  const ext = match ? match[1] : 'jpg';
-  const mimeType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
 
-  if (Platform.OS === 'web') {
-    const response = await fetch(uri);
-    const blob = await response.blob();
-    formData.append('files', new File([blob], filename, { type: mimeType }));
-  } else {
-    formData.append('files', {
-      uri,
-      name: filename,
-      type: mimeType,
-    } as any);
+  for (const uri of uris) {
+    const filename = uri.split('/').pop() || 'image.jpg';
+    const match = /\.(\w+)$/.exec(filename);
+    const ext = match ? match[1] : 'jpg';
+    const mimeType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+
+    if (Platform.OS === 'web') {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      formData.append('files', new File([blob], filename, { type: mimeType }));
+    } else {
+      formData.append('files', {
+        uri,
+        name: filename,
+        type: mimeType,
+      } as any);
+    }
   }
 
   return apiFetch<{ data: string[] }>('/api/posts/upload-media', {
@@ -420,8 +444,28 @@ export async function uploadPostMedia(uri: string): Promise<{ data: string[] }> 
 
 // ─── Likes API ───────────────────────────────────────────────
 
-export function likePost(postId: string): Promise<LikeStatus> {
-  return apiFetch<LikeStatus>(`/api/posts/${postId}/like`, { method: 'POST' });
+// ─── Like Users API ─────────────────────────────────────────
+
+export type PostLiker = {
+  id: number;
+  first_name: string;
+  last_name: string;
+  avatar_url: string | null;
+  reaction_type?: ReactionType | null;
+};
+
+export type PostLikersResponse = {
+  post_id: number;
+  like_count: number;
+  users: PostLiker[];
+};
+
+export function fetchPostLikers(postId: string): Promise<PostLikersResponse> {
+  return apiFetch<PostLikersResponse>(`/api/posts/${postId}/likes`);
+}
+
+export function likePost(postId: string, reactionType: ReactionType = 'like'): Promise<LikeStatus> {
+  return apiFetch<LikeStatus>(`/api/posts/${postId}/like?reaction_type=${reactionType}`, { method: 'POST' });
 }
 
 export function unlikePost(postId: string): Promise<LikeStatus> {

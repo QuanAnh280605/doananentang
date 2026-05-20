@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.models.comment import Comment
 from app.models.db_enums import MediaType
+from app.models.follow import Follow
 from app.models.like import Like
 from app.models.post import Post
 from app.models.post_media import PostMedia
@@ -53,9 +54,16 @@ def get_post(db: Session, post_id: int, current_user_id: int | None = None) -> P
     
     # Kiểm tra user hiện tại đã like chưa
     if current_user_id:
-      post.is_liked = db.query(Like).filter(Like.post_id == post.id, Like.user_id == current_user_id).first() is not None
+      user_like = db.query(Like).filter(Like.post_id == post.id, Like.user_id == current_user_id).first()
+      if user_like:
+        post.is_liked = True
+        post.user_reaction = user_like.reaction_type
+      else:
+        post.is_liked = False
+        post.user_reaction = None
     else:
       post.is_liked = False
+      post.user_reaction = None
       
   return post
 
@@ -106,9 +114,16 @@ def get_posts(
     post.comment_count = db.query(func.count(Comment.id)).filter(Comment.post_id == post.id, Comment.is_deleted == False).scalar() or 0
     
     if current_user_id:
-      post.is_liked = db.query(Like).filter(Like.post_id == post.id, Like.user_id == current_user_id).first() is not None
+      user_like = db.query(Like).filter(Like.post_id == post.id, Like.user_id == current_user_id).first()
+      if user_like:
+        post.is_liked = True
+        post.user_reaction = user_like.reaction_type
+      else:
+        post.is_liked = False
+        post.user_reaction = None
     else:
       post.is_liked = False
+      post.user_reaction = None
 
   return {
     'items': items,
@@ -118,6 +133,93 @@ def get_posts(
     'total_pages': total_pages,
   }
 
+
+def get_feed_posts(
+  db: Session,
+  current_user_id: int,
+  page: int = 1,
+  page_size: int = 10,
+) -> dict:
+  """
+  Lấy bảng tin (feed) gồm bài viết của chính mình và người đang theo dõi.
+  - Sắp xếp: mới nhất trước (created_at DESC).
+  - Kèm thống kê: like_count, comment_count, is_liked.
+  - Dùng batch query để tránh N+1 performance issue.
+  """
+
+  # 1. Subquery: danh sách ID người đang theo dõi
+  following_ids = db.query(Follow.following_id).filter(
+    Follow.follower_id == current_user_id
+  ).subquery()
+
+  # 2. Query bài viết của bản thân + người đang follow, chưa bị xóa
+  base_query = db.query(Post).filter(
+    Post.is_deleted == False,
+    (Post.author_id.in_(following_ids)) | (Post.author_id == current_user_id)
+  )
+
+  # 3. Đếm tổng số bài (cho phân trang)
+  total = base_query.with_entities(func.count(Post.id)).scalar() or 0
+  total_pages = math.ceil(total / page_size) if total > 0 else 1
+
+  # 4. Lấy bài viết cho trang hiện tại, kèm tác giả và media (eager load)
+  posts = (
+    base_query
+    .options(joinedload(Post.media), joinedload(Post.author))
+    .order_by(Post.created_at.desc())
+    .offset((page - 1) * page_size)
+    .limit(page_size)
+    .all()
+  )
+
+  if not posts:
+    return {
+      'items': [],
+      'total': total,
+      'page': page,
+      'page_size': page_size,
+      'total_pages': total_pages,
+    }
+
+  post_ids = [p.id for p in posts]
+
+  # 5. Batch: đếm likes cho toàn bộ bài viết trong trang (1 query)
+  like_counts = dict(
+    db.query(Like.post_id, func.count(Like.user_id))
+    .filter(Like.post_id.in_(post_ids))
+    .group_by(Like.post_id)
+    .all()
+  )
+
+  # 6. Batch: đếm comments cho toàn bộ bài viết trong trang (1 query)
+  comment_counts = dict(
+    db.query(Comment.post_id, func.count(Comment.id))
+    .filter(Comment.post_id.in_(post_ids), Comment.is_deleted == False)
+    .group_by(Comment.post_id)
+    .all()
+  )
+
+  # 7. Batch: lấy tập post_id mà current_user đã like (1 query)
+  liked_posts = {
+    row.post_id: row.reaction_type for row in db.query(Like.post_id, Like.reaction_type)
+    .filter(Like.post_id.in_(post_ids), Like.user_id == current_user_id)
+    .all()
+  }
+
+  # 8. Gán stats vào từng bài
+  for post in posts:
+    post.like_count = like_counts.get(post.id, 0)
+    post.comment_count = comment_counts.get(post.id, 0)
+    post.is_liked = post.id in liked_posts
+    post.user_reaction = liked_posts.get(post.id)
+
+  return {
+    'items': posts,
+    'total': total,
+    'page': page,
+    'page_size': page_size,
+    'total_pages': total_pages,
+  }
 
 def update_post(db: Session, db_post: Post, post_in: PostUpdate) -> Post:
   update_data = post_in.model_dump(exclude_unset=True)
