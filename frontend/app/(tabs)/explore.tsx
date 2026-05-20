@@ -1,16 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, FlatList, ActivityIndicator, Pressable, Keyboard, Platform } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 
 import { SearchInput } from '@/components/ui/SearchInput';
 import { ThemedText } from '@/components/themed-text';
 import { FeedPost } from '@/components/post/FeedPost';
-import { surfaceClass } from '@/components/ui/core';
+import { UserListItem } from '@/components/user/UserListItem';
 
 import { searchUsers, type SearchUser } from '@/lib/auth';
-import { API_URL, searchPosts } from '@/lib/api';
+import { searchPosts } from '@/lib/api';
 import type { Post } from '@/lib/types';
 
 const PAGE_SIZE = 10;
@@ -208,36 +207,12 @@ export default function ExploreScreen() {
 
   // ─── User card component ─────────────────────────────────────
   const renderUserItem = useCallback(({ item: user }: { item: SearchUser }) => (
-    <Pressable
-      key={user.id}
-      className={`flex-row items-center gap-4 mx-4 mb-2 p-4 rounded-2xl border border-[#E4E8EE] bg-white ${surfaceClass}`}
-      onPress={() => handleSelectUser(user)}
-    >
-      <View className="h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-[#EAF4FB]">
-        {user.avatar_url ? (
-          <Image
-            source={{ uri: user.avatar_url.startsWith('http') ? user.avatar_url : `${API_URL}${user.avatar_url}` }}
-            className="h-full w-full"
-            style={{ width: 56, height: 56 }}
-          />
-        ) : (
-          <ThemedText className="text-lg font-semibold text-slate-900">
-            {`${user.first_name.charAt(0)}${user.last_name.charAt(0)}`.toUpperCase() || 'US'}
-          </ThemedText>
-        )}
-      </View>
-      <View className="flex-1">
-        <ThemedText className="text-base font-semibold text-slate-900" numberOfLines={1}>
-          {user.full_name}
-        </ThemedText>
-        <ThemedText className="text-sm text-slate-500 mt-0.5" numberOfLines={1}>
-          {user.bio || 'Joined recently'}
-        </ThemedText>
-      </View>
-      <View className="h-9 w-9 items-center justify-center rounded-full bg-[#EAF4FB]">
-        <MaterialIcons name="chevron-right" size={20} color="#4A9FD8" />
-      </View>
-    </Pressable>
+    <View className="mx-4 mb-2">
+      <UserListItem 
+        user={user} 
+        onPress={handleSelectUser} 
+      />
+    </View>
   ), [handleSelectUser]);
 
   // ─── Post item component ─────────────────────────────────────
@@ -415,36 +390,16 @@ export default function ExploreScreen() {
             </Pressable>
           )}
         </View>
-        {previewUsers.map(user => (
-          <Pressable
-            key={user.id}
-            className={`flex-row items-center gap-4 mx-4 mb-2 p-3 rounded-2xl border border-[#E4E8EE] bg-white ${surfaceClass}`}
-            onPress={() => handleSelectUser(user)}
-          >
-            <View className="h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#EAF4FB]">
-              {user.avatar_url ? (
-                <Image
-                  source={{ uri: user.avatar_url.startsWith('http') ? user.avatar_url : `${API_URL}${user.avatar_url}` }}
-                  className="h-full w-full"
-                  style={{ width: 48, height: 48 }}
-                />
-              ) : (
-                <ThemedText className="text-base font-semibold text-slate-900">
-                  {`${user.first_name.charAt(0)}${user.last_name.charAt(0)}`.toUpperCase() || 'US'}
-                </ThemedText>
-              )}
+        <View className="px-4">
+          {previewUsers.map(user => (
+            <View key={user.id} className="mb-2">
+              <UserListItem 
+                user={user} 
+                onPress={handleSelectUser} 
+              />
             </View>
-            <View className="flex-1">
-              <ThemedText className="text-base font-semibold text-slate-900" numberOfLines={1}>
-                {user.full_name}
-              </ThemedText>
-              <ThemedText className="text-xs text-slate-500 mt-0.5" numberOfLines={1}>
-                {user.bio || 'Joined recently'}
-              </ThemedText>
-            </View>
-            <MaterialIcons name="chevron-right" size={20} color="#94A3B8" />
-          </Pressable>
-        ))}
+          ))}
+        </View>
       </View>
     );
   };
