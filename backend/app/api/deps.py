@@ -8,6 +8,7 @@ from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.crud.auth import get_user_for_token
 from app.models.user import User
+from app.models.db_enums import UserRole
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -33,6 +34,12 @@ def get_current_user(
   if user is None:
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid credentials')
 
+  if not user.is_active or user.is_deleted:
+    raise HTTPException(
+      status_code=status.HTTP_403_FORBIDDEN,
+      detail="Tài khoản đã bị khóa hoặc không hoạt động"
+    )
+
   return user
 
 
@@ -44,6 +51,20 @@ def get_current_user_optional(
     return None
 
   try:
-    return get_user_from_access_token(db, credentials.credentials)
+    user = get_user_from_access_token(db, credentials.credentials)
+    if user is None or not user.is_active or user.is_deleted:
+      return None
+    return user
   except InvalidTokenError:
     return None
+
+
+def get_current_admin(
+  current_user: User = Depends(get_current_user),
+) -> User:
+  if current_user.role != UserRole.ADMIN:
+    raise HTTPException(
+      status_code=status.HTTP_403_FORBIDDEN,
+      detail="Bạn không có quyền thực hiện hành động này"
+    )
+  return current_user

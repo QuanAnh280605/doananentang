@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.api.admin import router as admin_router
 from app.api.auth import router as auth_router
 from app.api.chats import router as chats_router
 from app.api.comments import router as comments_router
@@ -11,6 +12,7 @@ from app.api.users import router as users_router
 
 api_router = APIRouter()
 api_router.include_router(health_router, tags=['health'])
+api_router.include_router(admin_router, prefix='/admin', tags=['admin'])
 api_router.include_router(auth_router, prefix='/auth', tags=['auth'])
 api_router.include_router(users_router, prefix='/users', tags=['users'])
 api_router.include_router(chats_router, prefix='/chats', tags=['chats'])

@@ -143,6 +143,13 @@ def login(payload: LoginRequest, response: Response, db: Session = Depends(get_d
 
   if user is None or not verify_password(payload.password, user.hashed_password):
     raise _raise_invalid_credentials()
+
+  if not user.is_active or user.is_deleted:
+    raise HTTPException(
+      status_code=status.HTTP_403_FORBIDDEN,
+      detail="Tài khoản đã bị khóa hoặc không hoạt động"
+    )
+
   auth_response = _build_auth_response(db, user)
   _set_refresh_cookie(response, auth_response.refresh_token)
   return auth_response
@@ -178,6 +185,13 @@ def refresh_tokens(
   if user is None:
     db.rollback()
     raise _raise_invalid_credentials()
+
+  if not user.is_active or user.is_deleted:
+    db.rollback()
+    raise HTTPException(
+      status_code=status.HTTP_403_FORBIDDEN,
+      detail="Tài khoản đã bị khóa hoặc không hoạt động"
+    )
 
   new_token_id = str(uuid4())
   refresh_token = create_refresh_token(str(user.id), new_token_id)
