@@ -32,4 +32,7 @@ export const ROUTES = {
   profileDetail: (userId: string, params?: ProfileDetailSearchParams) => `/profile/${userId}${buildSearchParams(params)}`,
   inbox: '/inbox',
   explore: '/explore',
+  admin: '/admin',
+  adminUsers: '/admin/users',
+  adminModeration: '/admin/moderation',
 } as const;
