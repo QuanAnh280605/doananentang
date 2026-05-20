@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, type ComponentType } from 'react';
+import { useEffect, useRef, useState, type ComponentType } from 'react';
 
-import { Aperture, Bell, EnvelopeSimple, SquaresFour } from '@phosphor-icons/react';
+import { Aperture, Bell, EnvelopeSimple, SignOut, SquaresFour, User } from '@phosphor-icons/react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 import { NotificationsModal } from '@/components/notifications/NotificationsModal';
 import { useRealtimePresence } from '@/components/providers/RealtimeProvider';
@@ -12,7 +13,7 @@ import { SearchInput } from '@/components/ui/SearchInput';
 import { ThemedText } from '@/components/ui/ThemedText';
 import { appColors } from '@/components/ui/design-system';
 import { resolveAvatarUrl } from '@/lib/api';
-import type { AuthUser } from '@/lib/auth';
+import { logoutUser, type AuthUser } from '@/lib/auth';
 import { ROUTES } from '@/lib/routes';
 
 type AppTopNavProps = {
@@ -85,8 +86,12 @@ export function AppTopNav({
   hideInboxAction = false,
 
 }: AppTopNavProps) {
+  const router = useRouter();
   const globalSearch = useGlobalSearch();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
   const isControlled = typeof onSearchChange === 'function';
   const resolvedSearchValue = isControlled ? (searchValue ?? '') : globalSearch.query;
   const initials = currentUser
@@ -109,6 +114,51 @@ export function AppTopNav({
   const handleSearchFocus = () => {
     if (!isControlled) {
       globalSearch.open();
+    }
+  };
+
+  useEffect(() => {
+    if (!isAccountMenuOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!accountMenuRef.current?.contains(event.target as Node)) {
+        setIsAccountMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsAccountMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isAccountMenuOpen]);
+
+  const handleOpenProfile = () => {
+    setIsAccountMenuOpen(false);
+    router.push(ROUTES.profile);
+  };
+
+  const handleLogout = async () => {
+    if (isLoggingOut) {
+      return;
+    }
+
+    setIsLoggingOut(true);
+    try {
+      await logoutUser();
+      setIsAccountMenuOpen(false);
+      router.replace(ROUTES.login);
+    } finally {
+      setIsLoggingOut(false);
     }
   };
 
@@ -145,21 +195,57 @@ export function AppTopNav({
             <IconBubble icon={Bell} label="Open notifications" badgeCount={unreadNotificationCount} onClick={() => setIsNotificationsOpen(true)} />
             <IconBubble icon={SquaresFour} label="Open apps" />
 
-            <Link href="/profile" className="ml-2 group">
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt="Avatar"
-                  className="h-11 w-11 shrink-0 rounded-[14px] object-cover ring-0 ring-slate-100 transition-all duration-300 group-hover:ring-4"
-                />
-              ) : (
-                <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-slate-100 transition-colors group-hover:bg-[var(--accent-soft)]">
-                  <ThemedText as="span" className="text-[14px] font-bold text-slate-900">
-                    {initials}
-                  </ThemedText>
+            <div className="relative ml-2" ref={accountMenuRef}>
+              <button
+                aria-expanded={isAccountMenuOpen}
+                aria-haspopup="menu"
+                aria-label="Mở menu tài khoản"
+                className="group block rounded-[14px] outline-none focus-visible:ring-4 focus-visible:ring-[var(--accent-soft)]"
+                onClick={() => setIsAccountMenuOpen((current) => !current)}
+                type="button"
+              >
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Avatar"
+                    className="h-11 w-11 shrink-0 rounded-[14px] object-cover ring-0 ring-slate-100 transition-all duration-300 group-hover:ring-4"
+                  />
+                ) : (
+                  <span className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-slate-100 transition-colors group-hover:bg-[var(--accent-soft)]">
+                    <ThemedText as="span" className="text-[14px] font-bold text-slate-900">
+                      {initials}
+                    </ThemedText>
+                  </span>
+                )}
+              </button>
+
+              {isAccountMenuOpen ? (
+                <div
+                  className="absolute right-0 top-14 z-[230] w-56 overflow-hidden rounded-[24px] border border-slate-200 bg-white p-2 shadow-[0_18px_40px_rgba(15,23,42,0.12)]"
+                  role="menu"
+                >
+                  <button
+                    className="flex min-h-11 w-full items-center gap-3 rounded-[18px] px-3 text-left text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-950"
+                    onClick={handleOpenProfile}
+                    role="menuitem"
+                    type="button"
+                  >
+                    <User size={18} weight="bold" />
+                    Profile
+                  </button>
+                  <button
+                    className="flex min-h-11 w-full items-center gap-3 rounded-[18px] px-3 text-left text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={isLoggingOut}
+                    onClick={handleLogout}
+                    role="menuitem"
+                    type="button"
+                  >
+                    <SignOut size={18} weight="bold" />
+                    {isLoggingOut ? 'Đang đăng xuất...' : 'Logout'}
+                  </button>
                 </div>
-              )}
-            </Link>
+              ) : null}
+            </div>
           </div>
         </div>
       </nav>

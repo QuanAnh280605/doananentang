@@ -100,7 +100,11 @@ function PromoPanel() {
   );
 }
 
-export function LoginForm() {
+type LoginFormProps = {
+  statusMessage?: string | null;
+};
+
+export function LoginForm({ statusMessage = null }: LoginFormProps) {
   const router = useRouter();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -185,6 +189,14 @@ export function LoginForm() {
             <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
               <ThemedText as="p" className="text-sm font-semibold text-rose-700">
                 {errorMessage}
+              </ThemedText>
+            </div>
+          ) : null}
+
+          {statusMessage ? (
+            <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+              <ThemedText as="p" className="text-sm font-semibold text-emerald-700">
+                {statusMessage}
               </ThemedText>
             </div>
           ) : null}
