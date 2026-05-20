@@ -22,7 +22,7 @@ class Post(Base):
       'idx_posts_content_fts',
       func.to_tsvector(text("'simple'"), text('content')),
       postgresql_using='gin'
-    ),
+    ).ddl_if(dialect='postgresql'),
   )
 
   id: Mapped[int] = uuid_pk('id')
