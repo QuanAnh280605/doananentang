@@ -20,6 +20,7 @@ from app.schemas.post import (
   PostReadWithAuthor,
   PostUpdate,
 )
+from app.services.notification import create_social_notification
 
 router = APIRouter()
 
@@ -194,7 +195,16 @@ def like_post_endpoint(
   if not post:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Post not found')
 
+  already_liked = is_liked_by_user(db, post_id, current_user.id)
   like_post(db, post_id, current_user.id)
+  if not already_liked:
+    create_social_notification(
+      db,
+      receiver_id=post.author_id,
+      actor_id=current_user.id,
+      type='like',
+      post_id=post.id,
+    )
   count = get_like_count(db, post_id)
   return LikeStatusResponse(post_id=post_id, liked=True, like_count=count)
 

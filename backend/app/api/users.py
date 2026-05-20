@@ -15,6 +15,7 @@ from app.crud.user import create_user, get_user_by_email, get_user_by_id, get_us
 from app.models.user import User
 from app.schemas.user import FollowStatusRead, UserCreate, UserRead, UserSearchRead, FollowUserRead, PaginatedUsersResponse, PaginatedFollowUsersResponse
 from app.schemas.user import UserUpdate
+from app.services.notification import create_social_notification
 
 
 router = APIRouter()
@@ -178,7 +179,16 @@ def follow_user_endpoint(
   if user is None:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found')
 
+  already_following = is_following(db, current_user.id, user_id)
   create_follow(db, current_user.id, user_id)
+  if not already_following:
+    create_social_notification(
+      db,
+      receiver_id=user_id,
+      actor_id=current_user.id,
+      type='follow',
+      related_user_id=current_user.id,
+    )
   return FollowStatusRead(
     user_id=user_id,
     is_following=True,
