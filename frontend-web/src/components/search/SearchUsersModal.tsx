@@ -1,3 +1,5 @@
+import type { UIEvent } from 'react';
+
 import { SearchInput } from '@/components/ui/SearchInput';
 import type { SearchUser } from '@/lib/auth';
 
@@ -6,8 +8,11 @@ type SearchUsersModalProps = {
   query: string;
   users: SearchUser[];
   isLoading: boolean;
+  isLoadingMore: boolean;
+  hasMore: boolean;
   errorMessage: string | null;
   onClose: () => void;
+  onLoadMore: () => void;
   onSelectUser: (user: SearchUser) => void;
   setQuery: (value: string) => void;
 };
@@ -23,8 +28,11 @@ export function SearchUsersModal({
   query,
   users,
   isLoading,
+  isLoadingMore,
+  hasMore,
   errorMessage,
   onClose,
+  onLoadMore,
   onSelectUser,
   setQuery,
 }: SearchUsersModalProps) {
@@ -33,6 +41,15 @@ export function SearchUsersModal({
   }
 
   const normalizedQuery = query.trim();
+
+  const handleResultsScroll = (event: UIEvent<HTMLDivElement>) => {
+    const target = event.currentTarget;
+    const distanceToBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+
+    if (distanceToBottom < 80 && hasMore && !isLoadingMore) {
+      onLoadMore();
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[1200] flex items-start justify-center bg-black/35 px-4 pt-24">
@@ -64,7 +81,7 @@ export function SearchUsersModal({
           ) : errorMessage ? (
             <div className="rounded-[18px] bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</div>
           ) : normalizedQuery.length < 2 ? null : users.length ? (
-            <div className="max-h-[46vh] space-y-2 overflow-y-auto pr-1">
+            <div className="max-h-[46vh] space-y-2 overflow-y-auto pr-1" onScroll={handleResultsScroll}>
               {users.map((user) => (
                 <button
                   key={user.id}
@@ -81,6 +98,9 @@ export function SearchUsersModal({
                   <span className="text-[#94A3B8]">›</span>
                 </button>
               ))}
+              {isLoadingMore ? (
+                <div className="py-3 text-center text-sm text-slate-500">Đang tải thêm người dùng...</div>
+              ) : null}
             </div>
           ) : (
             <div className="flex items-center justify-center py-8 text-sm text-slate-500">Không tìm thấy người dùng phù hợp.</div>

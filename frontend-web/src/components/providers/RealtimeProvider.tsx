@@ -1,13 +1,14 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { usePathname } from 'next/navigation';
 
 import { restoreAuthSession } from '@/lib/api';
 import type { ChatMessageResponse } from '@/lib/chat.types';
+import type { NotificationItem } from '@/lib/notification.types';
+import { fetchNotifications } from '@/lib/notifications';
 import { getAccessToken, subscribeToAuthSessionChanges } from '@/lib/session';
 import { connectAppSocket, disconnectAppSocket, getConnectedAppSocket } from '@/lib/socket';
-import { useToast } from '@/hooks/useToast';
 import { hasUnreadMessages } from '@/lib/chat';
 import { getCurrentUserIdFromToken } from '@/lib/shared-auth';
 
@@ -26,8 +27,11 @@ type OnlineUsersSnapshotPayload = {
 
 type RealtimeContextValue = {
   isUserOnline: (userId: number) => boolean;
-  hasNewMessage: boolean; 
-  setHasNewMessage: (value: boolean) => void; 
+  hasNewMessage: boolean;
+  setHasNewMessage: Dispatch<SetStateAction<boolean>>;
+  unreadNotificationCount: number;
+  setUnreadNotificationCount: Dispatch<SetStateAction<number>>;
+  refreshNotificationsBadge: () => Promise<void>;
 };
 
 const RealtimeContext = createContext<RealtimeContextValue | null>(null);
@@ -44,22 +48,33 @@ export function useRealtimePresence(): RealtimeContextValue {
 
 export function RealtimeProvider({ children }: RealtimeProviderProps) {
   const pathname = usePathname();
-  const toast = useToast();
   const pathnameRef = useRef(pathname);
   const [onlineUserIds, setOnlineUserIds] = useState<Set<number>>(() => new Set());
   const [hasNewMessage, setHasNewMessage] = useState(false);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+
+  const refreshNotificationsBadge = useCallback(async () => {
+    const response = await fetchNotifications({ unreadOnly: true, limit: 1 });
+    setUnreadNotificationCount(response.unread_count);
+  }, []);
 
   const isUserOnline = useCallback((userId: number) => onlineUserIds.has(userId), [onlineUserIds]);
   const value = useMemo<RealtimeContextValue>(() => (
-    { 
-      isUserOnline, 
-      hasNewMessage, 
-      setHasNewMessage 
-    }), 
+    {
+      isUserOnline,
+      hasNewMessage,
+      setHasNewMessage,
+      unreadNotificationCount,
+      setUnreadNotificationCount,
+      refreshNotificationsBadge,
+    }),
     [
-      isUserOnline, 
-      hasNewMessage, 
-      setHasNewMessage
+      isUserOnline,
+      hasNewMessage,
+      setHasNewMessage,
+      unreadNotificationCount,
+      setUnreadNotificationCount,
+      refreshNotificationsBadge,
     ]);
 
   useEffect(() => {
@@ -76,6 +91,17 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
       if (payload.sender_id !== currentUserId) {
         setHasNewMessage(true);
       }
+    };
+
+    const handleNotificationCreated = (payload: NotificationItem) => {
+      const token = getAccessToken();
+      const currentUserId = getCurrentUserIdFromToken(token);
+
+      if (!currentUserId || payload.receiver_id !== currentUserId) {
+        return;
+      }
+
+      setUnreadNotificationCount((currentCount) => currentCount + 1);
     };
 
     const handleOnlineUsersSnapshot = (payload: OnlineUsersSnapshotPayload) => {
@@ -101,15 +127,20 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
         const socket = connectAppSocket();
         if (socket) {
           socket.off('message-created', handleGlobalMessageCreated);
+          socket.off('notification-created', handleNotificationCreated);
           socket.off('online-users-snapshot', handleOnlineUsersSnapshot);
           socket.off('user-presence-changed', handleUserPresenceChanged);
           socket.on('message-created', handleGlobalMessageCreated);
+          socket.on('notification-created', handleNotificationCreated);
           socket.on('online-users-snapshot', handleOnlineUsersSnapshot);
           socket.on('user-presence-changed', handleUserPresenceChanged);
         }
+
+        void refreshNotificationsBadge().catch(() => undefined);
         return;
       }
 
+      setUnreadNotificationCount(0);
       disconnectAppSocket();
     };
 
@@ -124,6 +155,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
         hasUnreadMessages().then(setHasNewMessage).catch(() => undefined);
       })
       .catch(() => {
+        setUnreadNotificationCount(0);
         disconnectAppSocket();
       });
 
@@ -134,11 +166,12 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
       unsubscribe();
       const socket = getConnectedAppSocket();
       socket?.off('message-created', handleGlobalMessageCreated);
+      socket?.off('notification-created', handleNotificationCreated);
       socket?.off('online-users-snapshot', handleOnlineUsersSnapshot);
       socket?.off('user-presence-changed', handleUserPresenceChanged);
       disconnectAppSocket();
     };
-  }, [toast]);
+  }, [refreshNotificationsBadge]);
 
   return <RealtimeContext.Provider value={value}>{children}</RealtimeContext.Provider>;
 }

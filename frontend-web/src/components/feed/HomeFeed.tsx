@@ -19,7 +19,7 @@ import { StoryStrip } from '@/components/story/StoryStrip';
 import { StoryViewerModal } from '@/components/story/StoryViewerModal';
 import { mapApiStoryToStoryItem, type StoryItem } from '@/components/story/storyState';
 import { API_URL, fetchPosts, fetchStories, markStoryViewed, resolveAvatarUrl } from '@/lib/api';
-import { fetchCurrentUser, fetchFollowing, type AuthUser, type FollowUser } from '@/lib/auth';
+import { fetchCurrentUser, type AuthUser } from '@/lib/auth';
 import { listDirectChats } from '@/lib/chat';
 import type { InboxThreadData } from '@/lib/chat.types';
 import { ROUTES } from '@/lib/routes';
@@ -67,30 +67,6 @@ function SectionCard({ title, rightLabel, children }: { title: string; rightLabe
   );
 }
 
-function ContactRow({ item }: { item: FollowUser }) {
-  const initials = buildInitials(item.first_name, item.last_name);
-  const preview = item.bio?.trim() || 'Đang theo dõi';
-
-  return (
-    <Link
-      href={ROUTES.profileDetail(String(item.id), {
-        name: item.full_name,
-        initials,
-        preview,
-        bio: preview,
-      })}
-      className="flex items-center gap-4 rounded-[24px] border border-slate-100 bg-white p-4 transition-all duration-300 hover:border-slate-200 hover:shadow-md group"
-    >
-      <UserAvatar user={item} initials={initials} />
-      <div className="min-w-0 flex-1">
-        <ThemedText as="p" className="truncate text-[16px] font-bold tracking-tight text-slate-950">{item.full_name}</ThemedText>
-        <ThemedText as="p" className="truncate text-[13px] font-medium text-slate-400">{preview}</ThemedText>
-      </div>
-      <div className="h-2.5 w-2.5 rounded-full border-2 border-white bg-[#6FC18A] ring-1 ring-slate-100" />
-    </Link>
-  );
-}
-
 function MessengerRow({ item }: { item: InboxThreadData }) {
   const initials = buildInitials(item.user.first_name, item.user.last_name);
 
@@ -114,7 +90,6 @@ function MessengerRow({ item }: { item: InboxThreadData }) {
 }
 
 function RightRail({ currentUser }: { currentUser: AuthUser | null }) {
-  const [contacts, setContacts] = useState<FollowUser[]>([]);
   const [threads, setThreads] = useState<InboxThreadData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -134,13 +109,9 @@ function RightRail({ currentUser }: { currentUser: AuthUser | null }) {
       setError(null);
     });
 
-    void Promise.all([
-      fetchFollowing(currentUser.id, 1, 4),
-      listDirectChats(),
-    ])
-      .then(([followingResponse, directThreads]) => {
+    void listDirectChats()
+      .then((directThreads) => {
         if (!isMounted) return;
-        setContacts(followingResponse.items);
         setThreads(directThreads.slice(0, 3));
       })
       .catch((err: unknown) => {
@@ -160,18 +131,6 @@ function RightRail({ currentUser }: { currentUser: AuthUser | null }) {
 
   return (
     <div className="space-y-5">
-      <SectionCard title="Contacts" rightLabel={loading ? 'Loading' : `${contacts.length} following`}>
-        {loading ? (
-          <ThemedText as="p" className="text-[14px] font-medium text-slate-400">Đang tải liên hệ...</ThemedText>
-        ) : error ? (
-          <ThemedText as="p" className="text-[14px] font-medium text-red-500">{error}</ThemedText>
-        ) : contacts.length === 0 ? (
-          <ThemedText as="p" className="text-[14px] font-medium text-slate-400">Bạn chưa theo dõi ai.</ThemedText>
-        ) : (
-          contacts.map((item) => <ContactRow key={item.id} item={item} />)
-        )}
-      </SectionCard>
-
       <SectionCard title="Messenger" rightLabel={loading ? 'Loading' : `${threads.length} threads`}>
         {loading ? (
           <ThemedText as="p" className="text-[14px] font-medium text-slate-400">Đang tải hội thoại...</ThemedText>

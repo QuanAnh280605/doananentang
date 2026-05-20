@@ -9,6 +9,7 @@ from app.crud.post import get_post
 from app.models.db_enums import UserRole
 from app.models.user import User
 from app.schemas.comment import CommentCreate, CommentRead, CommentThreadRead
+from app.services.notification import create_social_notification
 
 router = APIRouter()
 
@@ -29,6 +30,9 @@ def create_comment_endpoint(
   if not post:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Post not found')
 
+  receiver_id = post.author_id
+  parent = None
+
   # Nếu là reply, kiểm tra parent comment tồn tại và cùng bài viết
   if payload.parent_comment_id:
     parent = get_comment(db, payload.parent_comment_id)
@@ -36,8 +40,16 @@ def create_comment_endpoint(
       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Parent comment not found')
     if parent.post_id != post_id:
       raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Parent comment does not belong to this post')
+    receiver_id = parent.author_id
 
   comment = create_comment(db, post_id, current_user.id, payload)
+  create_social_notification(
+    db,
+    receiver_id=receiver_id,
+    actor_id=current_user.id,
+    type='comment',
+    comment_id=comment.id,
+  )
   return CommentRead.model_validate(comment)
 
 
@@ -73,7 +85,16 @@ def like_comment_endpoint(
   if not comment:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Comment not found')
   
+  already_liked = is_comment_liked_by_user(db, comment_id, current_user.id)
   like_comment(db, comment_id, current_user.id)
+  if not already_liked:
+    create_social_notification(
+      db,
+      receiver_id=comment.author_id,
+      actor_id=current_user.id,
+      type='like',
+      comment_id=comment.id,
+    )
   
   return {
     'status': 'liked',
