@@ -4,6 +4,7 @@ from sqlalchemy import DateTime, ForeignKey, Index, PrimaryKeyConstraint, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
+from app.models.db_enums import ReportStatus, report_status_enum
 from app.models.db_types import UUID_TYPE
 
 
@@ -17,4 +18,6 @@ class PostReport(Base):
   post_id: Mapped[int] = mapped_column(UUID_TYPE, ForeignKey('posts.id', ondelete='CASCADE'), nullable=False)
   user_id: Mapped[int] = mapped_column(UUID_TYPE, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
   reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+  status: Mapped[ReportStatus] = mapped_column(report_status_enum, nullable=False, default=ReportStatus.PENDING, server_default='pending')
   created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+

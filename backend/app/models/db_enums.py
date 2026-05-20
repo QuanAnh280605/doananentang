@@ -25,6 +25,12 @@ class MediaType(str, Enum):
   AUDIO = 'audio'
 
 
+class ReportStatus(str, Enum):
+  PENDING = 'pending'
+  RESOLVED = 'resolved'
+  DISMISSED = 'dismissed'
+
+
 class NotificationType(str, Enum):
   LIKE = 'like'
   COMMENT = 'comment'
@@ -42,6 +48,7 @@ class MessageStatusType(str, Enum):
 user_role_enum = SqlEnum(UserRole, name='user_role', native_enum=False, values_callable=_enum_values)
 visibility_level_enum = SqlEnum(VisibilityLevel, name='visibility_level', native_enum=False, values_callable=_enum_values)
 media_type_enum = SqlEnum(MediaType, name='media_type', native_enum=False, values_callable=_enum_values)
+report_status_enum = SqlEnum(ReportStatus, name='report_status', native_enum=False, values_callable=_enum_values)
 notification_type_enum = SqlEnum(NotificationType, name='notification_type', native_enum=False, values_callable=_enum_values)
 message_status_type_enum = SqlEnum(
   MessageStatusType,
