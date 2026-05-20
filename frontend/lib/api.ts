@@ -160,7 +160,7 @@ async function performRequest(path: string, init: RequestInit | undefined, token
     headers: requestHeaders,
     method: init?.method as Method | undefined,
     responseType: 'text',
-    signal: init?.signal,
+    signal: init?.signal ?? undefined,
     transformResponse: [(value) => value],
     url: `${API_URL}${path}`,
     validateStatus: () => true,
