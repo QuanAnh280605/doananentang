@@ -16,7 +16,7 @@ type AppTopNavProps = {
   searchValue?: string;
   onSearchChange?: (value: string) => void;
   avatarUrl?: string | null;
-
+  unreadNotificationCount?: number;
 };
 
 function NavAvatar({ initials, avatarUrl }: { initials: string; avatarUrl?: string | null }) {
@@ -45,6 +45,14 @@ function NavActionBubble({ icon }: { icon: keyof typeof MaterialIcons.glyphMap }
   );
 }
 
+function NavBadgeText({ count }: { count: number }) {
+  return (
+    <ThemedText style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '700', lineHeight: 14 }}>
+      {count > 99 ? '99+' : String(count)}
+    </ThemedText>
+  );
+}
+
 export function AppTopNav({
   isTablet,
   searchPlaceholder = 'Search people, notes, or screenshots',
@@ -52,6 +60,7 @@ export function AppTopNav({
   avatarUrl,
   searchValue,
   onSearchChange,
+  unreadNotificationCount = 0,
 }: AppTopNavProps) {
   const globalSearch = useGlobalSearch();
   const isControlled = typeof onSearchChange === 'function';
@@ -97,7 +106,35 @@ export function AppTopNav({
 
         <View className="flex-row items-center gap-3">
           <NavActionBubble icon="mail-outline" />
-          <NavActionBubble icon="notifications-none" />
+          <Pressable
+            id="nav-notifications-btn"
+            onPress={() => router.push('/notifications')}
+            className="active:opacity-80"
+          >
+            <View style={{ position: 'relative' }}>
+              <NavActionBubble icon="notifications-none" />
+              {unreadNotificationCount > 0 && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    top: -4,
+                    right: -4,
+                    backgroundColor: '#EF4444',
+                    borderRadius: 10,
+                    minWidth: 18,
+                    height: 18,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingHorizontal: 4,
+                    borderWidth: 1.5,
+                    borderColor: '#FFFFFF',
+                  }}
+                >
+                  <NavBadgeText count={unreadNotificationCount} />
+                </View>
+              )}
+            </View>
+          </Pressable>
           <NavActionBubble icon="apps" />
           <Pressable onPress={() => router.push('/profile')} className="active:opacity-70">
             <NavAvatar initials={avatarInitials} avatarUrl={avatarUrl} />

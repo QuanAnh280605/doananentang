@@ -10,7 +10,7 @@ import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Avatar, surfaceClass } from '@/components/ui/core';
-import { fetchFollowingUsers, fetchPosts, listDirectChats } from '@/lib/api';
+import { fetchFollowingUsers, fetchPosts, fetchUnreadCount, listDirectChats } from '@/lib/api';
 import type { ChatListItem, FollowUser } from '@/lib/api';
 import { fetchCurrentUser } from '@/lib/auth';
 import type { AuthUser } from '@/lib/auth';
@@ -328,9 +328,17 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 
   useEffect(() => {
-    fetchCurrentUser().then(setCurrentUser).catch(() => { });
+    fetchCurrentUser().then((user) => {
+      setCurrentUser(user);
+      if (user) {
+        fetchUnreadCount()
+          .then((res) => setUnreadNotificationCount(res.unread_count))
+          .catch(() => {});
+      }
+    }).catch(() => {});
   }, []);
 
   const loadPosts = useCallback(async () => {
@@ -358,6 +366,7 @@ export default function HomeScreen() {
         <View className="mx-auto w-full max-w-[1720px] px-4 pb-6 pt-4 md:px-6">
           <AppTopNav isTablet={isTablet} searchPlaceholder="Search users" avatarUrl={currentUser?.avatar_url}
             avatarInitials={currentUser ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase() : 'LE'}
+            unreadNotificationCount={unreadNotificationCount}
           />
 
           <View className={`mt-4 gap-4 ${isDesktop ? 'flex-row items-start' : ''}`}>
