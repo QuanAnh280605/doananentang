@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -104,6 +105,7 @@ def list_notifications(db: Session) -> list[Notification]:
 
 def install_emit_capture(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
   from app.services import notification as notification_service
+  from app.realtime import socket_server
 
   captured: list[dict[str, Any]] = []
 
@@ -115,7 +117,42 @@ def install_emit_capture(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]
 
   monkeypatch.setattr(notification_service.socket_server.sio, 'emit', fake_emit)
   monkeypatch.setattr(notification_service.from_thread, 'run', run_async)
+  monkeypatch.setattr(socket_server.sio, 'emit', fake_emit)
+  monkeypatch.setattr(socket_server, 'from_thread', SimpleNamespace(run=run_async), raising=False)
   return captured
+
+
+def get_post_metrics_events(captured: list[dict[str, Any]]) -> list[dict[str, Any]]:
+  return [item for item in captured if item['event'] == 'post-metrics-updated']
+
+
+def get_notification_events(captured: list[dict[str, Any]]) -> list[dict[str, Any]]:
+  return [item for item in captured if item['event'] == 'notification-created']
+
+
+def assert_post_metrics_event(
+  event: dict[str, Any],
+  *,
+  post_id: int,
+  actor_id: int,
+  action: str,
+  liked: bool | None = None,
+) -> None:
+  payload = event['payload']
+
+  assert event['event'] == 'post-metrics-updated'
+  assert event['room'] == f'post:{post_id}'
+  assert payload['post_id'] == post_id
+  assert isinstance(payload['post_id'], int)
+  assert isinstance(payload['like_count'], int)
+  assert isinstance(payload['comment_count'], int)
+  assert isinstance(payload['actor_id'], int)
+  assert payload['like_count'] >= 0
+  assert payload['comment_count'] >= 0
+  assert payload['actor_id'] == actor_id
+  assert payload['action'] == action
+  if liked is not None:
+    assert payload['liked'] is liked
 
 
 def test_like_post_creates_notification_and_duplicate_like_does_not_emit_twice(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -142,15 +179,40 @@ def test_like_post_creates_notification_and_duplicate_like_does_not_emit_twice(m
     assert notifications[0].actor_id == actor.id
     assert notifications[0].type.value == 'like'
     assert notifications[0].post_id == post.id
-    assert len(captured) == 1
-    assert captured[0]['event'] == 'notification-created'
-    assert captured[0]['room'] == get_user_room_name(owner.id)
-    assert set(captured[0]['payload']) >= {'id', 'receiver_id', 'actor_id', 'type', 'is_read', 'created_at'}
-    assert captured[0]['payload']['receiver_id'] == owner.id
-    assert captured[0]['payload']['actor_id'] == actor.id
-    assert captured[0]['payload']['actor_name'] == actor.full_name
-    assert captured[0]['payload']['type'] == 'like'
-    assert captured[0]['payload']['post_id'] == post.id
+    notification_events = get_notification_events(captured)
+    assert len(notification_events) == 1
+    assert notification_events[0]['event'] == 'notification-created'
+    assert notification_events[0]['room'] == get_user_room_name(owner.id)
+    assert set(notification_events[0]['payload']) >= {'id', 'receiver_id', 'actor_id', 'type', 'is_read', 'created_at'}
+    assert notification_events[0]['payload']['receiver_id'] == owner.id
+    assert notification_events[0]['payload']['actor_id'] == actor.id
+    assert notification_events[0]['payload']['actor_name'] == actor.full_name
+    assert notification_events[0]['payload']['type'] == 'like'
+    assert notification_events[0]['payload']['post_id'] == post.id
+
+
+def test_post_like_emits_post_metrics_update(monkeypatch: pytest.MonkeyPatch) -> None:
+  with build_test_session() as db:
+    owner = seed_user(db, email='owner@example.com', first_name='Owner')
+    actor = seed_user(db, email='actor@example.com', first_name='Actor')
+    post = seed_post(db, author_id=owner.id)
+    client = build_client(db, actor)
+    captured = install_emit_capture(monkeypatch)
+
+    response = client.post(f'/api/posts/{post.id}/like')
+
+    assert response.status_code == 200
+    metrics_events = get_post_metrics_events(captured)
+    assert len(metrics_events) == 1
+    assert_post_metrics_event(
+      metrics_events[0],
+      post_id=post.id,
+      actor_id=actor.id,
+      action='post_liked',
+      liked=True,
+    )
+    assert metrics_events[0]['payload']['like_count'] == 1
+    assert metrics_events[0]['payload']['comment_count'] == 0
 
 
 def test_like_own_post_does_not_create_notification_or_emit(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -165,7 +227,34 @@ def test_like_own_post_does_not_create_notification_or_emit(monkeypatch: pytest.
     assert response.status_code == 200
     assert response.json() == {'post_id': post.id, 'liked': True, 'like_count': 1}
     assert list_notifications(db) == []
-    assert captured == []
+    assert get_notification_events(captured) == []
+
+
+def test_post_unlike_emits_post_metrics_update(monkeypatch: pytest.MonkeyPatch) -> None:
+  with build_test_session() as db:
+    owner = seed_user(db, email='owner@example.com', first_name='Owner')
+    actor = seed_user(db, email='actor@example.com', first_name='Actor')
+    post = seed_post(db, author_id=owner.id)
+    client = build_client(db, actor)
+    client.post(f'/api/posts/{post.id}/like')
+
+    monkeypatch.undo()
+    captured = install_emit_capture(monkeypatch)
+
+    response = client.delete(f'/api/posts/{post.id}/like')
+
+    assert response.status_code == 200
+    metrics_events = get_post_metrics_events(captured)
+    assert len(metrics_events) == 1
+    assert_post_metrics_event(
+      metrics_events[0],
+      post_id=post.id,
+      actor_id=actor.id,
+      action='post_unliked',
+      liked=False,
+    )
+    assert metrics_events[0]['payload']['like_count'] == 0
+    assert metrics_events[0]['payload']['comment_count'] == 0
 
 
 def test_create_comment_creates_notification_for_post_owner_and_reply_targets_parent_author(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -204,13 +293,37 @@ def test_create_comment_creates_notification_for_post_owner_and_reply_targets_pa
     assert reply_notification.type.value == 'comment'
     assert reply_notification.comment_id == reply_response.json()['id']
 
-    assert len(captured) == 2
-    assert captured[0]['room'] == get_user_room_name(post_owner.id)
-    assert captured[0]['payload']['comment_id'] == comment_response.json()['id']
-    assert captured[0]['payload']['actor_name'] == actor.full_name
-    assert captured[1]['room'] == get_user_room_name(parent_author.id)
-    assert captured[1]['payload']['comment_id'] == reply_response.json()['id']
-    assert captured[1]['payload']['target_post_id'] == post.id
+    notification_events = get_notification_events(captured)
+    assert len(notification_events) == 2
+    assert notification_events[0]['room'] == get_user_room_name(post_owner.id)
+    assert notification_events[0]['payload']['comment_id'] == comment_response.json()['id']
+    assert notification_events[0]['payload']['actor_name'] == actor.full_name
+    assert notification_events[1]['room'] == get_user_room_name(parent_author.id)
+    assert notification_events[1]['payload']['comment_id'] == reply_response.json()['id']
+    assert notification_events[1]['payload']['target_post_id'] == post.id
+
+
+def test_comment_create_emits_post_metrics_update(monkeypatch: pytest.MonkeyPatch) -> None:
+  with build_test_session() as db:
+    owner = seed_user(db, email='owner@example.com', first_name='Owner')
+    actor = seed_user(db, email='actor@example.com', first_name='Actor')
+    post = seed_post(db, author_id=owner.id)
+    client = build_client(db, actor)
+    captured = install_emit_capture(monkeypatch)
+
+    response = client.post(f'/api/comments/post/{post.id}', json={'content': 'New comment'})
+
+    assert response.status_code == 201
+    metrics_events = get_post_metrics_events(captured)
+    assert len(metrics_events) == 1
+    assert_post_metrics_event(
+      metrics_events[0],
+      post_id=post.id,
+      actor_id=actor.id,
+      action='comment_created',
+    )
+    assert metrics_events[0]['payload']['like_count'] == 0
+    assert metrics_events[0]['payload']['comment_count'] == 1
 
 
 def test_reply_to_own_comment_does_not_create_notification_or_emit(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -228,7 +341,31 @@ def test_reply_to_own_comment_does_not_create_notification_or_emit(monkeypatch: 
 
     assert response.status_code == 201
     assert list_notifications(db) == []
-    assert captured == []
+    assert get_notification_events(captured) == []
+
+
+def test_comment_delete_emits_post_metrics_update(monkeypatch: pytest.MonkeyPatch) -> None:
+  with build_test_session() as db:
+    owner = seed_user(db, email='owner@example.com', first_name='Owner')
+    actor = seed_user(db, email='actor@example.com', first_name='Actor')
+    post = seed_post(db, author_id=owner.id)
+    comment = seed_comment(db, post_id=post.id, author_id=actor.id)
+    client = build_client(db, actor)
+    captured = install_emit_capture(monkeypatch)
+
+    response = client.delete(f'/api/comments/{comment.id}')
+
+    assert response.status_code == 204
+    metrics_events = get_post_metrics_events(captured)
+    assert len(metrics_events) == 1
+    assert_post_metrics_event(
+      metrics_events[0],
+      post_id=post.id,
+      actor_id=actor.id,
+      action='comment_deleted',
+    )
+    assert metrics_events[0]['payload']['like_count'] == 0
+    assert metrics_events[0]['payload']['comment_count'] == 0
 
 
 def test_like_comment_creates_notification_and_like_own_comment_skips_emit(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -353,3 +490,23 @@ def test_emit_failure_does_not_fail_primary_action(
 
     assert response.status_code == expected_status
     assert len(list_notifications(db)) == expected_notifications
+
+
+def test_post_metrics_emit_failure_does_not_fail_primary_action(monkeypatch: pytest.MonkeyPatch) -> None:
+  from app.realtime import socket_server
+
+  with build_test_session() as db:
+    owner = seed_user(db, email='owner@example.com', first_name='Owner')
+    actor = seed_user(db, email='actor@example.com', first_name='Actor')
+    post = seed_post(db, author_id=owner.id)
+    client = build_client(db, actor)
+
+    def raising_run(*args: Any, **kwargs: Any) -> None:
+      raise RuntimeError('emit failed')
+
+    monkeypatch.setattr(socket_server, 'from_thread', SimpleNamespace(run=raising_run), raising=False)
+
+    response = client.post(f'/api/posts/{post.id}/like')
+
+    assert response.status_code == 200
+    assert response.json() == {'post_id': post.id, 'liked': True, 'like_count': 1}

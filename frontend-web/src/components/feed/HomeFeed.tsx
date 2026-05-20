@@ -22,6 +22,7 @@ import { API_URL, fetchPosts, fetchStories, markStoryViewed, resolveAvatarUrl } 
 import { fetchCurrentUser, type AuthUser } from '@/lib/auth';
 import { listDirectChats } from '@/lib/chat';
 import type { InboxThreadData } from '@/lib/chat.types';
+import { patchPostMetrics as patchPostMetricsInFeed } from '@/lib/postMetrics';
 import { ROUTES } from '@/lib/routes';
 import type { Post } from '@/lib/types';
 
@@ -173,6 +174,10 @@ export function HomeFeed() {
     }
   }, []);
 
+  const patchPostMetrics = useCallback((postId: number, patch: Partial<Pick<Post, 'like_count' | 'comment_count' | 'is_liked'>>) => {
+    setPosts((currentPosts) => patchPostMetricsInFeed(currentPosts, String(postId), patch));
+  }, []);
+
   const [userPostCount, setUserPostCount] = useState(0);
 
   useEffect(() => {
@@ -269,6 +274,8 @@ export function HomeFeed() {
             postId={selectedPostId}
             onClose={() => setSelectedPostId(null)}
             currentUser={currentUser}
+            onPostMetricsChange={patchPostMetrics}
+            onPostMetricsSettled={loadPosts}
           />
         )}
         <div className="mx-auto w-full max-w-[1720px] px-4 pb-6 pt-4 md:px-6">
@@ -366,6 +373,8 @@ export function HomeFeed() {
                       item={item}
                       currentUser={currentUser}
                       onPostClick={(id) => setSelectedPostId(id)}
+                      onOptimisticMetricsChange={patchPostMetrics}
+                      onPostMetricsSettled={loadPosts}
                     />
                   ))}
                 </div>

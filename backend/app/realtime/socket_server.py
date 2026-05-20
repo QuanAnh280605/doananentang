@@ -1,6 +1,7 @@
 import logging
 from typing import Any
 
+from anyio import from_thread
 from jwt import InvalidTokenError
 import socketio
 from socketio.exceptions import ConnectionRefusedError
@@ -15,6 +16,7 @@ sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins=settings.cors
 logger = logging.getLogger(__name__)
 USER_PRESENCE_CHANGED_EVENT = 'user-presence-changed'
 ONLINE_USERS_SNAPSHOT_EVENT = 'online-users-snapshot'
+POST_METRICS_UPDATED_EVENT = 'post-metrics-updated'
 
 
 class PresenceRegistry:
@@ -61,6 +63,10 @@ presence_registry = PresenceRegistry()
 
 def get_user_room_name(user_id: int) -> str:
   return f'user:{user_id}'
+
+
+def get_post_room_name(post_id: int) -> str:
+  return f'post:{post_id}'
 
 
 def create_socket_app(other_asgi_app: Any = None) -> socketio.ASGIApp:
@@ -124,6 +130,25 @@ def _parse_chat_id(payload: Any) -> int | None:
     return None
 
 
+def _parse_post_id(payload: Any) -> int | None:
+  if not isinstance(payload, dict):
+    return None
+
+  post_id = payload.get('post_id')
+  try:
+    return int(post_id)
+  except (TypeError, ValueError):
+    logger.warning('Invalid post room payload', extra={'post_id': post_id})
+    return None
+
+
+async def emit_post_metrics_updated(post_id: int, payload: dict[str, object]) -> None:
+  try:
+    await sio.emit(POST_METRICS_UPDATED_EVENT, payload, room=get_post_room_name(post_id))
+  except Exception:
+    logger.exception('Failed to emit post-metrics-updated event', extra={'post_id': post_id})
+
+
 @sio.on('chat:join')
 async def join_chat_room(sid: str, payload: dict[str, Any] | None) -> dict[str, Any]:
   chat_id = _parse_chat_id(payload)
@@ -158,5 +183,29 @@ async def leave_chat_room(sid: str, payload: dict[str, Any] | None) -> dict[str,
     db.close()
 
   room = get_chat_room_name(chat_id)
+  await sio.leave_room(sid, room)
+  return {'ok': True, 'room': room}
+
+
+@sio.on('post:join')
+async def join_post_room(sid: str, payload: dict[str, Any] | None) -> dict[str, Any]:
+  post_id = _parse_post_id(payload)
+  user_id = await _get_socket_user_id(sid)
+  if user_id is None or post_id is None:
+    return {'ok': False}
+
+  room = get_post_room_name(post_id)
+  await sio.enter_room(sid, room)
+  return {'ok': True, 'room': room}
+
+
+@sio.on('post:leave')
+async def leave_post_room(sid: str, payload: dict[str, Any] | None) -> dict[str, Any]:
+  post_id = _parse_post_id(payload)
+  user_id = await _get_socket_user_id(sid)
+  if user_id is None or post_id is None:
+    return {'ok': False}
+
+  room = get_post_room_name(post_id)
   await sio.leave_room(sid, room)
   return {'ok': True, 'room': room}
