@@ -476,9 +476,9 @@ export function PostDetailModal({
                     </ThemedText>
                   </button>
 
-                  {/* <ThemedText className="text-[13px] font-semibold text-slate-500">
+                  <ThemedText className="text-[13px] font-semibold text-slate-500">
                     {totalComments} bình luận
-                  </ThemedText> */}
+                  </ThemedText>
                 </div>
 
                 <div className="mt-4 grid grid-cols-3 gap-2">
