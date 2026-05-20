@@ -13,10 +13,9 @@ from app.core.database import get_db
 from app.crud.follow import count_followers, count_following, create_follow, delete_follow, is_following, get_followers, get_following, search_following_users
 from app.crud.user import create_user, get_user_by_email, get_user_by_id, get_user_by_phone, list_users, search_users
 from app.models.user import User
-from app.schemas.user import FollowStatusRead, UserCreate, UserRead, UserSearchRead, FollowUserRead, PaginatedUsersResponse, PaginatedFollowUsersResponse
-from app.schemas.user import UserUpdate
+from app.schemas.user import FollowStatusRead, UserCreate, UserRead, UserSearchRead, FollowUserRead
+from app.schemas.user import UserUpdate, PaginatedUsersResponse, PaginatedFollowUsersResponse
 from app.services.notification import create_social_notification
-
 
 router = APIRouter()
 AVATAR_UPLOAD_DIR = Path('uploads') / 'avatars'

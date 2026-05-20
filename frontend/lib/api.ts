@@ -465,6 +465,7 @@ export function searchPosts(query: string, page = 1, pageSize = 10): Promise<Pag
     q: query,
     page: String(page),
     page_size: String(pageSize),
+    sort_by: 'relevance',
   });
   return apiFetch<PaginatedPosts>(`/api/posts?${params}`);
 }

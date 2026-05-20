@@ -61,13 +61,13 @@ def search_users(db: Session, query: str, page: int = 1, page_size: int = 20) ->
     }
 
   pattern = f'%{normalized_query}%'
-  full_name = func.lower(User.first_name + ' ' + User.last_name)
+  full_name = User.first_name.concat(' ').concat(User.last_name)
 
   base_query = select(User).where(
     or_(
-      func.lower(User.first_name).like(pattern),
-      func.lower(User.last_name).like(pattern),
-      full_name.like(pattern),
+      User.first_name.ilike(pattern),
+      User.last_name.ilike(pattern),
+      full_name.ilike(pattern),
     )
   )
 
