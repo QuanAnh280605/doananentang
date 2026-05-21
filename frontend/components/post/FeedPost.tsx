@@ -100,7 +100,7 @@ export function FeedPost({ item }: { item: Post }) {
                 try {
                     await deletePost(String(item.id));
                     setIsDeleted(true);
-                } catch (err) {
+                } catch {
                     window.alert("Lỗi: Không thể xóa bài viết.");
                 }
             }
@@ -114,7 +114,7 @@ export function FeedPost({ item }: { item: Post }) {
                         try {
                             await deletePost(String(item.id));
                             setIsDeleted(true);
-                        } catch (err) {
+                        } catch {
                             Alert.alert("Lỗi", "Không thể xóa bài viết.");
                         }
                     }
@@ -256,7 +256,6 @@ export function FeedPost({ item }: { item: Post }) {
                         <Image
                             source={{ uri: firstMediaUrl }}
                             className="w-full h-full"
-                            pointerEvents="none"
                             resizeMode="contain"
                         />
                     )}

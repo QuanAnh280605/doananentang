@@ -1,14 +1,16 @@
 import math
 from typing import Literal
 
-from sqlalchemy import func
+from sqlalchemy import func, and_
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.comment import Comment
 from app.models.db_enums import MediaType
+from app.models.follow import Follow
 from app.models.like import Like
 from app.models.post import Post
 from app.models.post_media import PostMedia
+from app.models.post_viewer import PostViewer
 from app.schemas.post import PostCreate, PostUpdate
 
 
@@ -78,17 +80,26 @@ def get_posts(
   if author_id is not None:
     query = query.filter(Post.author_id == author_id)
   
+  rank_expr = None
+  
   if q is not None and q.strip():
-    pattern = f"%{q.strip()}%"
-    query = query.filter(Post.content.ilike(pattern))
+    search_query = q.strip()
+    ts_vector = func.to_tsvector('simple', func.coalesce(Post.content, ''))
+    ts_query = func.plainto_tsquery('simple', search_query)
+    query = query.filter(ts_vector.op('@@')(ts_query))
+    rank_expr = func.ts_rank(ts_vector, ts_query)
 
   # Tính tổng số bài viết
   total = query.with_entities(func.count(Post.id)).scalar() or 0
   total_pages = math.ceil(total / page_size) if total > 0 else 1
 
-  # Xác định cột sắp xếp (bỏ relevance vì không dùng ts_rank nữa)
-  sort_column = getattr(Post, sort_by if sort_by != 'relevance' else 'created_at', Post.created_at)
-  order = sort_column.asc() if sort_order == 'asc' else sort_column.desc()
+  # Xác định cột sắp xếp
+  if sort_by == 'relevance' and rank_expr is not None:
+    order = rank_expr.desc()
+  else:
+    actual_sort_by = sort_by if sort_by != 'relevance' else 'created_at'
+    sort_column = getattr(Post, actual_sort_by, Post.created_at)
+    order = sort_column.asc() if sort_order == 'asc' else sort_column.desc()
 
   # Query có eager load media + author
   items = (
@@ -109,6 +120,77 @@ def get_posts(
       post.is_liked = db.query(Like).filter(Like.post_id == post.id, Like.user_id == current_user_id).first() is not None
     else:
       post.is_liked = False
+
+  return {
+    'items': items,
+    'total': total,
+    'page': page,
+    'page_size': page_size,
+    'total_pages': total_pages,
+  }
+
+
+def get_feed_posts(
+  db: Session,
+  current_user_id: int,
+  page: int = 1,
+  page_size: int = 10,
+) -> dict:
+  """Lấy danh sách bài viết từ người đang theo dõi (feed) có phân trang và kiểm tra quyền nhìn thấy."""
+  
+  from sqlalchemy import or_
+  from app.models.db_enums import VisibilityLevel
+
+  # Subquery lấy danh sách ID người đang theo dõi
+  following_ids = db.query(Follow.following_id).filter(Follow.follower_id == current_user_id)
+
+  # Điều kiện 1: Tác giả là người mình đang follow (hoặc chính mình)
+  author_condition = or_(
+    Post.author_id.in_(following_ids),
+    Post.author_id == current_user_id
+  )
+
+  # Điều kiện 2: Quyền nhìn thấy
+  # - PUBLIC: Ai cũng thấy
+  # - FOLLOWERS_ONLY: Thấy nếu là người theo dõi hoặc chính tác giả
+  # - CUSTOM: Thấy nếu có trong PostViewer hoặc là chính tác giả
+  # - ONLY_ME: Chỉ chính tác giả mới thấy
+  visibility_condition = or_(
+    Post.visibility == VisibilityLevel.PUBLIC,
+    Post.visibility == VisibilityLevel.FOLLOWERS_ONLY,
+    and_(
+      Post.visibility == VisibilityLevel.CUSTOM,
+      Post.id.in_(db.query(PostViewer.post_id).filter(PostViewer.user_id == current_user_id))
+    ),
+    Post.author_id == current_user_id  # Tác giả luôn thấy bài của mình
+  )
+
+  query = db.query(Post).filter(
+    Post.is_deleted == False,
+    author_condition,
+    visibility_condition
+  )
+
+  total = query.with_entities(func.count(Post.id)).scalar() or 0
+  total_pages = math.ceil(total / page_size) if total > 0 else 1
+
+  # Sắp xếp mới nhất
+  order = Post.created_at.desc()
+
+  items = (
+    query
+    .options(joinedload(Post.media), joinedload(Post.author))
+    .order_by(order)
+    .offset((page - 1) * page_size)
+    .limit(page_size)
+    .all()
+  )
+
+  # Tính stats cho feed
+  for post in items:
+    post.like_count = db.query(func.count(Like.user_id)).filter(Like.post_id == post.id).scalar() or 0
+    post.comment_count = db.query(func.count(Comment.id)).filter(Comment.post_id == post.id, Comment.is_deleted == False).scalar() or 0
+    post.is_liked = db.query(Like).filter(Like.post_id == post.id, Like.user_id == current_user_id).first() is not None
 
   return {
     'items': items,
