@@ -2,7 +2,8 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View, useWindowDimensions, DeviceEventEmitter, RefreshControl } from 'react-native';
+import type { NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ComposerCard } from '@/components/post/ComposerCard';
@@ -10,7 +11,7 @@ import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Avatar, surfaceClass } from '@/components/ui/core';
-import { fetchFollowingUsers, fetchPosts, listDirectChats } from '@/lib/api';
+import { fetchFollowingUsers, fetchFeedPosts, listDirectChats } from '@/lib/api';
 import type { ChatListItem, FollowUser } from '@/lib/api';
 import { fetchCurrentUser } from '@/lib/auth';
 import type { AuthUser } from '@/lib/auth';
@@ -329,6 +330,12 @@ export default function HomeScreen() {
   const [error, setError] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
 
+  // States phân trang & làm mới
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
   useEffect(() => {
     fetchCurrentUser().then(setCurrentUser).catch(() => { });
   }, []);
@@ -337,24 +344,106 @@ export default function HomeScreen() {
     setLoading(true);
     setError(null);
     try {
-      const result = await fetchPosts(1, 20);
+      const result = await fetchFeedPosts(1, 10);
       setPosts(result.items);
+      setPage(1);
+      setHasMore(result.page < result.total_pages);
     } catch (err: any) {
-      setError(err.message ?? 'Không thể tải bài viết');
+      setError(err.message ?? 'Không thể tải bảng tin');
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  const loadMorePosts = useCallback(async () => {
+    if (loading || loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const result = await fetchFeedPosts(nextPage, 10);
+      setPosts((prev) => [...prev, ...result.items]);
+      setPage(nextPage);
+      setHasMore(result.page < result.total_pages);
+    } catch (err: any) {
+      console.warn('Lỗi tải thêm bài viết:', err);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [page, loading, loadingMore, hasMore]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const result = await fetchFeedPosts(1, 10);
+      setPosts(result.items);
+      setPage(1);
+      setHasMore(result.page < result.total_pages);
+    } catch (err: any) {
+      console.warn('Lỗi làm mới bảng tin:', err);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
+  // Lắng nghe sự kiện đồng bộ từ màn hình chi tiết hoặc giữa các post
+  useEffect(() => {
+    const updateSub = DeviceEventEmitter.addListener('postUpdated', (data) => {
+      setPosts((prev) =>
+        prev.map((p) =>
+          String(p.id) === String(data.postId)
+            ? {
+                ...p,
+                is_liked: data.is_liked,
+                like_count: data.like_count,
+                comment_count: data.comment_count,
+              }
+            : p
+        )
+      );
+    });
+
+    const deleteSub = DeviceEventEmitter.addListener('postDeleted', (data) => {
+      setPosts((prev) => prev.filter((p) => String(p.id) !== String(data.postId)));
+    });
+
+    return () => {
+      updateSub.remove();
+      deleteSub.remove();
+    };
   }, []);
 
   useEffect(() => {
     loadPosts();
   }, [loadPosts]);
 
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    const paddingToBottom = 150;
+    const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom;
+    if (isCloseToBottom) {
+      loadMorePosts();
+    }
+  };
+
   return (
     <ThemedView className="flex-1 bg-[#EDF1F5]">
       <StatusBar style="dark" />
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerClassName="pb-8">
+      <ScrollView 
+        className="flex-1" 
+        showsVerticalScrollIndicator={false} 
+        contentContainerClassName="pb-8"
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={['#4A9FD8']}
+            tintColor="#4A9FD8"
+          />
+        }
+      >
         <View className="mx-auto w-full max-w-[1720px] px-4 pb-6 pt-4 md:px-6">
           <AppTopNav isTablet={isTablet} searchPlaceholder="Search" avatarUrl={currentUser?.avatar_url}
             avatarInitials={currentUser ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase() : 'LE'}
@@ -394,9 +483,19 @@ export default function HomeScreen() {
                   <ThemedText className="mt-3 text-center text-base text-slate-500">Chưa có bài viết nào</ThemedText>
                 </ThemedView>
               ) : (
-                posts.map((item) => (
-                  <FeedPost key={String(item.id)} item={item} />
-                ))
+                <>
+                  {posts.map((item) => (
+                    <FeedPost key={String(item.id)} item={item} />
+                  ))}
+
+                  {/* Spinner tải thêm bài viết */}
+                  {loadingMore && (
+                    <View className="py-6 items-center">
+                      <ActivityIndicator size="small" color="#4A9FD8" />
+                      <ThemedText className="mt-2 text-xs text-slate-500">Đang tải thêm...</ThemedText>
+                    </View>
+                  )}
+                </>
               )}
             </View>
 

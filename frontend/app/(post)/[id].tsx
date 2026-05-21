@@ -9,6 +9,7 @@ import {
     ScrollView,
     TextInput,
     View,
+    DeviceEventEmitter,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
@@ -182,6 +183,17 @@ export default function PostDetailScreen() {
     useEffect(() => {
         loadData();
     }, [loadData]);
+
+    useEffect(() => {
+        if (post) {
+            DeviceEventEmitter.emit('postUpdated', {
+                postId: String(post.id),
+                is_liked: post.is_liked,
+                like_count: post.like_count,
+                comment_count: comments.length,
+            });
+        }
+    }, [post, comments.length]);
 
     const handleSendComment = async () => {
         if (!newComment.trim() || sending) return;
