@@ -26,6 +26,7 @@ from app.crud.refresh_session import (
   create_refresh_session,
   delete_expired_refresh_sessions,
   get_refresh_session_by_refresh_token,
+  revoke_all_user_sessions,
   revoke_refresh_session,
 )
 from app.crud.user import create_user, get_user_by_email, get_user_by_phone
@@ -142,6 +143,13 @@ def login(payload: LoginRequest, response: Response, db: Session = Depends(get_d
 
   if user is None or not verify_password(payload.password, user.hashed_password):
     raise _raise_invalid_credentials()
+
+  if not user.is_active or user.is_deleted:
+    raise HTTPException(
+      status_code=status.HTTP_403_FORBIDDEN,
+      detail="Tài khoản đã bị khóa hoặc không hoạt động"
+    )
+
   auth_response = _build_auth_response(db, user)
   _set_refresh_cookie(response, auth_response.refresh_token)
   return auth_response
@@ -166,6 +174,9 @@ def refresh_tokens(
   if session is None or not hmac.compare_digest(session.refresh_token, refresh_token):
     raise _raise_invalid_credentials()
 
+  if session.is_revoked:
+    raise _raise_invalid_credentials()
+
   if not revoke_refresh_session(db, refresh_token, commit=False):
     db.rollback()
     raise _raise_invalid_credentials()
@@ -174,6 +185,13 @@ def refresh_tokens(
   if user is None:
     db.rollback()
     raise _raise_invalid_credentials()
+
+  if not user.is_active or user.is_deleted:
+    db.rollback()
+    raise HTTPException(
+      status_code=status.HTTP_403_FORBIDDEN,
+      detail="Tài khoản đã bị khóa hoặc không hoạt động"
+    )
 
   new_token_id = str(uuid4())
   refresh_token = create_refresh_token(str(user.id), new_token_id)
@@ -211,10 +229,15 @@ def logout(
     raise _raise_invalid_credentials()
 
   session = get_refresh_session_by_refresh_token(db, refresh_token)
-  if session is None or not hmac.compare_digest(session.refresh_token, refresh_token):
+  if session is None:
     raise _raise_invalid_credentials()
-  if not revoke_refresh_session(db, refresh_token):
+  if not hmac.compare_digest(session.refresh_token, refresh_token):
     raise _raise_invalid_credentials()
+
+  # Idempotent: already revoked → still 204
+  if not session.is_revoked:
+    revoke_refresh_session(db, refresh_token)
+
   _clear_refresh_cookie(response)
   return None
 
@@ -277,7 +300,8 @@ def change_password(
 ):
     if not verify_password(payload.current_password, current_user.hashed_password):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Mật khẩu hiện tại không đúng')
-    
+
     current_user.hashed_password = hash_password(payload.new_password)
+    revoke_all_user_sessions(db, current_user.id, commit=False)
     db.commit()
     return {"message": "Đổi mật khẩu thành công"}

@@ -74,10 +74,10 @@ export function GlobalSearchProvider({ children }: GlobalSearchProviderProps) {
 
     let isActive = true;
     const timeoutId = setTimeout(() => {
-      searchUsers(normalizedQuery, 20)
-        .then((users) => {
+      searchUsers(normalizedQuery, 1, 20)
+        .then((res) => {
           if (isActive) {
-            setResults(users);
+            setResults(res.items);
           }
         })
         .catch((error: unknown) => {

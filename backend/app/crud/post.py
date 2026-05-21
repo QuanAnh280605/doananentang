@@ -65,24 +65,29 @@ def get_posts(
   *,
   page: int = 1,
   page_size: int = 10,
-  sort_by: Literal['created_at', 'updated_at'] = 'created_at',
+  sort_by: Literal['created_at', 'updated_at', 'relevance'] = 'created_at',
   sort_order: Literal['asc', 'desc'] = 'desc',
   current_user_id: int | None = None,
   author_id: int | None = None,
+  q: str | None = None,
 ) -> dict:
-  """Lấy danh sách bài viết có phân trang + sắp xếp + stats"""
+  """Lấy danh sách bài viết có phân trang + sắp xếp + stats (hỗ trợ Full-Text Search)"""
 
   # Xây dựng query cơ bản
   query = db.query(Post).filter(Post.is_deleted == False)
   if author_id is not None:
     query = query.filter(Post.author_id == author_id)
+  
+  if q is not None and q.strip():
+    pattern = f"%{q.strip()}%"
+    query = query.filter(Post.content.ilike(pattern))
 
-  # Tính tổng số bài viết (không bị xóa mềm)
+  # Tính tổng số bài viết
   total = query.with_entities(func.count(Post.id)).scalar() or 0
   total_pages = math.ceil(total / page_size) if total > 0 else 1
 
-  # Xác định cột sắp xếp
-  sort_column = getattr(Post, sort_by, Post.created_at)
+  # Xác định cột sắp xếp (bỏ relevance vì không dùng ts_rank nữa)
+  sort_column = getattr(Post, sort_by if sort_by != 'relevance' else 'created_at', Post.created_at)
   order = sort_column.asc() if sort_order == 'asc' else sort_column.desc()
 
   # Query có eager load media + author

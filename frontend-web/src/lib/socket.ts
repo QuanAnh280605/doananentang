@@ -57,12 +57,25 @@ export function connectInboxSocket() {
   return socket;
 }
 
+export const connectAppSocket = connectInboxSocket;
+export const POST_METRICS_UPDATED_EVENT = 'post-metrics-updated';
+
 export function disconnectInboxSocket() {
   if (inboxSocket === null) {
     return;
   }
 
   inboxSocket.disconnect();
+}
+
+export const disconnectAppSocket = disconnectInboxSocket;
+
+export function getConnectedAppSocket(): Socket | null {
+  if (!inboxSocket?.connected) {
+    return null;
+  }
+
+  return inboxSocket;
 }
 
 export async function joinChatRoom(chatId: string) {
@@ -85,4 +98,24 @@ export async function leaveChatRoom(chatId: string) {
 
   await waitForSocketConnection(socket);
   await socket.emitWithAck('chat:leave', { chat_id: chatId });
+}
+
+export function joinPostRoom(postId: number): void {
+  const socket = connectInboxSocket();
+
+  if (!socket) {
+    return;
+  }
+
+  socket.emit('post:join', { post_id: postId });
+}
+
+export function leavePostRoom(postId: number): void {
+  const socket = inboxSocket;
+
+  if (!socket) {
+    return;
+  }
+
+  socket.emit('post:leave', { post_id: postId });
 }

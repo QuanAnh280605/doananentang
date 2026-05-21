@@ -1,7 +1,7 @@
 'use client';
 
 import { ArrowBendUpLeft, ChatCircleDots, DotsThree, GlobeHemisphereWest, Images, PaperPlaneTilt, ShareNetwork, ThumbsUp, Trash, WarningCircle, X } from '@phosphor-icons/react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { ThemedText } from '@/components/ui/ThemedText';
 import {
@@ -17,6 +17,9 @@ import {
   unlikePost,
 } from '@/lib/api';
 import type { AuthUser } from '@/lib/auth';
+import { clampMetricCount, runOptimisticPostLike } from '@/lib/postMetrics';
+import { createPostMetricsEventHandler } from '@/lib/postRealtime';
+import { connectAppSocket, joinPostRoom, leavePostRoom, POST_METRICS_UPDATED_EVENT } from '@/lib/socket';
 import type { Comment as PostComment, Post } from '@/lib/types';
 
 import { InteractionsModal } from './InteractionsModal';
@@ -245,10 +248,14 @@ export function PostDetailModal({
   postId,
   onClose,
   currentUser,
+  onPostMetricsChange,
+  onPostMetricsSettled,
 }: {
   postId: string;
   onClose: () => void;
   currentUser: AuthUser | null;
+  onPostMetricsChange?: (postId: number, patch: Partial<Pick<Post, 'like_count' | 'comment_count' | 'is_liked'>>) => void;
+  onPostMetricsSettled?: () => void | Promise<void>;
 }) {
   const [post, setPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<PostComment[]>([]);
@@ -262,6 +269,37 @@ export function PostDetailModal({
   const [togglingLike, setTogglingLike] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showLikers, setShowLikers] = useState(false);
+  const numericPostId = Number(postId);
+
+  const applyPostPatch = useCallback((patch: Partial<Pick<Post, 'like_count' | 'comment_count' | 'is_liked'>>) => {
+    setPost((currentPost) => (currentPost ? { ...currentPost, ...patch } : currentPost));
+
+    if (typeof patch.is_liked === 'boolean') {
+      setLiked(patch.is_liked);
+    }
+
+    if (typeof patch.like_count === 'number') {
+      setLikeCount(patch.like_count);
+    }
+  }, []);
+
+  const syncPostMetrics = useCallback((patch: Partial<Pick<Post, 'like_count' | 'comment_count' | 'is_liked'>>) => {
+    applyPostPatch(patch);
+
+    if (!Number.isNaN(numericPostId)) {
+      onPostMetricsChange?.(numericPostId, patch);
+    }
+  }, [applyPostPatch, numericPostId, onPostMetricsChange]);
+
+  const loadComments = useCallback(async () => {
+    if (!postId) {
+      return [] as PostComment[];
+    }
+
+    const commentsRes = await fetchPostComments(postId);
+    setComments(commentsRes);
+    return commentsRes;
+  }, [postId]);
 
   useEffect(() => {
     if (!postId) return;
@@ -304,18 +342,55 @@ export function PostDetailModal({
     };
   }, [onClose, postId]);
 
+  useEffect(() => {
+    if (!postId || Number.isNaN(numericPostId) || loading) {
+      return;
+    }
+
+    const socket = connectAppSocket();
+
+    if (!socket) {
+      return;
+    }
+
+    joinPostRoom(numericPostId);
+
+    const handler = createPostMetricsEventHandler({
+      postId: numericPostId,
+      initialCommentCount: post?.comment_count,
+      applyMetrics: (metrics) => {
+        syncPostMetrics(metrics);
+      },
+      refetchComments: () => {
+        void loadComments();
+      },
+    });
+
+    socket.on(POST_METRICS_UPDATED_EVENT, handler);
+
+    return () => {
+      socket.off(POST_METRICS_UPDATED_EVENT, handler);
+      leavePostRoom(numericPostId);
+    };
+  }, [loadComments, loading, numericPostId, post?.comment_count, postId, syncPostMetrics]);
+
   const handlePostComment = async () => {
-    if (!commentInput.trim() || isSubmitting || !postId) return;
+    if (!commentInput.trim() || isSubmitting || !postId || Number.isNaN(numericPostId)) return;
+
+    const previousCommentCount = post?.comment_count ?? countThreadComments(comments);
+    const optimisticCommentCount = clampMetricCount(previousCommentCount + 1);
+
     setIsSubmitting(true);
     setSubmitError(null);
+    syncPostMetrics({ comment_count: optimisticCommentCount });
+
     try {
       await createComment(postId, commentInput.trim(), replyTo?.id || null);
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      const commentsRes = await fetchPostComments(postId);
-      setComments(commentsRes);
+      await loadComments();
       setCommentInput('');
       setReplyTo(null);
     } catch {
+      syncPostMetrics({ comment_count: previousCommentCount });
       setSubmitError('Không thể gửi bình luận. Vui lòng thử lại.');
     } finally {
       setIsSubmitting(false);
@@ -324,25 +399,42 @@ export function PostDetailModal({
 
   const handleDeleteComment = async (commentId: string) => {
     if (!confirm('Bạn có chắc muốn xóa bình luận này?')) return;
+
+    const previousCommentCount = post?.comment_count ?? countThreadComments(comments);
+    const optimisticCommentCount = clampMetricCount(previousCommentCount - 1);
+
+    syncPostMetrics({ comment_count: optimisticCommentCount });
+
     try {
       await deleteComment(commentId);
-      const commentsRes = await fetchPostComments(postId);
-      setComments(commentsRes);
+      await loadComments();
     } catch {
+      syncPostMetrics({ comment_count: previousCommentCount });
       alert('Xóa bình luận thất bại');
     }
   };
 
   const handleToggleLike = async () => {
-    if (togglingLike || !postId) return;
+    if (togglingLike || !postId || Number.isNaN(numericPostId)) return;
+
     setTogglingLike(true);
+
     try {
-      const result = liked ? await unlikePost(postId) : await likePost(postId);
-      setLiked(result.liked);
-      setLikeCount(result.like_count);
+      await runOptimisticPostLike({
+        post: {
+          id: postId,
+          is_liked: liked,
+          like_count: likeCount,
+        },
+        mutate: () => (liked ? unlikePost(postId) : likePost(postId)),
+        refetch: async () => {
+          await onPostMetricsSettled?.();
+        },
+        applyPatch: (patch) => {
+          syncPostMetrics(patch);
+        },
+      });
     } catch {
-      setLiked(!liked);
-      setLikeCount(liked ? Math.max(0, likeCount - 1) : likeCount + 1);
     } finally {
       setTogglingLike(false);
     }
@@ -367,7 +459,7 @@ export function PostDetailModal({
   const initials = post ? getInitials(post.author.first_name, post.author.last_name) : '';
   const authorName = post ? `${post.author.first_name} ${post.author.last_name}` : '';
   const isAuthor = currentUser?.id.toString() === String(post?.author_id) || currentUser?.id.toString() === String(post?.author?.id);
-  const totalComments = countThreadComments(comments);
+  const totalComments = post?.comment_count ?? countThreadComments(comments);
   const captionText = post?.content?.trim() || 'Bài viết này chưa có caption.';
 
   return (

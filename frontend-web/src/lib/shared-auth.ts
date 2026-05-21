@@ -1,5 +1,6 @@
 type JwtPayload = {
   exp?: number;
+  sub?: string;
 };
 
 function decodeJwtPayload(token: string): JwtPayload | null {
@@ -36,4 +37,19 @@ export function isJwtTokenValid(token: string | null): boolean {
   }
 
   return payload.exp * 1000 > Date.now();
+}
+
+export function getCurrentUserIdFromToken(token: string | null): number | null {
+  if (!token) {
+    return null;
+  }
+
+  const payload = decodeJwtPayload(token);
+
+  if (!payload?.sub) {
+    return null;
+  }
+
+  const userId = parseInt(payload.sub, 10);
+  return isNaN(userId) ? null : userId;
 }

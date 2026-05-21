@@ -34,6 +34,14 @@ export type SearchUser = {
   bio: string | null;
 };
 
+export type PaginatedUsersResponse = {
+  items: SearchUser[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+};
+
 export type FollowUser = SearchUser & {
   is_following: boolean;
 };
@@ -172,12 +180,13 @@ export async function fetchCurrentUser(): Promise<AuthUser> {
   return apiFetch<AuthUser>('/api/auth/me');
 }
 
-export async function searchUsers(query: string, limit = 20): Promise<SearchUser[]> {
+export async function searchUsers(query: string, page = 1, pageSize = 20): Promise<PaginatedUsersResponse> {
   const params = new URLSearchParams({
     q: query,
-    limit: String(limit),
+    page: String(page),
+    page_size: String(pageSize),
   });
-  return apiFetch<SearchUser[]>(`/api/users/search?${params}`);
+  return apiFetch<PaginatedUsersResponse>(`/api/users/search?${params}`);
 }
 
 export async function searchFollowingUsers(query: string, limit = 20): Promise<SearchUser[]> {

@@ -68,7 +68,7 @@ export function AppTopNav({
 
   const handleSearchFocus = () => {
     if (!isControlled) {
-      globalSearch.open();
+      router.push('/(tabs)/explore');
     }
   };
 

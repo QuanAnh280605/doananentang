@@ -44,6 +44,15 @@ export type LikeStatus = {
   like_count: number;
 };
 
+export type PostMetricsUpdatedEvent = {
+  post_id: number;
+  like_count: number;
+  comment_count: number;
+  liked?: boolean;
+  actor_id?: number;
+  action?: 'post_liked' | 'post_unliked' | 'comment_created' | 'comment_deleted';
+};
+
 export type PostLiker = {
   id: string;
   first_name: string;

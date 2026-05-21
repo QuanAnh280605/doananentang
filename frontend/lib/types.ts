@@ -43,6 +43,15 @@ export type PaginatedPosts = {
   total_pages: number;
 };
 
+/** Response phân trang cho Users */
+export type PaginatedUsers<T> = {
+  items: T[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+};
+
 // ─── Like ────────────────────────────────────────────────────
 
 export type LikeStatus = {
@@ -74,3 +83,27 @@ export type Comment = {
   is_liked: boolean;
   replies?: Comment[];
 };
+
+// ─── Notification ─────────────────────────────────────────────
+
+export type NotificationRead = {
+  id: number;
+  receiver_id: number;
+  actor_id: number;
+  type: string; // 'follow' | 'like' | 'comment' | 'message'
+  post_id: number | null;
+  comment_id: number | null;
+  message_id: number | null;
+  related_user_id: number | null;
+  target_post_id: number | null;
+  actor_name: string | null;
+  actor_avatar_url: string | null;
+  is_read: boolean;
+  created_at: string;
+};
+
+export type NotificationListResponse = {
+  items: NotificationRead[];
+  unread_count: number;
+};
+

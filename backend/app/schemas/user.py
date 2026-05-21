@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, computed_field, field_validator
 
+from app.models.db_enums import UserRole
+
 GenderValue = Literal['female', 'male', 'custom']
 
 
@@ -57,6 +59,8 @@ class UserRead(UserBase):
   email: EmailStr
   phone: str | None = None
   city: str | None = None
+  role: UserRole
+  is_active: bool
   created_at: datetime
   updated_at: datetime
 
@@ -98,6 +102,12 @@ class UserUpdate(BaseModel):
   gender: GenderValue | None = None
   city: str | None = None
 
+class PaginatedUsersResponse(BaseModel):
+  items: list[UserSearchRead]
+  total: int
+  page: int
+  page_size: int
+  total_pages: int
 
 class PaginatedFollowUsersResponse(BaseModel):
   items: list[FollowUserRead]

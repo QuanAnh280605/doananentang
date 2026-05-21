@@ -12,6 +12,8 @@ from app.crud.like import get_like_count, get_users_who_liked, is_liked_by_user,
 from app.crud.post import create_post, delete_post, get_post, get_posts, update_post
 from app.models.db_enums import UserRole
 from app.models.user import User
+from app.realtime import socket_server
+from app.realtime.socket_server import emit_post_metrics_updated
 from app.schemas.like import LikeStatusResponse, PostLikersResponse
 from app.schemas.post import (
   PaginatedPostsResponse,
@@ -20,11 +22,37 @@ from app.schemas.post import (
   PostReadWithAuthor,
   PostUpdate,
 )
+from app.services.notification import create_social_notification
 
 router = APIRouter()
 
 # Thư mục lưu trữ media bài viết
 POST_MEDIA_DIR = Path('uploads') / 'posts'
+
+
+def _emit_post_metrics(
+  *,
+  post_id: int,
+  actor_id: int,
+  action: str,
+  like_count: int,
+  comment_count: int,
+  liked: bool | None = None,
+) -> None:
+  payload: dict[str, object] = {
+    'post_id': post_id,
+    'like_count': like_count,
+    'comment_count': comment_count,
+    'actor_id': actor_id,
+    'action': action,
+  }
+  if liked is not None:
+    payload['liked'] = liked
+
+  try:
+    socket_server.from_thread.run(emit_post_metrics_updated, post_id, payload)
+  except Exception:
+    socket_server.logger.exception('Failed to dispatch post metrics update', extra={'post_id': post_id})
 
 
 @router.post('/upload-media', status_code=status.HTTP_201_CREATED)
@@ -87,9 +115,10 @@ def upload_post_media(
 def list_posts(
   page: int = Query(1, ge=1, description="Trang hiện tại"),
   page_size: int = Query(10, ge=1, le=50, description="Số bài mỗi trang"),
-  sort_by: Literal['created_at', 'updated_at'] = Query('created_at', description="Sắp xếp theo"),
+  sort_by: Literal['created_at', 'updated_at', 'relevance'] = Query('created_at', description="Sắp xếp theo"),
   sort_order: Literal['asc', 'desc'] = Query('desc', description="Thứ tự sắp xếp"),
   author_id: int | None = Query(None, description="Lọc bài viết theo ID tác giả"),
+  q: str | None = Query(None, description="Từ khóa tìm kiếm theo nội dung"),
   db: Session = Depends(get_db),
   current_user: User | None = Depends(get_current_user_optional),
 ):
@@ -101,7 +130,8 @@ def list_posts(
     sort_by=sort_by, 
     sort_order=sort_order,
     current_user_id=current_user.id if current_user else None,
-    author_id=author_id
+    author_id=author_id,
+    q=q
   )
   return result
 
@@ -192,8 +222,27 @@ def like_post_endpoint(
   if not post:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Post not found')
 
+  already_liked = is_liked_by_user(db, post_id, current_user.id)
   like_post(db, post_id, current_user.id)
+  if not already_liked:
+    create_social_notification(
+      db,
+      receiver_id=post.author_id,
+      actor_id=current_user.id,
+      type='like',
+      post_id=post.id,
+    )
+  post = get_post(db, post_id)
   count = get_like_count(db, post_id)
+  comment_count = post.comment_count if post is not None else 0
+  _emit_post_metrics(
+    post_id=post_id,
+    actor_id=current_user.id,
+    action='post_liked',
+    like_count=count,
+    comment_count=comment_count,
+    liked=True,
+  )
   return LikeStatusResponse(post_id=post_id, liked=True, like_count=count)
 
 
@@ -210,9 +259,19 @@ def unlike_post_endpoint(
   post = get_post(db, post_id)
   if not post:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Post not found')
-
+  
   unlike_post(db, post_id, current_user.id)
+  post = get_post(db, post_id)
   count = get_like_count(db, post_id)
+  comment_count = post.comment_count if post is not None else 0
+  _emit_post_metrics(
+    post_id=post_id,
+    actor_id=current_user.id,
+    action='post_unliked',
+    like_count=count,
+    comment_count=comment_count,
+    liked=False,
+  )
   return LikeStatusResponse(post_id=post_id, liked=False, like_count=count)
 
 

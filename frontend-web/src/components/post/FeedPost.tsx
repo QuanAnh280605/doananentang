@@ -4,6 +4,7 @@ import { CaretRight, ChatCircleDots, DotsThree, GlobeHemisphereWest, ShareNetwor
 import Link from 'next/link';
 import { useState } from 'react';
 import { API_URL, likePost, unlikePost, deletePost, resolveAvatarUrl } from '@/lib/api';
+import { runOptimisticPostLike } from '@/lib/postMetrics';
 import type { Post } from '@/lib/types';
 import type { AuthUser } from '@/lib/auth';
 import { ThemedText } from '@/components/ui/ThemedText';
@@ -23,11 +24,15 @@ function formatTime(isoString: string): string {
 export function FeedPost({
     item,
     currentUser,
-    onPostClick
+    onPostClick,
+    onOptimisticMetricsChange,
+    onPostMetricsSettled,
 }: {
     item: Post;
     currentUser?: AuthUser | null;
     onPostClick?: (id: string) => void;
+    onOptimisticMetricsChange?: (postId: number, patch: Partial<Pick<Post, 'like_count' | 'comment_count' | 'is_liked'>>) => void;
+    onPostMetricsSettled?: () => void | Promise<void>;
 }) {
     const [liked, setLiked] = useState(item.is_liked);
     const [count, setCount] = useState(item.like_count);
@@ -40,6 +45,10 @@ export function FeedPost({
     const initials = `${item.author.first_name?.[0] || ''}${item.author.last_name?.[0] || ''}`.toUpperCase();
     const timeAgo = formatTime(item.created_at);
 
+    const isMetricsSynced = liked === item.is_liked && count === item.like_count;
+    const resolvedLiked = loading || isMetricsSynced ? liked : item.is_liked;
+    const resolvedCount = loading || isMetricsSynced ? count : item.like_count;
+
     const firstMediaUrl = item.media && item.media.length > 0
         ? (item.media[0].file_url.startsWith('http')
             ? item.media[0].file_url
@@ -50,14 +59,28 @@ export function FeedPost({
         if (loading) return;
         setLoading(true);
         try {
-            const result = liked
-                ? await unlikePost(String(item.id))
-                : await likePost(String(item.id));
-            setLiked(result.liked);
-            setCount(result.like_count);
+            await runOptimisticPostLike({
+                post: {
+                    id: item.id,
+                    is_liked: resolvedLiked,
+                    like_count: resolvedCount,
+                },
+                mutate: () => (resolvedLiked ? unlikePost(String(item.id)) : likePost(String(item.id))),
+                refetch: async () => {
+                    await onPostMetricsSettled?.();
+                },
+                applyPatch: (patch) => {
+                    if (typeof patch.is_liked === 'boolean') {
+                        setLiked(patch.is_liked);
+                    }
+                    if (typeof patch.like_count === 'number') {
+                        setCount(patch.like_count);
+                    }
+
+                    onOptimisticMetricsChange?.(Number(item.id), patch);
+                },
+            });
         } catch {
-            setLiked(!liked);
-            setCount(liked ? count - 1 : count + 1);
         } finally {
             setLoading(false);
         }
@@ -181,14 +204,14 @@ export function FeedPost({
                     onClick={() => setShowLikers(true)}
                 >
                     <div className="flex -space-x-2">
-                        {count > 0 && (
+                        {resolvedCount > 0 && (
                             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#4A9FD8] text-white ring-[3px] ring-white shadow-md z-[2] transition-transform group-hover/stats:scale-115 duration-300">
                                 <ThumbsUp size={14} weight="fill" />
                             </div>
                         )}
                     </div>
                     <ThemedText as="p" className="text-[14px] font-bold text-slate-500 group-hover/stats:text-[#4A9FD8] transition-colors">
-                        {count > 0 ? `${count} lượt thích` : 'Hãy là người đầu tiên thích'}
+                        {resolvedCount > 0 ? `${resolvedCount} lượt thích` : 'Hãy là người đầu tiên thích'}
                     </ThemedText>
 
                 </div>
@@ -205,10 +228,10 @@ export function FeedPost({
                 <button
                     onClick={handleToggleLike}
                     disabled={loading}
-                    className={`flex-1 flex items-center justify-center gap-3 rounded-[22px] px-5 py-4.5 transition-all duration-500 ${liked ? 'bg-[#EAF4FB] shadow-[0_8px_20px_-4px_rgba(74,159,216,0.15)]' : 'bg-[#F8FAFC] text-slate-500 hover:bg-slate-100 active:scale-[0.96]'}`}
+                    className={`flex-1 flex items-center justify-center gap-3 rounded-[22px] px-5 py-4.5 transition-all duration-500 ${resolvedLiked ? 'bg-[#EAF4FB] shadow-[0_8px_20px_-4px_rgba(74,159,216,0.15)]' : 'bg-[#F8FAFC] text-slate-500 hover:bg-slate-100 active:scale-[0.96]'}`}
                 >
-                    <ThumbsUp className={` ${liked ? 'text-[#4A9FD8] animate-bounce-short' : 'text-slate-400 group-hover/post:rotate-12 transition-transform'}`} size={24} weight={liked ? 'fill' : 'regular'} />
-                    <span className={`text-[16px] font-bold tracking-tight ${liked ? 'text-[#4A9FD8]' : 'text-slate-600'}`}>
+                    <ThumbsUp className={` ${resolvedLiked ? 'text-[#4A9FD8] animate-bounce-short' : 'text-slate-400 group-hover/post:rotate-12 transition-transform'}`} size={24} weight={resolvedLiked ? 'fill' : 'regular'} />
+                    <span className={`text-[16px] font-bold tracking-tight ${resolvedLiked ? 'text-[#4A9FD8]' : 'text-slate-600'}`}>
                         Thích
                     </span>
                 </button>
