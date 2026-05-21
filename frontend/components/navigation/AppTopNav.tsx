@@ -7,6 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { SearchInput } from '@/components/ui/SearchInput';
 
+import { useNotifications } from '@/hooks/useNotifications';
 import { API_URL } from '@/lib/api';
 
 type AppTopNavProps = {
@@ -54,6 +55,7 @@ export function AppTopNav({
   onSearchChange,
 }: AppTopNavProps) {
   const globalSearch = useGlobalSearch();
+  const { unreadCount } = useNotifications();
   const isControlled = typeof onSearchChange === 'function';
   const resolvedSearchValue = isControlled ? (searchValue ?? '') : globalSearch.query;
 
@@ -97,7 +99,18 @@ export function AppTopNav({
 
         <View className="flex-row items-center gap-3">
           <NavActionBubble icon="mail-outline" />
-          <NavActionBubble icon="notifications-none" />
+          <Pressable onPress={() => router.push('/(tabs)/notifications')}>
+            <View className="relative">
+              <NavActionBubble icon="notifications-none" />
+              {unreadCount > 0 && (
+                <View className="absolute -right-1 -top-1 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5">
+                  <ThemedText className="text-[10px] font-bold text-white">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </ThemedText>
+                </View>
+              )}
+            </View>
+          </Pressable>
           <NavActionBubble icon="apps" />
           <Pressable onPress={() => router.push('/profile')} className="active:opacity-70">
             <NavAvatar initials={avatarInitials} avatarUrl={avatarUrl} />
