@@ -492,8 +492,24 @@ export function PostDetailModal({
                   <div className="flex min-w-0 items-center gap-3.5">
                     <Avatar initials={initials} avatarUrl={post.author.avatar_url} size="h-12 w-12" />
                     <div className="min-w-0">
-                      <ThemedText as="h2" className="truncate text-[16px] font-bold tracking-tight text-slate-950">
+                      <ThemedText as="h2" className="text-[16px] font-bold tracking-tight text-slate-950">
                         {authorName}
+                        {post.feeling && (
+                          <span className="font-normal text-slate-500 text-xs">
+                            {' '}đang cảm thấy <span className="font-bold text-slate-800">{post.feeling}</span>
+                          </span>
+                        )}
+                        {post.tagged_users && post.tagged_users.length > 0 && (
+                          <span className="font-normal text-slate-500 text-xs">
+                            {' '}cùng với{' '}
+                            {post.tagged_users.map((u: any, idx: number) => (
+                              <span key={u.id} className="font-bold text-slate-800">
+                                {u.first_name} {u.last_name}
+                                {idx < (post.tagged_users?.length ?? 0) - 1 ? ', ' : ''}
+                              </span>
+                            ))}
+                          </span>
+                        )}
                       </ThemedText>
                       <div className="mt-1 flex items-center gap-2">
                         <ThemedText className="text-[12px] font-semibold text-slate-400">

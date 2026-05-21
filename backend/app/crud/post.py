@@ -16,18 +16,25 @@ def create_post(db: Session, post_in: PostCreate, author_id: int) -> Post:
   db_post = Post(
     author_id=author_id,
     content=post_in.content,
-    visibility=post_in.visibility
+    visibility=post_in.visibility,
+    feeling=post_in.feeling,
+    tagged_users=post_in.tagged_users,
   )
   db.add(db_post)
   db.flush()  # Lấy ID trước khi tạo media
 
-  # Nếu có mảng ảnh được truyền lên
+  # Nếu có mảng ảnh hoặc video được truyền lên
   if post_in.media_urls:
     for index, url in enumerate(post_in.media_urls):
+      url_lower = url.lower()
+      media_type = MediaType.IMAGE
+      if any(url_lower.endswith(ext) for ext in ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.3gp']):
+        media_type = MediaType.VIDEO
+        
       db_media = PostMedia(
         post_id=db_post.id,
         file_url=url,
-        type=MediaType.IMAGE,
+        type=media_type,
         display_order=index + 1
       )
       db.add(db_media)

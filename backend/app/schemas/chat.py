@@ -13,14 +13,17 @@ class CreateDirectChatRequest(BaseModel):
 
 
 class SendMessageRequest(BaseModel):
-  content: str
+  content: str | None = None
+  media_url: str | None = None
 
 
 class MessageRead(BaseModel):
   id: int
   chat_id: int
   sender_id: int
-  content: str
+  content: str | None = None
+  media_url: str | None = None
+  media_type: str | None = None
   created_at: datetime
 
   model_config = ConfigDict(from_attributes=True)

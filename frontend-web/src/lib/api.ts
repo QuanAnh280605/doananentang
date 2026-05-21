@@ -301,12 +301,19 @@ export function fetchPostLikers(postId: string): Promise<PostLikersResponse> {
   return apiFetch<PostLikersResponse>(`/api/posts/${postId}/likes`);
 }
 
-export function createPost(content: string, mediaUrls: string[] = []): Promise<Post> {
+export function createPost(
+  content: string, 
+  mediaUrls: string[] = [], 
+  feeling: string | null = null, 
+  taggedUsers: any[] | null = null
+): Promise<Post> {
   return apiFetch<Post>('/api/posts', {
     method: 'POST',
     body: JSON.stringify({
       content,
       media_urls: mediaUrls,
+      feeling,
+      tagged_users: taggedUsers,
     }),
   });
 }
@@ -531,6 +538,15 @@ export async function adminUpdateReportStatus(
     post_content: null,
     reporter_name: null,
   };
+}
+
+export function uploadChatMedia(file: File): Promise<{ url: string; media_type: string }> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiFetch<{ url: string; media_type: string }>('/api/chats/upload-media', {
+    method: 'POST',
+    body: formData,
+  });
 }
 
 export function markChatRead(chatId: string): Promise<ChatReadStatusResponse> {

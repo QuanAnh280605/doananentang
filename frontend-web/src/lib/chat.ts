@@ -70,6 +70,8 @@ function mapChatMessageResponse(message: ChatMessageResponse, participantUserId:
     incoming: participantUserId === null ? false : message.sender_id === participantUserId,
     senderUserId: message.sender_id,
     createdAt: message.created_at,
+    mediaUrl: message.media_url ?? null,
+    mediaType: message.media_type ?? null,
   };
 }
 
@@ -349,6 +351,16 @@ export async function sendMessage(chatId: string, content: string): Promise<Chat
   const normalizedContent = normalizeMessageContent(content);
   const participantUserId = participantUserIdByChatId.get(chatId) ?? null;
   const message = await createChatMessage(chatId, { content: normalizedContent });
+  return mapChatMessageResponse(message, participantUserId);
+}
+
+export async function sendMessageWithMedia(chatId: string, mediaUrl: string, mediaType: string, content?: string): Promise<ChatMessage> {
+  const { createChatMessage } = await import('./api');
+  const participantUserId = participantUserIdByChatId.get(chatId) ?? null;
+  const message = await createChatMessage(chatId, {
+    content: content?.trim() || null,
+    media_url: mediaUrl,
+  });
   return mapChatMessageResponse(message, participantUserId);
 }
 
