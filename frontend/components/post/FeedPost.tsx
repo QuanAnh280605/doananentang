@@ -256,7 +256,6 @@ export function FeedPost({ item }: { item: Post }) {
                         <Image
                             source={{ uri: firstMediaUrl }}
                             className="w-full h-full"
-                            pointerEvents="none"
                             resizeMode="contain"
                         />
                     )}

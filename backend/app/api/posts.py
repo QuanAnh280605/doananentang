@@ -137,6 +137,27 @@ def list_posts(
 
 
 # ──────────────────────────────────────────────────────────────
+# GET /api/posts/feed — Feed bài viết
+# ──────────────────────────────────────────────────────────────
+@router.get('/feed', response_model=PaginatedPostsResponse)
+def get_feed(
+  page: int = Query(1, ge=1, description="Trang hiện tại"),
+  page_size: int = Query(10, ge=1, le=50, description="Số bài mỗi trang"),
+  current_user: User = Depends(get_current_user),
+  db: Session = Depends(get_db),
+):
+  """Lấy feed bài viết từ người đang theo dõi, sắp xếp mới nhất."""
+  from app.crud.post import get_feed_posts
+  result = get_feed_posts(
+    db, 
+    current_user_id=current_user.id,
+    page=page, 
+    page_size=page_size
+  )
+  return result
+
+
+# ──────────────────────────────────────────────────────────────
 # GET /api/posts/{post_id} — Chi tiết bài viết
 # ──────────────────────────────────────────────────────────────
 @router.get('/{post_id}', response_model=PostReadWithAuthor)
