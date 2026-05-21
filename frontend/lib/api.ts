@@ -20,7 +20,7 @@ import {
   hydrateAccessToken,
   setAuthTokens,
 } from '@/lib/session';
-import type { Comment, LikeStatus, PaginatedPosts, Post } from '@/lib/types';
+import type { Comment, LikeStatus, PaginatedPosts, Post, NotificationRead, NotificationListResponse } from '@/lib/types';
 
 const FALLBACK_PORT = '8000';
 const LOCALHOST_API_URL = `http://127.0.0.1:${FALLBACK_PORT}`;
@@ -469,3 +469,23 @@ export function searchPosts(query: string, page = 1, pageSize = 10): Promise<Pag
   });
   return apiFetch<PaginatedPosts>(`/api/posts?${params}`);
 }
+
+// ─── Notifications API ────────────────────────────────────────
+
+export function fetchNotifications(unreadOnly = false): Promise<NotificationListResponse> {
+  const path = unreadOnly ? '/api/notifications?unread_only=true' : '/api/notifications';
+  return apiFetch<NotificationListResponse>(path);
+}
+
+export function markNotificationRead(notificationId: number): Promise<NotificationRead> {
+  return apiFetch<NotificationRead>(`/api/notifications/${notificationId}/read`, {
+    method: 'PATCH',
+  });
+}
+
+export function markAllNotificationsRead(): Promise<{ updated_count: number }> {
+  return apiFetch<{ updated_count: number }>('/api/notifications/read-all', {
+    method: 'PATCH',
+  });
+}
+
