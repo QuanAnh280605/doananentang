@@ -28,6 +28,8 @@ export type Post = {
   is_liked: boolean;
   reaction_counts?: Record<string, number>;
   user_reaction?: string | null;
+  feeling?: string | null;
+  tagged_users?: Array<{ id: number; first_name: string; last_name: string; full_name: string; avatar_url: string | null }> | null;
 };
 
 export type PaginatedPosts = {

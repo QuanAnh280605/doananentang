@@ -60,13 +60,13 @@ def upload_post_media(
   files: list[UploadFile] = File(...),
   current_user: User = Depends(get_current_user)
 ):
-  """Tải lên nhiều ảnh cho bài viết (Tối đa 4 ảnh)"""
+  """Tải lên nhiều ảnh/video cho bài viết (Tối đa 4 file)"""
 
   # 1. Kiểm tra số lượng file (tối đa 4 file)
   if len(files) > 4:
     raise HTTPException(
       status_code=status.HTTP_400_BAD_REQUEST,
-      detail="Bạn chỉ được phép tải lên tối đa 4 ảnh cho mỗi bài viết."
+      detail="Bạn chỉ được phép tải lên tối đa 4 file (ảnh hoặc video) cho mỗi bài viết."
     )
 
   POST_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
@@ -74,12 +74,12 @@ def upload_post_media(
 
   # 2. Duyệt qua từng file do client gửi lên
   for file in files:
-    # 2.1. Kiểm tra định dạng (chỉ cho phép định dạng ảnh)
+    # 2.1. Kiểm tra định dạng (cho phép ảnh hoặc video)
     content_type = file.content_type or ''
-    if not content_type.startswith('image/'):
+    if not (content_type.startswith('image/') or content_type.startswith('video/')):
       raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
-        detail=f"File '{file.filename}' không phải là ảnh hợp lệ."
+        detail=f"File '{file.filename}' không phải là ảnh hoặc video hợp lệ."
       )
 
     # 2.2. Tạo tên file duy nhất

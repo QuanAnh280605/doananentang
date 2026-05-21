@@ -141,7 +141,25 @@ export function FeedPost({
                         <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-green-500 border-[3px] border-white shadow-sm" />
                     </div>
                     <div className="flex flex-col gap-0.5">
-                        <ThemedText as="h2" className="text-[20px] font-bold text-slate-950 tracking-tight leading-tight group-hover/author:text-[#4A9FD8] transition-colors">{authorName}</ThemedText>
+                        <ThemedText as="h2" className="text-[20px] font-bold text-slate-950 tracking-tight leading-tight group-hover/author:text-[#4A9FD8] transition-colors">
+                            {authorName}
+                            {item.feeling && (
+                                <span className="font-normal text-slate-500 text-sm">
+                                    {' '}đang cảm thấy <span className="font-bold text-slate-800">{item.feeling}</span>
+                                </span>
+                            )}
+                            {item.tagged_users && item.tagged_users.length > 0 && (
+                                <span className="font-normal text-slate-500 text-sm">
+                                    {' '}cùng với{' '}
+                                    {item.tagged_users.map((u: any, idx: number) => (
+                                        <span key={u.id} className="font-bold text-slate-800">
+                                            {u.first_name} {u.last_name}
+                                            {idx < (item.tagged_users?.length ?? 0) - 1 ? ', ' : ''}
+                                        </span>
+                                    ))}
+                                </span>
+                            )}
+                        </ThemedText>
                         <div className="flex items-center gap-2">
                             <ThemedText as="p" className="text-[13px] font-semibold text-slate-400">{timeAgo}</ThemedText>
                             <span className="h-1 w-1 rounded-full bg-slate-300" />
@@ -187,12 +205,20 @@ export function FeedPost({
 
                 {firstMediaUrl && (
                     <div className="mt-6 overflow-hidden rounded-[32px] bg-slate-50 border border-slate-100/80 shadow-inner group/media">
-                        <img
-                            onClick={handleItemClick}
-                            src={firstMediaUrl}
-                            alt="Post media"
-                            className="h-auto max-h-[850px] w-full object-contain cursor-pointer hover:scale-[1.015] transition-transform duration-700"
-                        />
+                        {item.media && item.media[0]?.type?.toLowerCase().includes('video') ? (
+                            <video
+                                src={firstMediaUrl}
+                                controls
+                                className="w-full rounded-[32px] max-h-[600px] object-contain bg-black"
+                            />
+                        ) : (
+                            <img
+                                onClick={handleItemClick}
+                                src={firstMediaUrl}
+                                alt="Post media"
+                                className="h-auto max-h-[850px] w-full object-contain cursor-pointer hover:scale-[1.015] transition-transform duration-700"
+                            />
+                        )}
                     </div>
                 )}
             </div>

@@ -11,6 +11,7 @@ from app.realtime.socket_server import create_socket_app
 settings = get_settings()
 
 os.makedirs('uploads/avatars', exist_ok=True)
+os.makedirs('uploads/chats', exist_ok=True)
 
 rest_app = FastAPI(title=settings.app_name)
 rest_app.add_middleware(
