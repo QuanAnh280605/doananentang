@@ -77,7 +77,7 @@ function CommentItem({
         try {
             await deleteComment(String(comment.id));
             onDelete?.(String(comment.id));
-        } catch (err) {
+        } catch {
             alert('Không thể xóa bình luận');
         }
     };
