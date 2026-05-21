@@ -80,17 +80,26 @@ def get_posts(
   if author_id is not None:
     query = query.filter(Post.author_id == author_id)
   
+  rank_expr = None
+  
   if q is not None and q.strip():
-    pattern = f"%{q.strip()}%"
-    query = query.filter(Post.content.ilike(pattern))
+    search_query = q.strip()
+    ts_vector = func.to_tsvector('simple', func.coalesce(Post.content, ''))
+    ts_query = func.plainto_tsquery('simple', search_query)
+    query = query.filter(ts_vector.op('@@')(ts_query))
+    rank_expr = func.ts_rank(ts_vector, ts_query)
 
   # Tính tổng số bài viết
   total = query.with_entities(func.count(Post.id)).scalar() or 0
   total_pages = math.ceil(total / page_size) if total > 0 else 1
 
-  # Xác định cột sắp xếp (bỏ relevance vì không dùng ts_rank nữa)
-  sort_column = getattr(Post, sort_by if sort_by != 'relevance' else 'created_at', Post.created_at)
-  order = sort_column.asc() if sort_order == 'asc' else sort_column.desc()
+  # Xác định cột sắp xếp
+  if sort_by == 'relevance' and rank_expr is not None:
+    order = rank_expr.desc()
+  else:
+    actual_sort_by = sort_by if sort_by != 'relevance' else 'created_at'
+    sort_column = getattr(Post, actual_sort_by, Post.created_at)
+    order = sort_column.asc() if sort_order == 'asc' else sort_column.desc()
 
   # Query có eager load media + author
   items = (
