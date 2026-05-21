@@ -396,6 +396,143 @@ export function createChatMessage(chatId: string, payload: SendChatMessageReques
   });
 }
 
+// ─── Admin ──────────────────────────────────────────────────────────────────
+
+export type AdminUser = {
+  id: number;
+  email: string | null;
+  phone: string | null;
+  first_name: string;
+  last_name: string;
+  gender: string;
+  bio: string | null;
+  avatar_url: string | null;
+  city: string | null;
+  role: 'admin' | 'user';
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ReportStatus = 'pending' | 'resolved' | 'dismissed';
+
+export type AdminPostReport = {
+  post_id: string;
+  reporter_id: number;
+  reason: string | null;
+  status: ReportStatus;
+  created_at: string;
+  post_content: string | null;
+  reporter_name: string | null;
+};
+
+export type AdminPostReportsResponse = {
+  items: AdminPostReport[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+};
+
+export async function adminFetchUsers(): Promise<AdminUser[]> {
+  const response = await apiFetch<{ items: AdminUser[] }>('/api/admin/users?page_size=100');
+  return response.items;
+}
+
+export function adminSetUserStatus(userId: number, isActive: boolean): Promise<AdminUser> {
+  return apiFetch<AdminUser>(`/api/admin/users/${userId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ is_active: isActive }),
+  });
+}
+
+export async function adminFetchPostReports(
+  status?: ReportStatus,
+  page = 1,
+  pageSize = 20,
+): Promise<AdminPostReportsResponse> {
+  if (status && status !== 'pending') {
+    return {
+      items: [],
+      total: 0,
+      page,
+      page_size: pageSize,
+      total_pages: 1,
+    };
+  }
+
+  const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
+  
+  type BackendReportItem = {
+    post_id: number;
+    user_id: number;
+    reason: string | null;
+    created_at: string;
+    reporter: {
+      id: number;
+      first_name: string;
+      last_name: string;
+      full_name: string;
+    };
+    post: {
+      id: number;
+      content: string;
+    };
+  };
+
+  const backendResponse = await apiFetch<{
+    items: BackendReportItem[];
+    total: number;
+    page: number;
+    page_size: number;
+    total_pages: number;
+  }>(`/api/admin/reports?${params}`);
+
+  const mappedItems: AdminPostReport[] = backendResponse.items.map((item) => ({
+    post_id: String(item.post_id),
+    reporter_id: item.user_id,
+    reason: item.reason,
+    status: 'pending',
+    created_at: item.created_at,
+    post_content: item.post?.content ?? null,
+    reporter_name: item.reporter?.full_name ?? `${item.reporter?.first_name} ${item.reporter?.last_name}`,
+  }));
+
+  return {
+    items: mappedItems,
+    total: backendResponse.total,
+    page: backendResponse.page,
+    page_size: backendResponse.page_size,
+    total_pages: backendResponse.total_pages,
+  };
+}
+
+export async function adminUpdateReportStatus(
+  postId: string,
+  reporterId: number,
+  status: ReportStatus,
+): Promise<AdminPostReport> {
+  if (status === 'resolved') {
+    await apiFetch<void>(`/api/admin/posts/${postId}`, {
+      method: 'DELETE',
+    });
+  } else if (status === 'dismissed') {
+    await apiFetch<void>(`/api/admin/reports/${postId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  return {
+    post_id: postId,
+    reporter_id: reporterId,
+    reason: null,
+    status,
+    created_at: new Date().toISOString(),
+    post_content: null,
+    reporter_name: null,
+  };
+}
+
 export function markChatRead(chatId: string): Promise<ChatReadStatusResponse> {
   return apiFetch<ChatReadStatusResponse>(`/api/chats/${chatId}/read`, { method: 'POST' });
 }

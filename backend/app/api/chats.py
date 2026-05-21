@@ -34,6 +34,7 @@ from app.schemas.chat import (
   SendMessageRequest,
 )
 from app.schemas.user import UserSearchRead
+from app.services.notification import create_social_notification
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -158,9 +159,21 @@ def create_chat_message_endpoint(
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
 
   response = MessageRead.model_validate(message)
+
+  member_ids = get_chat_member_user_ids(db, chat_id)
+  for member_id in member_ids:
+    if member_id != current_user.id:
+      create_social_notification(
+        db,
+        receiver_id=member_id,
+        actor_id=current_user.id,
+        type='message',
+        message_id=message.id,
+      )
+
   try:
     response_payload = response.model_dump(mode='json')
-    from_thread.run(_emit_message_created_to_user_rooms, response_payload, get_chat_member_user_ids(db, chat_id))
+    from_thread.run(_emit_message_created_to_user_rooms, response_payload, member_ids)
   except Exception:
     logger.exception('Failed to emit message-created event', extra={'chat_id': chat_id, 'message_id': response.id})
   return response
