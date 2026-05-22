@@ -13,6 +13,7 @@ from app.models.comment import Comment
 from app.models.follow import Follow
 from app.models.like import CommentLike, Like
 from app.models.message import Message
+from app.models.message_media import MessageMedia
 from app.models.message_read import MessageRead as MessageReadModel
 from app.models.notification import Notification
 from app.models.post import Post
@@ -39,6 +40,7 @@ def build_test_session() -> Session:
   CommentLike.__table__.create(bind=engine)
   Follow.__table__.create(bind=engine)
   Message.__table__.create(bind=engine)
+  MessageMedia.__table__.create(bind=engine)
   MessageReadModel.__table__.create(bind=engine)
   Notification.__table__.create(bind=engine)
   return Session(bind=engine, expire_on_commit=False)
