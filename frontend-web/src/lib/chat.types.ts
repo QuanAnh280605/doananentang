@@ -33,6 +33,8 @@ export type ChatMessage = {
   pending?: boolean;
   senderUserId: number | null;
   createdAt: string;
+  mediaUrl?: string | null;
+  mediaType?: string | null;
 };
 
 export type CreateDirectChatRequest = {
@@ -40,7 +42,8 @@ export type CreateDirectChatRequest = {
 };
 
 export type SendChatMessageRequest = {
-  content: string;
+  content?: string | null;
+  media_url?: string | null;
 };
 
 export type DirectChatResponse = {
@@ -54,6 +57,8 @@ export type ChatMessageResponse = {
   chat_id: number;
   sender_id: number;
   content: string | null;
+  media_url?: string | null;
+  media_type?: string | null;
   created_at: string;
 };
 

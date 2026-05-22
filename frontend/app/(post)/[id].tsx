@@ -3,13 +3,14 @@ import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    DeviceEventEmitter,
     KeyboardAvoidingView,
     Platform,
     Pressable,
+    RefreshControl,
     ScrollView,
     TextInput,
     View,
-    RefreshControl,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
@@ -80,7 +81,7 @@ function CommentItem({
         try {
             await deleteComment(String(comment.id));
             onDelete?.(String(comment.id));
-        } catch (err) {
+        } catch {
             alert('Không thể xóa bình luận');
         }
     };
@@ -211,6 +212,18 @@ export default function PostDetailScreen() {
             setRefreshing(false);
         }
     };
+
+    useEffect(() => {
+        if (post) {
+            DeviceEventEmitter.emit('postUpdated', {
+                postId: String(post.id),
+                is_liked: post.is_liked,
+                like_count: post.like_count,
+                comment_count: comments.length,
+                reaction_type: post.user_reaction ?? null,
+            });
+        }
+    }, [post, comments.length]);
 
     const handleSendComment = async () => {
         if (!newComment.trim() || sending) return;

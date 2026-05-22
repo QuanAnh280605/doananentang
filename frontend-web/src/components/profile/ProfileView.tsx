@@ -3,7 +3,7 @@
 import type { ComponentType } from 'react';
 
 import { Article, EnvelopeSimple, Images, MapPin, SquaresFour, User } from '@phosphor-icons/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 
 
@@ -15,6 +15,7 @@ import { fetchCurrentUser, updateUserProfile, fetchFollowStatus, followUser, typ
 import { FeedPost } from '@/components/post/FeedPost';
 import { PostDetailModal } from '@/components/post/PostDetailModal';
 import { fetchPosts, resolveAvatarUrl } from '@/lib/api';
+import { patchPostMetrics as patchPostMetricsInProfile } from '@/lib/postMetrics';
 import type { Post } from '@/lib/types';
 import { FollowListModal } from '@/components/profile/FollowListModal';
 
@@ -93,6 +94,30 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [isFollowModalOpen, setIsFollowModalOpen] = useState(false);
   const [followModalType, setFollowModalType] = useState<'followers' | 'following'>('followers');
+
+  const loadProfilePosts = useCallback(async () => {
+    const authorId = selectedUser?.id ?? user?.id;
+
+    if (!authorId) {
+      setPosts([]);
+      setLoadingPosts(false);
+      return;
+    }
+
+    setLoadingPosts(true);
+    try {
+      const res = await fetchPosts(1, 20, authorId);
+      setPosts(res.items || []);
+    } catch {
+      setPosts([]);
+    } finally {
+      setLoadingPosts(false);
+    }
+  }, [selectedUser?.id, user?.id]);
+
+  const patchPostMetrics = useCallback((postId: number, patch: Partial<Pick<Post, 'like_count' | 'comment_count' | 'is_liked'>>) => {
+    setPosts((currentPosts) => patchPostMetricsInProfile(currentPosts, String(postId), patch));
+  }, []);
 
   useEffect(() => {
     if (selectedUser) {
@@ -252,6 +277,8 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
             postId={selectedPostId}
             onClose={() => setSelectedPostId(null)}
             currentUser={user}
+            onPostMetricsChange={patchPostMetrics}
+            onPostMetricsSettled={loadProfilePosts}
           />
         )}
         <div className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-4 md:px-6">
@@ -438,6 +465,8 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
                           item={item}
                           currentUser={user}
                           onPostClick={(id) => setSelectedPostId(id)}
+                          onOptimisticMetricsChange={patchPostMetrics}
+                          onPostMetricsSettled={loadProfilePosts}
                         />
                       ))}
                     </div>

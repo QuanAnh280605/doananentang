@@ -1,14 +1,17 @@
 'use client';
 
 import { ArrowBendUpLeft, ArrowLeft, ChatCircleDots, DotsThree, PaperPlaneTilt, ShareNetwork, ThumbsUp, Trash, WarningCircle, X } from '@phosphor-icons/react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ProtectedPage } from '@/components/app/ProtectedPage';
 import { ThemedText } from '@/components/ui/ThemedText';
 import { ROUTES } from '@/lib/routes';
 import { fetchPostDetail, fetchPostComments, createComment, deleteComment, likeComment, unlikeComment, deletePost, likePost, unlikePost, API_URL } from '@/lib/api';
 import { fetchCurrentUser, type AuthUser } from '@/lib/auth';
+import { clampMetricCount, runOptimisticPostLike } from '@/lib/postMetrics';
+import { createPostMetricsEventHandler } from '@/lib/postRealtime';
 import type { Post, Comment } from '@/lib/types';
+import { connectAppSocket, joinPostRoom, leavePostRoom, POST_METRICS_UPDATED_EVENT } from '@/lib/socket';
 import Link from 'next/link';
 import Image from 'next/image';
 import { surfaceClass } from '@/components/ui/design-system';
@@ -161,6 +164,29 @@ export default function PostDetailPage() {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [togglingLike, setTogglingLike] = useState(false);
+  const numericPostId = Number(postId);
+
+  const applyPostPatch = useCallback((patch: Partial<Pick<Post, 'like_count' | 'comment_count' | 'is_liked'>>) => {
+    setPost((currentPost) => (currentPost ? { ...currentPost, ...patch } : currentPost));
+
+    if (typeof patch.is_liked === 'boolean') {
+      setLiked(patch.is_liked);
+    }
+
+    if (typeof patch.like_count === 'number') {
+      setLikeCount(patch.like_count);
+    }
+  }, []);
+
+  const loadComments = useCallback(async () => {
+    if (!postId) {
+      return [] as Comment[];
+    }
+
+    const updatedComments = await fetchPostComments(postId);
+    setComments(updatedComments);
+    return updatedComments;
+  }, [postId]);
 
   useEffect(() => {
     if (!postId) return;
@@ -187,18 +213,52 @@ export default function PostDetailPage() {
     return () => { mounted = false; };
   }, [postId]);
 
+  useEffect(() => {
+    if (!postId || Number.isNaN(numericPostId) || loading) {
+      return;
+    }
+
+    const socket = connectAppSocket();
+
+    if (!socket) {
+      return;
+    }
+
+    joinPostRoom(numericPostId);
+
+    const handler = createPostMetricsEventHandler({
+      postId: numericPostId,
+      initialCommentCount: post?.comment_count,
+      applyMetrics: (metrics) => {
+        applyPostPatch(metrics);
+      },
+      refetchComments: () => {
+        void loadComments();
+      },
+    });
+
+    socket.on(POST_METRICS_UPDATED_EVENT, handler);
+
+    return () => {
+      socket.off(POST_METRICS_UPDATED_EVENT, handler);
+      leavePostRoom(numericPostId);
+    };
+  }, [applyPostPatch, loadComments, loading, numericPostId, post?.comment_count, postId]);
+
   const handlePostComment = async () => {
     if (!commentInput.trim() || isSubmitting || !postId) return;
-    
+    const previousCommentCount = post?.comment_count ?? countThreadComments(comments);
+    const optimisticCommentCount = clampMetricCount(previousCommentCount + 1);
+     
     setIsSubmitting(true);
+    applyPostPatch({ comment_count: optimisticCommentCount });
     try {
       await createComment(postId, commentInput.trim(), replyTo?.id || null);
-      
-      const updatedComments = await fetchPostComments(postId);
-      setComments(updatedComments);
+      await loadComments();
       setCommentInput('');
       setReplyTo(null);
     } catch {
+      applyPostPatch({ comment_count: previousCommentCount });
       alert('Không thể gửi bình luận');
     } finally {
       setIsSubmitting(false);
@@ -207,11 +267,16 @@ export default function PostDetailPage() {
 
   const handleDeleteComment = async (commentId: string) => {
     if (!confirm('Bạn có chắc muốn xóa bình luận này?')) return;
+    const previousCommentCount = post?.comment_count ?? countThreadComments(comments);
+    const optimisticCommentCount = clampMetricCount(previousCommentCount - 1);
+
+    applyPostPatch({ comment_count: optimisticCommentCount });
+
     try {
       await deleteComment(commentId);
-      const updatedComments = await fetchPostComments(postId as string);
-      setComments(updatedComments);
+      await loadComments();
     } catch {
+      applyPostPatch({ comment_count: previousCommentCount });
       alert('Xóa bình luận thất bại');
     }
   };
@@ -220,14 +285,19 @@ export default function PostDetailPage() {
     if (togglingLike || !postId) return;
     setTogglingLike(true);
     try {
-      const result = liked
-        ? await unlikePost(postId as string)
-        : await likePost(postId as string);
-      setLiked(result.liked);
-      setLikeCount(result.like_count);
+      await runOptimisticPostLike({
+        post: {
+          id: postId,
+          is_liked: liked,
+          like_count: likeCount,
+        },
+        mutate: () => (liked ? unlikePost(postId) : likePost(postId)),
+        refetch: async () => undefined,
+        applyPatch: (patch) => {
+          applyPostPatch(patch);
+        },
+      });
     } catch {
-      setLiked(!liked);
-      setLikeCount(liked ? likeCount - 1 : likeCount + 1);
     } finally {
       setTogglingLike(false);
     }
@@ -268,6 +338,7 @@ export default function PostDetailPage() {
   const initials = getInitials(post.author?.first_name, post.author?.last_name) || 'U';
   const authorName = `${post.author?.first_name || ''} ${post.author?.last_name || ''}`.trim() || 'Người dùng';
   const isAuthor = currentUser?.id != null && post.author?.id != null && String(currentUser.id) === String(post.author.id);
+  const totalComments = post.comment_count ?? countThreadComments(comments);
   const firstMediaUrl = post.media?.[0]?.file_url ? 
     (post.media[0].file_url.startsWith('http') ? post.media[0].file_url : `${API_URL}${post.media[0].file_url}`) 
     : null;
@@ -360,7 +431,7 @@ export default function PostDetailPage() {
                 </ThemedText>
               </div>
               <ThemedText as="p" className="text-sm font-medium text-slate-500">
-                {comments.length} bình luận
+                {totalComments} bình luận
               </ThemedText>
             </div>
 
@@ -396,7 +467,7 @@ export default function PostDetailPage() {
             <div className="mt-10 border-t border-[#E4E8EE] pt-8">
               <div className="flex items-center justify-between mb-6">
                 <ThemedText as="h3" className="text-[22px] font-bold text-slate-900">
-                  Bình luận ({comments.length})
+                  Bình luận ({totalComments})
                 </ThemedText>
               </div>
               {comments.length === 0 ? (
@@ -503,4 +574,8 @@ export default function PostDetailPage() {
       </main>
     </ProtectedPage>
   );
+}
+
+function countThreadComments(items: Comment[]): number {
+  return items.reduce((total, item) => total + 1 + countThreadComments(item.replies ?? []), 0);
 }

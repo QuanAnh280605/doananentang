@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.security import hash_password
 from app.models.user import User
 from app.schemas.user import UserCreate
+from app.models.db_enums import UserRole
 
 
 def create_user(db: Session, payload: UserCreate) -> User:
@@ -77,6 +78,57 @@ def search_users(db: Session, query: str, page: int = 1, page_size: int = 20) ->
   statement = (
     base_query
     .order_by(User.first_name, User.last_name, User.id)
+    .offset((page - 1) * page_size)
+    .limit(page_size)
+  )
+  items = list(db.scalars(statement).all())
+
+  return {
+    'items': items,
+    'total': total,
+    'page': page,
+    'page_size': page_size,
+    'total_pages': total_pages,
+  }
+
+
+def list_users_for_admin(
+  db: Session,
+  q: str | None = None,
+  role: UserRole | None = None,
+  is_active: bool | None = None,
+  page: int = 1,
+  page_size: int = 20
+) -> dict:
+  base_query = select(User).where(User.is_deleted == False)
+
+  if q:
+    normalized_query = q.strip().lower()
+    if normalized_query:
+      pattern = f'%{normalized_query}%'
+      full_name = User.first_name.concat(' ').concat(User.last_name)
+      base_query = base_query.where(
+        or_(
+          User.first_name.ilike(pattern),
+          User.last_name.ilike(pattern),
+          full_name.ilike(pattern),
+          User.email.ilike(pattern),
+          User.phone.ilike(pattern),
+        )
+      )
+
+  if role is not None:
+    base_query = base_query.where(User.role == role)
+
+  if is_active is not None:
+    base_query = base_query.where(User.is_active == is_active)
+
+  total = db.scalar(select(func.count()).select_from(base_query.subquery())) or 0
+  total_pages = math.ceil(total / page_size) if total > 0 else 1
+
+  statement = (
+    base_query
+    .order_by(User.created_at.desc(), User.id)
     .offset((page - 1) * page_size)
     .limit(page_size)
   )

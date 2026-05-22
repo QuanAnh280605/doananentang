@@ -1,7 +1,7 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Link } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Platform, Image, Modal, Pressable, View, Alert, Share, TextInput, ActivityIndicator } from 'react-native';
+import { ActivityIndicator, Alert, DeviceEventEmitter, Image, Modal, Platform, Pressable, Share, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -9,8 +9,7 @@ import { ActionBubble, Avatar, surfaceClass } from '@/components/ui/core';
 import { API_URL, likePost, unlikePost, deletePost, updatePost, fetchPostLikers } from '@/lib/api';
 import type { PostLiker } from '@/lib/api';
 import { fetchCurrentUser } from '@/lib/auth';
-import type { Post } from '@/lib/types';
-import type { ReactionType } from '@/lib/types';
+import type { Post, ReactionType } from '@/lib/types';
 
 const REACTIONS = [
     { type: 'like', icon: '👍', color: '#4A9FD8', name: 'Like' },
@@ -62,22 +61,39 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
     const [likers, setLikers] = useState<PostLiker[]>([]);
     const [loadingLikers, setLoadingLikers] = useState(false);
 
+    useEffect(() => {
+        setLiked(item.is_liked);
+    }, [item.is_liked]);
+
+    useEffect(() => {
+        setCount(item.like_count);
+    }, [item.like_count]);
+
+    useEffect(() => {
+        setReactionType(item.user_reaction);
+    }, [item.user_reaction]);
+
+    useEffect(() => {
+        setDisplayContent(item.content);
+    }, [item.content]);
+
     const authorName = `${item.author.first_name} ${item.author.last_name}`;
     const initials = getInitials(item.author);
     const timeAgo = formatTime(item.created_at);
 
     const mediaUrls = item.media?.map(m => m.file_url.startsWith('http') ? m.file_url : `${API_URL}${m.file_url}`) || [];
+    const singleMediaUrl = mediaUrls.length === 1 ? mediaUrls[0] : null;
 
     // Lấy kích thước thật của ảnh để resize khung linh hoạt
     useEffect(() => {
-        if (mediaUrls.length === 1 && mediaUrls[0]) {
-            Image.getSize(mediaUrls[0], (width, height) => {
+        if (singleMediaUrl) {
+            Image.getSize(singleMediaUrl, (width, height) => {
                 if (width && height) {
                     setAspectRatio(width / height);
                 }
             }, (err) => console.warn('Get image size error:', err));
         }
-    }, [mediaUrls.length ? mediaUrls[0] : null, mediaUrls.length]);
+    }, [singleMediaUrl]);
 
     const handleToggleLike = async (rType?: ReactionType) => {
         if (loading) return;
@@ -98,6 +114,13 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
             setLiked(result.liked);
             setCount(result.like_count);
             setReactionType(result.reaction_type);
+            DeviceEventEmitter.emit('postUpdated', {
+                postId: String(item.id),
+                is_liked: result.liked,
+                like_count: result.like_count,
+                comment_count: item.comment_count,
+                reaction_type: result.reaction_type ?? null,
+            });
         } catch {
             // Revert on error
         } finally {
@@ -163,7 +186,8 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                     await deletePost(String(item.id));
                     setIsDeleted(true);
                     onDeleteSuccess?.();
-                } catch (err) {
+                    DeviceEventEmitter.emit('postDeleted', { postId: String(item.id) });
+                } catch {
                     window.alert("Lỗi: Không thể xóa bài viết.");
                 }
             }
@@ -178,7 +202,8 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                             await deletePost(String(item.id));
                             setIsDeleted(true);
                             onDeleteSuccess?.();
-                        } catch (err) {
+                            DeviceEventEmitter.emit('postDeleted', { postId: String(item.id) });
+                        } catch {
                             Alert.alert("Lỗi", "Không thể xóa bài viết.");
                         }
                     }

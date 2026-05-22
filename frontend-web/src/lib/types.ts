@@ -12,6 +12,14 @@ export type PostMedia = {
   display_order: number;
 };
 
+export type TaggedUser = {
+  id: number;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  avatar_url: string | null;
+};
+
 export type Post = {
   id: string;
   author_id: string;
@@ -28,6 +36,8 @@ export type Post = {
   is_liked: boolean;
   reaction_counts?: Record<string, number>;
   user_reaction?: string | null;
+  feeling?: string | null;
+  tagged_users?: TaggedUser[] | null;
 };
 
 export type PaginatedPosts = {
@@ -42,6 +52,15 @@ export type LikeStatus = {
   post_id: string;
   liked: boolean;
   like_count: number;
+};
+
+export type PostMetricsUpdatedEvent = {
+  post_id: number;
+  like_count: number;
+  comment_count: number;
+  liked?: boolean;
+  actor_id?: number;
+  action?: 'post_liked' | 'post_unliked' | 'comment_created' | 'comment_deleted';
 };
 
 export type PostLiker = {

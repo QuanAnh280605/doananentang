@@ -1,15 +1,16 @@
 import math
 from typing import Literal
 
-from sqlalchemy import func
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.comment import Comment
-from app.models.db_enums import MediaType
+from app.models.db_enums import MediaType, VisibilityLevel
 from app.models.follow import Follow
 from app.models.like import Like
 from app.models.post import Post
 from app.models.post_media import PostMedia
+from app.models.post_viewer import PostViewer
 from app.schemas.post import PostCreate, PostUpdate
 
 
@@ -17,18 +18,25 @@ def create_post(db: Session, post_in: PostCreate, author_id: int) -> Post:
   db_post = Post(
     author_id=author_id,
     content=post_in.content,
-    visibility=post_in.visibility
+    visibility=post_in.visibility,
+    feeling=post_in.feeling,
+    tagged_users=post_in.tagged_users,
   )
   db.add(db_post)
   db.flush()  # Lấy ID trước khi tạo media
 
-  # Nếu có mảng ảnh được truyền lên
+  # Nếu có mảng ảnh hoặc video được truyền lên
   if post_in.media_urls:
     for index, url in enumerate(post_in.media_urls):
+      url_lower = url.lower()
+      media_type = MediaType.IMAGE
+      if any(url_lower.endswith(ext) for ext in ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.3gp']):
+        media_type = MediaType.VIDEO
+
       db_media = PostMedia(
         post_id=db_post.id,
         file_url=url,
-        type=MediaType.IMAGE,
+        type=media_type,
         display_order=index + 1
       )
       db.add(db_media)
@@ -86,17 +94,26 @@ def get_posts(
   if author_id is not None:
     query = query.filter(Post.author_id == author_id)
   
+  rank_expr = None
+
   if q is not None and q.strip():
-    pattern = f"%{q.strip()}%"
-    query = query.filter(Post.content.ilike(pattern))
+    search_query = q.strip()
+    ts_vector = func.to_tsvector('simple', func.coalesce(Post.content, ''))
+    ts_query = func.plainto_tsquery('simple', search_query)
+    query = query.filter(ts_vector.op('@@')(ts_query))
+    rank_expr = func.ts_rank(ts_vector, ts_query)
 
   # Tính tổng số bài viết
   total = query.with_entities(func.count(Post.id)).scalar() or 0
   total_pages = math.ceil(total / page_size) if total > 0 else 1
 
-  # Xác định cột sắp xếp (bỏ relevance vì không dùng ts_rank nữa)
-  sort_column = getattr(Post, sort_by if sort_by != 'relevance' else 'created_at', Post.created_at)
-  order = sort_column.asc() if sort_order == 'asc' else sort_column.desc()
+  # Xác định cột sắp xếp
+  if sort_by == 'relevance' and rank_expr is not None:
+    order = rank_expr.desc()
+  else:
+    actual_sort_by = sort_by if sort_by != 'relevance' else 'created_at'
+    sort_column = getattr(Post, actual_sort_by, Post.created_at)
+    order = sort_column.asc() if sort_order == 'asc' else sort_column.desc()
 
   # Query có eager load media + author
   items = (
@@ -140,33 +157,48 @@ def get_feed_posts(
   page: int = 1,
   page_size: int = 10,
 ) -> dict:
-  """
-  Lấy bảng tin (feed) gồm bài viết của chính mình và người đang theo dõi.
-  - Sắp xếp: mới nhất trước (created_at DESC).
-  - Kèm thống kê: like_count, comment_count, is_liked.
-  - Dùng batch query để tránh N+1 performance issue.
-  """
+  """Lấy danh sách bài viết từ người đang theo dõi (feed) có phân trang và kiểm tra quyền nhìn thấy."""
 
-  # 1. Subquery: danh sách ID người đang theo dõi
-  following_ids = db.query(Follow.following_id).filter(
-    Follow.follower_id == current_user_id
-  ).subquery()
+  # Subquery lấy danh sách ID người đang theo dõi
+  following_ids = db.query(Follow.following_id).filter(Follow.follower_id == current_user_id)
 
-  # 2. Query bài viết của bản thân + người đang follow, chưa bị xóa
-  base_query = db.query(Post).filter(
-    Post.is_deleted == False,
-    (Post.author_id.in_(following_ids)) | (Post.author_id == current_user_id)
+  # Điều kiện 1: Tác giả là người mình đang follow (hoặc chính mình)
+  author_condition = or_(
+    Post.author_id.in_(following_ids),
+    Post.author_id == current_user_id
   )
 
-  # 3. Đếm tổng số bài (cho phân trang)
-  total = base_query.with_entities(func.count(Post.id)).scalar() or 0
+  # Điều kiện 2: Quyền nhìn thấy
+  # - PUBLIC: Ai cũng thấy
+  # - FOLLOWERS_ONLY: Thấy nếu là người theo dõi hoặc chính tác giả
+  # - CUSTOM: Thấy nếu có trong PostViewer hoặc là chính tác giả
+  # - ONLY_ME: Chỉ chính tác giả mới thấy
+  visibility_condition = or_(
+    Post.visibility == VisibilityLevel.PUBLIC,
+    Post.visibility == VisibilityLevel.FOLLOWERS_ONLY,
+    and_(
+      Post.visibility == VisibilityLevel.CUSTOM,
+      Post.id.in_(db.query(PostViewer.post_id).filter(PostViewer.user_id == current_user_id))
+    ),
+    Post.author_id == current_user_id  # Tác giả luôn thấy bài của mình
+  )
+
+  query = db.query(Post).filter(
+    Post.is_deleted == False,
+    author_condition,
+    visibility_condition
+  )
+
+  total = query.with_entities(func.count(Post.id)).scalar() or 0
   total_pages = math.ceil(total / page_size) if total > 0 else 1
 
-  # 4. Lấy bài viết cho trang hiện tại, kèm tác giả và media (eager load)
+  # Sắp xếp mới nhất
+  order = Post.created_at.desc()
+
   posts = (
-    base_query
+    query
     .options(joinedload(Post.media), joinedload(Post.author))
-    .order_by(Post.created_at.desc())
+    .order_by(order)
     .offset((page - 1) * page_size)
     .limit(page_size)
     .all()
@@ -220,6 +252,7 @@ def get_feed_posts(
     'page_size': page_size,
     'total_pages': total_pages,
   }
+
 
 def update_post(db: Session, db_post: Post, post_in: PostUpdate) -> Post:
   update_data = post_in.model_dump(exclude_unset=True)

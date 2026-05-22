@@ -27,9 +27,13 @@ export function GlobalSearchProvider({ children }: GlobalSearchProviderProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [results, setResults] = useState<SearchUser[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
 
   const isClosingRef = useRef(false);
+  const requestIdRef = useRef(0);
 
   const setQuery = useCallback((value: string) => {
     const normalizedValue = value;
@@ -40,12 +44,18 @@ export function GlobalSearchProvider({ children }: GlobalSearchProviderProps) {
     if (trimmed.length < 2) {
       setResults([]);
       setIsLoading(false);
+      setIsLoadingMore(false);
       setErrorMessage(null);
+      setPage(1);
+      setTotalPages(0);
       return;
     }
 
     setIsLoading(true);
+    setIsLoadingMore(false);
     setErrorMessage(null);
+    setPage(1);
+    setTotalPages(0);
   }, []);
 
   const open = useCallback(() => {
@@ -57,6 +67,7 @@ export function GlobalSearchProvider({ children }: GlobalSearchProviderProps) {
     isClosingRef.current = true;
     setIsVisible(false);
     setIsLoading(false);
+    setIsLoadingMore(false);
     setErrorMessage(null);
     if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
@@ -77,16 +88,19 @@ export function GlobalSearchProvider({ children }: GlobalSearchProviderProps) {
       return;
     }
 
-    let isActive = true;
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
     const timeoutId = setTimeout(() => {
-      searchUsers(normalizedQuery, 20)
-        .then((users) => {
-          if (isActive) {
-            setResults(users);
+      searchUsers(normalizedQuery, 1, 20)
+        .then((response) => {
+          if (requestIdRef.current === requestId) {
+            setResults(response.items);
+            setPage(response.page);
+            setTotalPages(response.total_pages);
           }
         })
         .catch((error: unknown) => {
-          if (!isActive) {
+          if (requestIdRef.current !== requestId) {
             return;
           }
 
@@ -95,17 +109,45 @@ export function GlobalSearchProvider({ children }: GlobalSearchProviderProps) {
           setResults([]);
         })
         .finally(() => {
-          if (isActive) {
+          if (requestIdRef.current === requestId) {
             setIsLoading(false);
           }
         });
     }, 300);
 
     return () => {
-      isActive = false;
       clearTimeout(timeoutId);
     };
   }, [isVisible, query]);
+
+  const loadMore = useCallback(() => {
+    const normalizedQuery = query.trim();
+    if (normalizedQuery.length < 2 || isLoading || isLoadingMore || page >= totalPages) {
+      return;
+    }
+
+    const nextPage = page + 1;
+    setIsLoadingMore(true);
+    setErrorMessage(null);
+
+    searchUsers(normalizedQuery, nextPage, 20)
+      .then((response) => {
+        setResults((currentResults) => {
+          const existingIds = new Set(currentResults.map((user) => user.id));
+          const newItems = response.items.filter((user) => !existingIds.has(user.id));
+          return [...currentResults, ...newItems];
+        });
+        setPage(response.page);
+        setTotalPages(response.total_pages);
+      })
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : 'Không thể tải thêm người dùng lúc này.';
+        setErrorMessage(message);
+      })
+      .finally(() => {
+        setIsLoadingMore(false);
+      });
+  }, [isLoading, isLoadingMore, page, query, totalPages]);
 
   useEffect(() => {
     if (!isVisible) {
@@ -155,8 +197,11 @@ export function GlobalSearchProvider({ children }: GlobalSearchProviderProps) {
       {children}
       <SearchUsersModal
         errorMessage={errorMessage}
+        hasMore={page < totalPages}
         isLoading={isLoading}
+        isLoadingMore={isLoadingMore}
         onClose={close}
+        onLoadMore={loadMore}
         onSelectUser={handleSelectUser}
         query={query}
         setQuery={setQuery}

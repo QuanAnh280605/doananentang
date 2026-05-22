@@ -2,7 +2,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, View, useWindowDimensions, RefreshControl } from 'react-native';
+import { ActivityIndicator, DeviceEventEmitter, FlatList, Pressable, RefreshControl, View, useWindowDimensions } from 'react-native';
 
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ComposerCard } from '@/components/post/ComposerCard';
@@ -10,7 +10,7 @@ import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Avatar, surfaceClass } from '@/components/ui/core';
-import { fetchFollowingUsers, fetchFeed, listDirectChats } from '@/lib/api';
+import { fetchFollowingUsers, fetchFeedPosts, listDirectChats } from '@/lib/api';
 import type { ChatListItem, FollowUser } from '@/lib/api';
 import { fetchCurrentUser } from '@/lib/auth';
 import type { AuthUser } from '@/lib/auth';
@@ -337,7 +337,7 @@ export default function HomeScreen() {
     }
     setError(null);
     try {
-      const result = await fetchFeed(pageNum, 10);
+      const result = await fetchFeedPosts(pageNum, 10);
       if (shouldAppend) {
         setPosts((prev) => [...prev, ...result.items]);
       } else {
@@ -354,6 +354,33 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
+    const updateSub = DeviceEventEmitter.addListener('postUpdated', (data) => {
+      setPosts((prev) =>
+        prev.map((p) =>
+          String(p.id) === String(data.postId)
+            ? {
+                ...p,
+                is_liked: data.is_liked,
+                like_count: data.like_count,
+                comment_count: data.comment_count,
+                user_reaction: data.reaction_type ?? p.user_reaction,
+              }
+            : p
+        )
+      );
+    });
+
+    const deleteSub = DeviceEventEmitter.addListener('postDeleted', (data) => {
+      setPosts((prev) => prev.filter((p) => String(p.id) !== String(data.postId)));
+    });
+
+    return () => {
+      updateSub.remove();
+      deleteSub.remove();
+    };
+  }, []);
+
+  useEffect(() => {
     loadPosts(1, false);
   }, [loadPosts]);
 
@@ -361,7 +388,7 @@ export default function HomeScreen() {
     setRefreshing(true);
     setError(null);
     try {
-      const result = await fetchFeed(1, 10);
+      const result = await fetchFeedPosts(1, 10);
       setPosts(result.items);
       setHasMore(result.page < result.total_pages);
       setPage(result.page);
@@ -377,7 +404,6 @@ export default function HomeScreen() {
       loadPosts(page + 1, true);
     }
   };
-
 
   return (
     <ThemedView className="flex-1 bg-[#EDF1F5]">

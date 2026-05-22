@@ -20,7 +20,16 @@ import {
   hydrateAccessToken,
   setAuthTokens,
 } from '@/lib/session';
-import type { Comment, LikeStatus, PaginatedPosts, Post, ReactionType, VisibilityLevel } from '@/lib/types';
+import type {
+  Comment,
+  LikeStatus,
+  NotificationListResponse,
+  NotificationRead,
+  PaginatedPosts,
+  Post,
+  ReactionType,
+  VisibilityLevel,
+} from '@/lib/types';
 
 const FALLBACK_PORT = '8000';
 const LOCALHOST_API_URL = `http://127.0.0.1:${FALLBACK_PORT}`;
@@ -384,9 +393,11 @@ export function fetchPosts(page = 1, pageSize = 10, authorId?: string | number):
   return apiFetch<PaginatedPosts>(url);
 }
 
-export function fetchFeed(page = 1, pageSize = 10): Promise<PaginatedPosts> {
+export function fetchFeedPosts(page = 1, pageSize = 10): Promise<PaginatedPosts> {
   return apiFetch<PaginatedPosts>(`/api/posts/feed?page=${page}&page_size=${pageSize}`);
 }
+
+export const fetchFeed = fetchFeedPosts;
 
 export function fetchPostDetail(postId: string): Promise<Post> {
   return apiFetch<Post>(`/api/posts/${postId}`);
@@ -512,4 +523,23 @@ export function searchPosts(query: string, page = 1, pageSize = 10): Promise<Pag
     sort_by: 'relevance',
   });
   return apiFetch<PaginatedPosts>(`/api/posts?${params}`);
+}
+
+// ─── Notifications API ────────────────────────────────────────
+
+export function fetchNotifications(unreadOnly = false): Promise<NotificationListResponse> {
+  const path = unreadOnly ? '/api/notifications?unread_only=true' : '/api/notifications';
+  return apiFetch<NotificationListResponse>(path);
+}
+
+export function markNotificationRead(notificationId: number): Promise<NotificationRead> {
+  return apiFetch<NotificationRead>(`/api/notifications/${notificationId}/read`, {
+    method: 'PATCH',
+  });
+}
+
+export function markAllNotificationsRead(): Promise<{ updated_count: number }> {
+  return apiFetch<{ updated_count: number }>('/api/notifications/read-all', {
+    method: 'PATCH',
+  });
 }

@@ -12,6 +12,8 @@ from app.crud.like import get_like_count, get_users_who_liked, is_liked_by_user,
 from app.crud.post import create_post, delete_post, get_post, get_posts, get_feed_posts, update_post
 from app.models.db_enums import UserRole, ReactionType
 from app.models.user import User
+from app.realtime import socket_server
+from app.realtime.socket_server import emit_post_metrics_updated
 from app.schemas.like import LikeStatusResponse, PostLikersResponse
 from app.schemas.post import (
   PaginatedPostsResponse,
@@ -20,6 +22,7 @@ from app.schemas.post import (
   PostReadWithAuthor,
   PostUpdate,
 )
+from app.services.notification import create_social_notification
 
 router = APIRouter()
 
@@ -27,18 +30,43 @@ router = APIRouter()
 POST_MEDIA_DIR = Path('uploads') / 'posts'
 
 
+def _emit_post_metrics(
+  *,
+  post_id: int,
+  actor_id: int,
+  action: str,
+  like_count: int,
+  comment_count: int,
+  liked: bool | None = None,
+) -> None:
+  payload: dict[str, object] = {
+    'post_id': post_id,
+    'like_count': like_count,
+    'comment_count': comment_count,
+    'actor_id': actor_id,
+    'action': action,
+  }
+  if liked is not None:
+    payload['liked'] = liked
+
+  try:
+    socket_server.from_thread.run(emit_post_metrics_updated, post_id, payload)
+  except Exception:
+    socket_server.logger.exception('Failed to dispatch post metrics update', extra={'post_id': post_id})
+
+
 @router.post('/upload-media', status_code=status.HTTP_201_CREATED)
 def upload_post_media(
   files: list[UploadFile] = File(...),
   current_user: User = Depends(get_current_user)
 ):
-  """Tải lên nhiều ảnh cho bài viết (Tối đa 4 ảnh)"""
+  """Tải lên nhiều ảnh/video cho bài viết (Tối đa 4 file)"""
 
   # 1. Kiểm tra số lượng file (tối đa 4 file)
   if len(files) > 4:
     raise HTTPException(
       status_code=status.HTTP_400_BAD_REQUEST,
-      detail="Bạn chỉ được phép tải lên tối đa 4 ảnh cho mỗi bài viết."
+      detail="Bạn chỉ được phép tải lên tối đa 4 file (ảnh hoặc video) cho mỗi bài viết."
     )
 
   POST_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
@@ -46,12 +74,12 @@ def upload_post_media(
 
   # 2. Duyệt qua từng file do client gửi lên
   for file in files:
-    # 2.1. Kiểm tra định dạng (chỉ cho phép định dạng ảnh)
+    # 2.1. Kiểm tra định dạng (cho phép ảnh hoặc video)
     content_type = file.content_type or ''
-    if not content_type.startswith('image/'):
+    if not (content_type.startswith('image/') or content_type.startswith('video/')):
       raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
-        detail=f"File '{file.filename}' không phải là ảnh hợp lệ."
+        detail=f"File '{file.filename}' không phải là ảnh hoặc video hợp lệ."
       )
 
     # 2.2. Tạo tên file duy nhất
@@ -109,16 +137,16 @@ def list_posts(
 
 
 # ──────────────────────────────────────────────────────────────
-# GET /api/posts/feed — Bảng tin (Bài viết từ người đang theo dõi)
+# GET /api/posts/feed — Feed bài viết từ người đang theo dõi
 # ──────────────────────────────────────────────────────────────
 @router.get('/feed', response_model=PaginatedPostsResponse)
 def get_feed(
   page: int = Query(1, ge=1, description="Trang hiện tại"),
   page_size: int = Query(10, ge=1, le=50, description="Số bài mỗi trang"),
-  db: Session = Depends(get_db),
   current_user: User = Depends(get_current_user),
+  db: Session = Depends(get_db),
 ):
-  """Lấy bảng tin bài viết từ những người dùng đang theo dõi và của chính tác giả."""
+  """Lấy feed bài viết từ những người đang theo dõi và của chính tác giả."""
   result = get_feed_posts(
     db, 
     current_user_id=current_user.id,
@@ -203,7 +231,7 @@ def delete_post_endpoint(
 # ──────────────────────────────────────────────────────────────
 # POST /api/posts/{post_id}/like — Thích bài viết
 # ──────────────────────────────────────────────────────────────
-@router.post('/{post_id}/like', response_model=LikeStatusResponse)
+@router.post('/{post_id}/like', response_model=LikeStatusResponse, response_model_exclude_none=True)
 def like_post_endpoint(
   post_id: int,
   reaction_type: ReactionType = Query(ReactionType.LIKE, description="Loại cảm xúc (like, love, haha, wow, sad, angry)"),
@@ -215,15 +243,35 @@ def like_post_endpoint(
   if not post:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Post not found')
 
+  already_liked = is_liked_by_user(db, post_id, current_user.id)
   like_post(db, post_id, current_user.id, reaction_type)
+  if not already_liked and post.author_id != current_user.id:
+    create_social_notification(
+      db,
+      receiver_id=post.author_id,
+      actor_id=current_user.id,
+      type='like',
+      post_id=post.id,
+    )
+  post = get_post(db, post_id)
   count = get_like_count(db, post_id)
-  return LikeStatusResponse(post_id=post_id, liked=True, like_count=count, reaction_type=reaction_type)
+  comment_count = post.comment_count if post is not None else 0
+  _emit_post_metrics(
+    post_id=post_id,
+    actor_id=current_user.id,
+    action='post_liked',
+    like_count=count,
+    comment_count=comment_count,
+    liked=True,
+  )
+  response_reaction_type = reaction_type if reaction_type != ReactionType.LIKE else None
+  return LikeStatusResponse(post_id=post_id, liked=True, like_count=count, reaction_type=response_reaction_type)
 
 
 # ──────────────────────────────────────────────────────────────
 # DELETE /api/posts/{post_id}/like — Bỏ tương tác bài viết
 # ──────────────────────────────────────────────────────────────
-@router.delete('/{post_id}/like', response_model=LikeStatusResponse)
+@router.delete('/{post_id}/like', response_model=LikeStatusResponse, response_model_exclude_none=True)
 def unlike_post_endpoint(
   post_id: int,
   current_user: User = Depends(get_current_user),
@@ -235,7 +283,17 @@ def unlike_post_endpoint(
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Post not found')
 
   unlike_post(db, post_id, current_user.id)
+  post = get_post(db, post_id)
   count = get_like_count(db, post_id)
+  comment_count = post.comment_count if post is not None else 0
+  _emit_post_metrics(
+    post_id=post_id,
+    actor_id=current_user.id,
+    action='post_unliked',
+    like_count=count,
+    comment_count=comment_count,
+    liked=False,
+  )
   return LikeStatusResponse(post_id=post_id, liked=False, like_count=count)
 
 

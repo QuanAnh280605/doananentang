@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+
 import { ProtectedPage } from '@/components/app/ProtectedPage';
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/ui/ThemedText';
@@ -8,6 +10,8 @@ import { surfaceClass } from '@/components/ui/design-system';
 import { fetchCurrentUser, updateUserProfile, changePassword, uploadUserAvatar, type AuthUser, type GenderValue } from '@/lib/auth';
 import { resolveAvatarUrl } from '@/lib/api';
 import { compressToWebP } from '@/lib/image';
+import { ROUTES } from '@/lib/routes';
+import { clearAuthTokens } from '@/lib/session';
 
 /* ------------------------------------------------------------------ */
 /*  Reusable sub-components (matching App UI)                          */
@@ -208,6 +212,7 @@ function LivePreviewCard({
 /* ------------------------------------------------------------------ */
 
 export default function EditProfilePage() {
+  const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -325,6 +330,9 @@ export default function EditProfilePage() {
 
       if (newPassword) {
         await changePassword(currentPassword, newPassword);
+        await clearAuthTokens();
+        router.replace(`${ROUTES.login}?message=${encodeURIComponent('Đổi mật khẩu thành công. Vui lòng đăng nhập lại.')}`);
+        return;
       }
 
       setSuccessMsg('Cập nhật hồ sơ thành công');
