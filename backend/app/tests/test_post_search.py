@@ -8,10 +8,12 @@ from app.models.user import User
 from app.models.db_enums import VisibilityLevel
 from app.models.base import Base
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg://postgres:postgres@localhost:5433/doananentang")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 @pytest.fixture(scope="module")
 def db_engine():
+    if DATABASE_URL is None:
+        pytest.skip("DATABASE_URL is required for PostgreSQL full-text search tests")
     engine = create_engine(DATABASE_URL)
     yield engine
 
