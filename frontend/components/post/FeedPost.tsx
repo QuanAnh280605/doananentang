@@ -1,7 +1,7 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Link } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Platform, Image, Modal, Pressable, View, Alert, Share } from 'react-native';
+import { Platform, Image, Modal, Pressable, View, Alert, Share, DeviceEventEmitter } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -37,6 +37,14 @@ export function FeedPost({ item }: { item: Post }) {
     const [isViewerVisible, setIsViewerVisible] = useState(false);
     const [aspectRatio, setAspectRatio] = useState(1.5); // Mặc định 3:2
 
+    useEffect(() => {
+        setLiked(item.is_liked);
+    }, [item.is_liked]);
+
+    useEffect(() => {
+        setCount(item.like_count);
+    }, [item.like_count]);
+
     const authorName = `${item.author.first_name} ${item.author.last_name}`;
     const initials = getInitials(item.author);
     const timeAgo = formatTime(item.created_at);
@@ -67,10 +75,24 @@ export function FeedPost({ item }: { item: Post }) {
                 : await likePost(String(item.id));
             setLiked(result.liked);
             setCount(result.like_count);
+            DeviceEventEmitter.emit('postUpdated', {
+                postId: String(item.id),
+                is_liked: result.liked,
+                like_count: result.like_count,
+                comment_count: item.comment_count
+            });
         } catch {
             // Nếu lỗi (chưa đăng nhập...), toggle UI local thôi
-            setLiked(!liked);
-            setCount(liked ? count - 1 : count + 1);
+            const newLiked = !liked;
+            const newCount = liked ? count - 1 : count + 1;
+            setLiked(newLiked);
+            setCount(newCount);
+            DeviceEventEmitter.emit('postUpdated', {
+                postId: String(item.id),
+                is_liked: newLiked,
+                like_count: newCount,
+                comment_count: item.comment_count
+            });
         } finally {
             setLoading(false);
         }
@@ -100,7 +122,8 @@ export function FeedPost({ item }: { item: Post }) {
                 try {
                     await deletePost(String(item.id));
                     setIsDeleted(true);
-                } catch (err) {
+                    DeviceEventEmitter.emit('postDeleted', { postId: String(item.id) });
+                } catch {
                     window.alert("Lỗi: Không thể xóa bài viết.");
                 }
             }
@@ -114,7 +137,8 @@ export function FeedPost({ item }: { item: Post }) {
                         try {
                             await deletePost(String(item.id));
                             setIsDeleted(true);
-                        } catch (err) {
+                            DeviceEventEmitter.emit('postDeleted', { postId: String(item.id) });
+                        } catch {
                             Alert.alert("Lỗi", "Không thể xóa bài viết.");
                         }
                     }
@@ -256,7 +280,6 @@ export function FeedPost({ item }: { item: Post }) {
                         <Image
                             source={{ uri: firstMediaUrl }}
                             className="w-full h-full"
-                            pointerEvents="none"
                             resizeMode="contain"
                         />
                     )}
