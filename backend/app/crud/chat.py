@@ -7,8 +7,9 @@ from sqlalchemy.orm import Session, aliased
 from app.models.group import Chat
 from app.models.group_member import ChatMember
 from app.models.message import Message
+from app.models.message_media import MessageMedia
 from app.models.message_read import MessageStatus
-from app.models.db_enums import MessageStatusType
+from app.models.db_enums import MediaType, MessageStatusType
 from app.models.user import User
 
 
@@ -136,9 +137,40 @@ def list_chat_messages(db: Session, chat_id: int, skip: int = 0, limit: int = 30
   return list(db.scalars(statement).all())
 
 
-def create_chat_message(db: Session, chat_id: int, sender_id: int, content: str) -> Message:
-  message = Message(chat_id=chat_id, sender_id=sender_id, content=normalize_message_content(content))
+def create_chat_message(
+  db: Session,
+  chat_id: int,
+  sender_id: int,
+  content: str | None = None,
+  media_url: str | None = None,
+  media_type: str | None = None,
+) -> Message:
+  """Tạo tin nhắn mới, hỗ trợ cả text và media."""
+  # Kiểm tra phải có ít nhất content hoặc media_url
+  if not content and not media_url:
+    raise ValueError('Tin nhắn phải có nội dung hoặc đính kèm ảnh/video.')
+  
+  normalized_content = normalize_message_content(content) if content else None
+  message = Message(chat_id=chat_id, sender_id=sender_id, content=normalized_content)
   db.add(message)
+  db.flush()  # flush để lấy message.id
+  
+  # Nếu có media_url thì lưu MessageMedia
+  if media_url:
+    # Xác định MediaType từ media_type string hoặc đuôi file
+    resolved_media_type = MediaType.IMAGE
+    if media_type and media_type.startswith('video/'):
+      resolved_media_type = MediaType.VIDEO
+    elif media_url.lower().endswith(('.mp4', '.webm', '.mov', '.avi', '.mkv')):
+      resolved_media_type = MediaType.VIDEO
+    
+    message_media = MessageMedia(
+      message_id=message.id,
+      file_url=media_url,
+      type=resolved_media_type,
+    )
+    db.add(message_media)
+  
   db.commit()
   db.refresh(message)
   return message

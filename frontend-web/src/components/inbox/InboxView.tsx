@@ -17,7 +17,7 @@ import { useRealtimePresence } from '@/components/providers/RealtimeProvider';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { ThemedText } from '@/components/ui/ThemedText';
 import { surfaceClass } from '@/components/ui/design-system';
-import { resolveAvatarUrl } from '@/lib/api';
+import { resolveAvatarUrl, uploadChatMedia } from '@/lib/api';
 import { fetchCurrentUser, searchFollowingUsers, type AuthUser, type SearchUser } from '@/lib/auth';
 import {
   appendMessageById,
@@ -34,6 +34,7 @@ import {
   prependMessagesById,
   runOptimisticMessageSend,
   sendMessage,
+  sendMessageWithMedia,
   hasUnreadMessages,
 } from '@/lib/chat';
 import type { ChatMessage, ChatMessageResponse, DirectChat, InboxThreadData } from '@/lib/chat.types';
@@ -118,6 +119,13 @@ export function InboxView() {
   const [messageError, setMessageError] = useState<string | null>(null);
   const [draftMessage, setDraftMessage] = useState('');
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+
+  // Media upload state
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const searchTimeoutRef = useRef<number | null>(null);
   const latestSearchRequestRef = useRef(0);
   const latestThreadsRequestRef = useRef(0);
@@ -534,46 +542,82 @@ export function InboxView() {
       return;
     }
 
-    let normalizedContent: string;
+    const hasText = draftMessage.trim().length > 0;
+    const hasMedia = Boolean(mediaFile);
 
-    try {
-      normalizedContent = normalizeMessageContent(draftMessage);
-    } catch (error: unknown) {
-      setMessageError(error instanceof Error ? error.message : 'Không thể gửi tin nhắn lúc này.');
-      return;
-    }
+    if (!hasText && !hasMedia) return;
 
-    const optimisticMessage = buildOptimisticMessage(selectedChat.id, normalizedContent);
-
-    setDraftMessage('');
-    if (composerTextareaRef.current) {
-      composerTextareaRef.current.style.height = '40px';
-    }
     setIsSendingMessage(true);
     setMessageError(null);
 
     try {
-      const workflowResult = await runOptimisticMessageSend({
-        chatId: selectedChat.id,
-        content: normalizedContent,
-        currentMessages: messages,
-        optimisticMessage,
-        send: sendMessageGuardRef.current,
-        reloadMessages: listMessages,
-        onOptimisticApplied: setMessages,
-        onServerApplied: setMessages,
-      });
+      if (hasMedia && mediaFile) {
+        // Upload media first
+        setIsUploadingMedia(true);
+        const { url: mediaUrl, media_type: mediaType } = await uploadChatMedia(mediaFile);
+        setIsUploadingMedia(false);
 
-      setMessages(workflowResult.finalMessages);
-      setMessagesPage(1);
-      setThreads((currentThreads) => applyMessagePreviewToThreads(currentThreads, workflowResult.serverMessage, {
-        currentUserId: currentUser?.id ?? null,
-        selectedChatId: selectedChat.id,
-      }));
-      await refreshThreads();
+        // Send message with media
+        const serverMessage = await sendMessageWithMedia(
+          selectedChat.id,
+          mediaUrl,
+          mediaType,
+          hasText ? draftMessage : undefined,
+        );
+
+        setMessages((currentMessages) => appendMessageById(currentMessages, serverMessage));
+        setThreads((currentThreads) => applyMessagePreviewToThreads(currentThreads, serverMessage, {
+          currentUserId: currentUser?.id ?? null,
+          selectedChatId: selectedChat.id,
+        }));
+
+        // Reset
+        setDraftMessage('');
+        setMediaPreview(null);
+        setMediaFile(null);
+        if (composerTextareaRef.current) {
+          composerTextareaRef.current.style.height = '40px';
+        }
+        shouldScrollToLatestRef.current = true;
+        await refreshThreads();
+      } else {
+        // Text-only message
+        let normalizedContent: string;
+        try {
+          normalizedContent = normalizeMessageContent(draftMessage);
+        } catch (error: unknown) {
+          setMessageError(error instanceof Error ? error.message : 'Không thể gửi tin nhắn lúc này.');
+          return;
+        }
+
+        const optimisticMessage = buildOptimisticMessage(selectedChat.id, normalizedContent);
+
+        setDraftMessage('');
+        if (composerTextareaRef.current) {
+          composerTextareaRef.current.style.height = '40px';
+        }
+
+        const workflowResult = await runOptimisticMessageSend({
+          chatId: selectedChat.id,
+          content: normalizedContent,
+          currentMessages: messages,
+          optimisticMessage,
+          send: sendMessageGuardRef.current,
+          reloadMessages: listMessages,
+          onOptimisticApplied: setMessages,
+          onServerApplied: setMessages,
+        });
+
+        setMessages(workflowResult.finalMessages);
+        setMessagesPage(1);
+        setThreads((currentThreads) => applyMessagePreviewToThreads(currentThreads, workflowResult.serverMessage, {
+          currentUserId: currentUser?.id ?? null,
+          selectedChatId: selectedChat.id,
+        }));
+        await refreshThreads();
+      }
     } catch (error: unknown) {
-      setMessages((currentMessages) => currentMessages.filter((message) => message.id !== optimisticMessage.id));
-      setDraftMessage(normalizedContent);
+      setIsUploadingMedia(false);
       setMessageError(error instanceof Error ? error.message : 'Không thể gửi tin nhắn lúc này.');
     } finally {
       setIsSendingMessage(false);
@@ -714,23 +758,101 @@ export function InboxView() {
                 )}
               </div>
               <div className="mt-3 shrink-0 rounded-[24px] border border-slate-200 bg-white px-3 py-2 shadow-[0_12px_28px_-22px_rgba(15,23,42,0.45)] transition-colors focus-within:border-slate-300">
-                <div className="flex items-end gap-2">
-                  <div className="flex shrink-0 items-center gap-1 pb-0.5 text-[#475569]">
-                    <button className="h-10 w-10 rounded-full bg-slate-50 text-base transition active:scale-[0.98]" type="button">+</button>
-                    <button className="h-10 w-10 rounded-full bg-slate-50 text-base transition active:scale-[0.98]" type="button">◎</button>
-                    <button className="h-10 w-10 rounded-full bg-slate-50 text-base transition active:scale-[0.98]" type="button">◉</button>
+                {/* Media preview strip */}
+                {mediaPreview && (
+                  <div className="relative mb-2 inline-block">
+                    {mediaFile?.type.startsWith('video/') ? (
+                      <video
+                        src={mediaPreview}
+                        className="h-24 w-36 rounded-[16px] object-cover bg-black"
+                      />
+                    ) : (
+                      <img
+                        src={mediaPreview}
+                        className="h-24 w-24 rounded-[16px] object-cover"
+                        alt="Preview"
+                      />
+                    )}
+                    <button
+                      onClick={() => { setMediaPreview(null); setMediaFile(null); }}
+                      className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-white text-xs hover:bg-red-600 transition-colors"
+                      type="button"
+                    >
+                      ✕
+                    </button>
                   </div>
-                  <textarea className="no-focus-ring min-h-10 max-h-24 w-full resize-none overflow-y-auto rounded-[18px] bg-slate-50 px-4 py-2 text-[15px] leading-6 text-slate-900 outline-none placeholder:text-slate-400 focus:outline-none focus:shadow-none focus:ring-0 [box-shadow:none!important] [outline:none!important]" disabled={!selectedConversation} onChange={(event) => {
-                    const textarea = event.currentTarget;
-                    textarea.style.height = '40px';
-                    textarea.style.height = `${Math.min(textarea.scrollHeight, 96)}px`;
-                    setDraftMessage(event.target.value);
-                    if (messageError) {
-                      setMessageError(null);
-                    }
-                  }} placeholder={selectedConversation ? 'Write a reply...' : 'Select a conversation to reply'} ref={composerTextareaRef} rows={1} value={draftMessage} />
-                  <button className={`h-10 shrink-0 rounded-full px-5 text-sm font-semibold text-white transition active:scale-[0.98] ${normalizedDraftMessage.length === 0 || isSendingMessage || !selectedChat ? 'cursor-not-allowed bg-slate-300' : 'bg-slate-900'}`} disabled={normalizedDraftMessage.length === 0 || isSendingMessage || !selectedChat} onClick={handleSendMessage} type="button">
-                    {isSendingMessage ? 'Sending...' : 'Send'}
+                )}
+
+                <div className="flex items-end gap-2">
+                  {/* Hidden file input - accept both image and video */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,video/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setMediaFile(file);
+                        setMediaPreview(URL.createObjectURL(file));
+                      }
+                      e.target.value = '';
+                    }}
+                  />
+
+                  {/* Single media upload button */}
+                  <button
+                    type="button"
+                    title="Gửi ảnh / video"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={!selectedConversation}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-50 text-slate-500 hover:bg-[#EAF4FB] hover:text-[#4A9FD8] transition-all active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" fill="currentColor">
+                      <path d="M216,40H40A16,16,0,0,0,24,56V200a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40Zm0,16V158.75l-26.07-26.06a16,16,0,0,0-22.63,0l-20,20-44-44a16,16,0,0,0-22.62,0L40,149.37V56ZM40,200V172l52-52,44,44,28-28,52,52.07V200Z"/>
+                    </svg>
+                  </button>
+
+                  <textarea
+                    className="no-focus-ring min-h-10 max-h-24 w-full resize-none overflow-y-auto rounded-[18px] bg-slate-50 px-4 py-2 text-[15px] leading-6 text-slate-900 outline-none placeholder:text-slate-400 focus:outline-none focus:shadow-none focus:ring-0 [box-shadow:none!important] [outline:none!important]"
+                    disabled={!selectedConversation}
+                    onChange={(event) => {
+                      const textarea = event.currentTarget;
+                      textarea.style.height = '40px';
+                      textarea.style.height = `${Math.min(textarea.scrollHeight, 96)}px`;
+                      setDraftMessage(event.target.value);
+                      if (messageError) {
+                        setMessageError(null);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey && (draftMessage.trim() || mediaFile)) {
+                        e.preventDefault();
+                        void handleSendMessage();
+                      }
+                    }}
+                    placeholder={selectedConversation ? 'Nhắn tin...' : 'Chọn một cuộc trò chuyện để nhắn tin'}
+                    ref={composerTextareaRef}
+                    rows={1}
+                    value={draftMessage}
+                  />
+                  <button
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white transition-all active:scale-[0.95] ${
+                      (normalizedDraftMessage.length === 0 && !mediaFile) || isSendingMessage || !selectedChat
+                        ? 'cursor-not-allowed bg-slate-300'
+                        : 'bg-slate-900 hover:bg-[#4A9FD8]'
+                    }`}
+                    disabled={(normalizedDraftMessage.length === 0 && !mediaFile) || isSendingMessage || !selectedChat}
+                    onClick={handleSendMessage}
+                    type="button"
+                  >
+                    {isSendingMessage || isUploadingMedia ? (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 256 256" fill="currentColor">
+                        <path d="M231.87,114l-168-95.89A16,16,0,0,0,40.92,37l19.58,78.31A4,4,0,0,0,64.4,118H136a8,8,0,0,1,0,16H64.4a4,4,0,0,0-3.9,2.69L41,215.06A16,16,0,0,0,56.07,236a16.14,16.14,0,0,0,7.86-2.06l168-95.89A16,16,0,0,0,231.87,114Z"/>
+                      </svg>
+                    )}
                   </button>
                 </div>
                 {messageError ? <ThemedText as="p" className="mt-3 text-sm text-rose-700">{messageError}</ThemedText> : null}

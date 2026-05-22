@@ -2,7 +2,7 @@ from datetime import datetime
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, Text, func, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, Text, JSON, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -34,6 +34,8 @@ class Post(Base):
     default=VisibilityLevel.PUBLIC,
     server_default='public',
   )
+  feeling: Mapped[str | None] = mapped_column(Text(), nullable=True)
+  tagged_users: Mapped[list | None] = mapped_column(JSON, nullable=True)
   reported_count: Mapped[int] = mapped_column(Integer(), nullable=False, default=0, server_default=text('0'))
   is_deleted: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False, server_default=text('false'))
   created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())

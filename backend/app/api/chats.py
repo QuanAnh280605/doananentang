@@ -1,7 +1,10 @@
 import logging
+import shutil
+import uuid
+from pathlib import Path
 
 from anyio import from_thread
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -20,6 +23,7 @@ from app.crud.chat import (
   mark_chat_messages_read,
 )
 from app.crud.user import get_user_by_id
+from app.models.message_media import MessageMedia
 from app.models.user import User
 from app.realtime import socket_server
 from app.schemas.chat import (
@@ -38,6 +42,28 @@ from app.services.notification import create_social_notification
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+CHAT_MEDIA_DIR = Path('uploads') / 'chats'
+
+
+def _get_message_media(db: Session, message_id: int) -> MessageMedia | None:
+  """Lấy media đầu tiên của tin nhắn (nếu có)."""
+  from sqlalchemy import select
+  return db.scalar(select(MessageMedia).where(MessageMedia.message_id == message_id))
+
+
+def _build_message_read(db: Session, message) -> MessageRead:
+  """Xây dựng MessageRead kèm media_url và media_type."""
+  media = _get_message_media(db, message.id)
+  return MessageRead(
+    id=message.id,
+    chat_id=message.chat_id,
+    sender_id=message.sender_id,
+    content=message.content,
+    media_url=media.file_url if media else None,
+    media_type=media.type.value if media else None,
+    created_at=message.created_at,
+  )
 
 
 async def _emit_message_created_to_user_rooms(payload: dict[str, object], user_ids: list[int]) -> None:
@@ -60,7 +86,7 @@ def list_chats_endpoint(
     ChatListItemRead(
       chat_id=thread.chat.id,
       participant=UserSearchRead.model_validate(thread.participant),
-      latest_message=MessageRead.model_validate(thread.latest_message) if thread.latest_message is not None else None,
+      latest_message=_build_message_read(db, thread.latest_message) if thread.latest_message is not None else None,
       updated_at=thread.updated_at,
       unread_count=thread.unread_count,
     )
@@ -91,6 +117,41 @@ def create_direct_chat_endpoint(
 
   chat = get_or_create_direct_chat(db, current_user.id, payload.target_user_id)
   return DirectChatRead(chat_id=chat.id, participant_user_id=payload.target_user_id, created_at=chat.created_at)
+
+
+@router.post('/upload-media', status_code=status.HTTP_201_CREATED)
+def upload_chat_media(
+  file: UploadFile = File(...),
+  current_user: User = Depends(get_current_user),
+):
+  """Tải lên ảnh hoặc video cho tin nhắn chat."""
+  content_type = file.content_type or ''
+  if not (content_type.startswith('image/') or content_type.startswith('video/')):
+    raise HTTPException(
+      status_code=status.HTTP_400_BAD_REQUEST,
+      detail=f"File '{file.filename}' không phải là ảnh hoặc video hợp lệ."
+    )
+
+  CHAT_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+  file_ext = file.filename.split('.')[-1] if file.filename else 'jpg'
+  unique_filename = f"{uuid.uuid4().hex}.{file_ext}"
+  file_path = CHAT_MEDIA_DIR / unique_filename
+
+  try:
+    with file_path.open('wb') as buffer:
+      shutil.copyfileobj(file.file, buffer)
+  except IOError as e:
+    raise HTTPException(
+      status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+      detail=f"Lỗi lưu file: {str(e)}"
+    )
+  finally:
+    file.file.close()
+
+  return {
+    'url': f'/static/chats/{unique_filename}',
+    'media_type': content_type,
+  }
 
 
 @router.post('/{chat_id}/read', response_model=ChatReadStatusRead)
@@ -128,7 +189,8 @@ def list_chat_messages_endpoint(
   total = count_chat_messages(db, chat_id)
   total_pages = (total + page_size - 1) // page_size if total > 0 else 0
   skip = (page - 1) * page_size
-  items = [MessageRead.model_validate(message) for message in list_chat_messages(db, chat_id, skip=skip, limit=page_size)]
+  messages = list_chat_messages(db, chat_id, skip=skip, limit=page_size)
+  items = [_build_message_read(db, message) for message in messages]
 
   return PaginatedMessagesResponse(
     items=items,
@@ -154,11 +216,17 @@ def create_chat_message_endpoint(
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not a member of this chat')
 
   try:
-    message = create_chat_message(db, chat_id, current_user.id, payload.content)
+    message = create_chat_message(
+      db,
+      chat_id,
+      current_user.id,
+      content=payload.content,
+      media_url=payload.media_url,
+    )
   except ValueError as error:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
 
-  response = MessageRead.model_validate(message)
+  response = _build_message_read(db, message)
 
   member_ids = get_chat_member_user_ids(db, chat_id)
   for member_id in member_ids:
