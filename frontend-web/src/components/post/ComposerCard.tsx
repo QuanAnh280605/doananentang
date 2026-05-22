@@ -1,6 +1,6 @@
 'use client';
 
-import { GlobeHemisphereWest, ImageSquare, Smiley, UserPlus, VideoCamera, X, DotsThree } from '@phosphor-icons/react';
+import { GlobeHemisphereWest, ImageSquare, Smiley, UserPlus, X, DotsThree } from '@phosphor-icons/react';
 import { useState, useRef, useEffect } from 'react';
 import { createPost, uploadPostMedia, API_URL } from '@/lib/api';
 import { searchUsers } from '@/lib/auth';
@@ -58,7 +58,6 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
     // Tag friend search debounce logic
     useEffect(() => {
         if (!tagSearchQuery.trim()) {
-            setTagSearchResults([]);
             return;
         }
         const delayDebounce = setTimeout(async () => {
@@ -409,7 +408,7 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
                                             {tagSearchResults.length === 0 && tagSearchQuery.trim() !== '' && !searchingTags && (
                                                 <div className="text-xs text-slate-400 text-center py-2 font-medium">Không tìm thấy kết quả nào</div>
                                             )}
-                                            {tagSearchResults.map((user) => {
+                                            {(tagSearchQuery.trim() ? tagSearchResults : []).map((user) => {
                                                 const isTagged = taggedUsers.some(u => u.id === user.id);
                                                 const userInitials = `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase();
                                                 return (

@@ -12,6 +12,14 @@ export type PostMedia = {
   display_order: number;
 };
 
+export type TaggedUser = {
+  id: number;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  avatar_url: string | null;
+};
+
 export type Post = {
   id: string;
   author_id: string;
@@ -29,7 +37,7 @@ export type Post = {
   reaction_counts?: Record<string, number>;
   user_reaction?: string | null;
   feeling?: string | null;
-  tagged_users?: Array<{ id: number; first_name: string; last_name: string; full_name: string; avatar_url: string | null }> | null;
+  tagged_users?: TaggedUser[] | null;
 };
 
 export type PaginatedPosts = {

@@ -151,7 +151,7 @@ export function FeedPost({
                             {item.tagged_users && item.tagged_users.length > 0 && (
                                 <span className="font-normal text-slate-500 text-sm">
                                     {' '}cùng với{' '}
-                                    {item.tagged_users.map((u: any, idx: number) => (
+                                    {item.tagged_users.map((u, idx) => (
                                         <span key={u.id} className="font-bold text-slate-800">
                                             {u.first_name} {u.last_name}
                                             {idx < (item.tagged_users?.length ?? 0) - 1 ? ', ' : ''}

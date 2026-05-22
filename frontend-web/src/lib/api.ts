@@ -17,7 +17,7 @@ import {
   setAuthTokens,
 } from '@/lib/session';
 
-import type { Comment, LikeStatus, PaginatedPosts, Post, PostLiker, Story, StoryCreatePayload, StoryViewStatus } from './types';
+import type { Comment, LikeStatus, PaginatedPosts, Post, PostLiker, Story, StoryCreatePayload, StoryViewStatus, TaggedUser } from './types';
 
 const FALLBACK_PORT = '8000';
 const LOCALHOST_API_URL = `http://localhost:${FALLBACK_PORT}`;
@@ -305,7 +305,7 @@ export function createPost(
   content: string, 
   mediaUrls: string[] = [], 
   feeling: string | null = null, 
-  taggedUsers: any[] | null = null
+  taggedUsers: TaggedUser[] | null = null
 ): Promise<Post> {
   return apiFetch<Post>('/api/posts', {
     method: 'POST',
