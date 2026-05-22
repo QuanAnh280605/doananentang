@@ -12,19 +12,26 @@ import type { AuthUser } from '@/lib/auth';
 
 export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: () => void; currentUser?: AuthUser | null }) {
     const [text, setText] = useState('');
-    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [selectedImages, setSelectedImages] = useState<string[]>([]);
     const [isFocused, setIsFocused] = useState(false);
     const [isPosting, setIsPosting] = useState(false);
 
     const handlePickPhoto = async () => {
+        if (selectedImages.length >= 4) {
+            alert("Bạn chỉ được chọn tối đa 4 ảnh.");
+            return;
+        }
+
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
+            allowsMultipleSelection: true,
+            selectionLimit: 4 - selectedImages.length,
             quality: 0.8,
         });
 
         if (!result.canceled) {
-            setSelectedImage(result.assets[0].uri);
+            const newUris = result.assets.map((a: any) => a.uri);
+            setSelectedImages(prev => [...prev, ...newUris].slice(0, 4));
         }
     };
 
@@ -33,8 +40,8 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
         setIsPosting(true);
         try {
             let mediaUrls: string[] = [];
-            if (selectedImage) {
-                const uploadRes = await uploadPostMedia(selectedImage);
+            if (selectedImages.length > 0) {
+                const uploadRes = await uploadPostMedia(selectedImages);
                 mediaUrls = uploadRes.data;
             }
 
@@ -42,7 +49,7 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
             
             // Reset composer
             setText('');
-            setSelectedImage(null);
+            setSelectedImages([]);
             setIsFocused(false);
             
             // Thông báo cho parent cập nhật feed
@@ -55,7 +62,7 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
         }
     };
 
-    const canPost = text.trim().length > 0 || selectedImage;
+    const canPost = text.trim().length > 0 || selectedImages.length > 0;
 
     const initials = currentUser 
       ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase()
@@ -83,19 +90,23 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
             </View>
 
             {/* Preview ảnh đã chọn */}
-            {selectedImage && (
-                <View className="mt-4 overflow-hidden rounded-[24px]">
-                    <Image
-                        source={{ uri: selectedImage }}
-                        className="h-[300px] w-full rounded-[24px]"
-                        resizeMode="cover"
-                    />
-                    <Pressable
-                        onPress={() => setSelectedImage(null)}
-                        className="absolute right-3 top-3 h-8 w-8 items-center justify-center rounded-full bg-black/50"
-                    >
-                        <MaterialIcons color="#FFFFFF" name="close" size={18} />
-                    </Pressable>
+            {selectedImages.length > 0 && (
+                <View className="mt-4 flex-row flex-wrap gap-2">
+                    {selectedImages.map((uri, index) => (
+                        <View key={index} className={`relative overflow-hidden rounded-[16px] ${selectedImages.length === 1 ? 'w-full h-[300px]' : 'w-[48%] aspect-square'}`}>
+                            <Image
+                                source={{ uri }}
+                                className="h-full w-full"
+                                resizeMode="cover"
+                            />
+                            <Pressable
+                                onPress={() => setSelectedImages(prev => prev.filter((_, i) => i !== index))}
+                                className="absolute right-3 top-3 h-8 w-8 items-center justify-center rounded-full bg-black/50"
+                            >
+                                <MaterialIcons color="#FFFFFF" name="close" size={18} />
+                            </Pressable>
+                        </View>
+                    ))}
                 </View>
             )}
 

@@ -1,11 +1,11 @@
 import math
 from typing import Literal
 
-from sqlalchemy import func, and_
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.comment import Comment
-from app.models.db_enums import MediaType
+from app.models.db_enums import MediaType, VisibilityLevel
 from app.models.follow import Follow
 from app.models.like import Like
 from app.models.post import Post
@@ -32,7 +32,7 @@ def create_post(db: Session, post_in: PostCreate, author_id: int) -> Post:
       media_type = MediaType.IMAGE
       if any(url_lower.endswith(ext) for ext in ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.3gp']):
         media_type = MediaType.VIDEO
-        
+
       db_media = PostMedia(
         post_id=db_post.id,
         file_url=url,
@@ -62,9 +62,16 @@ def get_post(db: Session, post_id: int, current_user_id: int | None = None) -> P
     
     # Kiểm tra user hiện tại đã like chưa
     if current_user_id:
-      post.is_liked = db.query(Like).filter(Like.post_id == post.id, Like.user_id == current_user_id).first() is not None
+      user_like = db.query(Like).filter(Like.post_id == post.id, Like.user_id == current_user_id).first()
+      if user_like:
+        post.is_liked = True
+        post.user_reaction = user_like.reaction_type
+      else:
+        post.is_liked = False
+        post.user_reaction = None
     else:
       post.is_liked = False
+      post.user_reaction = None
       
   return post
 
@@ -88,7 +95,7 @@ def get_posts(
     query = query.filter(Post.author_id == author_id)
   
   rank_expr = None
-  
+
   if q is not None and q.strip():
     search_query = q.strip()
     ts_vector = func.to_tsvector('simple', func.coalesce(Post.content, ''))
@@ -124,9 +131,16 @@ def get_posts(
     post.comment_count = db.query(func.count(Comment.id)).filter(Comment.post_id == post.id, Comment.is_deleted == False).scalar() or 0
     
     if current_user_id:
-      post.is_liked = db.query(Like).filter(Like.post_id == post.id, Like.user_id == current_user_id).first() is not None
+      user_like = db.query(Like).filter(Like.post_id == post.id, Like.user_id == current_user_id).first()
+      if user_like:
+        post.is_liked = True
+        post.user_reaction = user_like.reaction_type
+      else:
+        post.is_liked = False
+        post.user_reaction = None
     else:
       post.is_liked = False
+      post.user_reaction = None
 
   return {
     'items': items,
@@ -144,9 +158,6 @@ def get_feed_posts(
   page_size: int = 10,
 ) -> dict:
   """Lấy danh sách bài viết từ người đang theo dõi (feed) có phân trang và kiểm tra quyền nhìn thấy."""
-  
-  from sqlalchemy import or_
-  from app.models.db_enums import VisibilityLevel
 
   # Subquery lấy danh sách ID người đang theo dõi
   following_ids = db.query(Follow.following_id).filter(Follow.follower_id == current_user_id)
@@ -184,7 +195,7 @@ def get_feed_posts(
   # Sắp xếp mới nhất
   order = Post.created_at.desc()
 
-  items = (
+  posts = (
     query
     .options(joinedload(Post.media), joinedload(Post.author))
     .order_by(order)
@@ -193,14 +204,49 @@ def get_feed_posts(
     .all()
   )
 
-  # Tính stats cho feed
-  for post in items:
-    post.like_count = db.query(func.count(Like.user_id)).filter(Like.post_id == post.id).scalar() or 0
-    post.comment_count = db.query(func.count(Comment.id)).filter(Comment.post_id == post.id, Comment.is_deleted == False).scalar() or 0
-    post.is_liked = db.query(Like).filter(Like.post_id == post.id, Like.user_id == current_user_id).first() is not None
+  if not posts:
+    return {
+      'items': [],
+      'total': total,
+      'page': page,
+      'page_size': page_size,
+      'total_pages': total_pages,
+    }
+
+  post_ids = [p.id for p in posts]
+
+  # 5. Batch: đếm likes cho toàn bộ bài viết trong trang (1 query)
+  like_counts = dict(
+    db.query(Like.post_id, func.count(Like.user_id))
+    .filter(Like.post_id.in_(post_ids))
+    .group_by(Like.post_id)
+    .all()
+  )
+
+  # 6. Batch: đếm comments cho toàn bộ bài viết trong trang (1 query)
+  comment_counts = dict(
+    db.query(Comment.post_id, func.count(Comment.id))
+    .filter(Comment.post_id.in_(post_ids), Comment.is_deleted == False)
+    .group_by(Comment.post_id)
+    .all()
+  )
+
+  # 7. Batch: lấy tập post_id mà current_user đã like (1 query)
+  liked_posts = {
+    row.post_id: row.reaction_type for row in db.query(Like.post_id, Like.reaction_type)
+    .filter(Like.post_id.in_(post_ids), Like.user_id == current_user_id)
+    .all()
+  }
+
+  # 8. Gán stats vào từng bài
+  for post in posts:
+    post.like_count = like_counts.get(post.id, 0)
+    post.comment_count = comment_counts.get(post.id, 0)
+    post.is_liked = post.id in liked_posts
+    post.user_reaction = liked_posts.get(post.id)
 
   return {
-    'items': items,
+    'items': posts,
     'total': total,
     'page': page,
     'page_size': page_size,

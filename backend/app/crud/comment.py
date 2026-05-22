@@ -61,10 +61,15 @@ def get_comments_by_post(db: Session, post_id: int, current_user_id: int | None 
     c.like_count = get_comment_like_count(db, c.id)
     c.is_liked = is_comment_liked_by_user(db, c.id, current_user_id) if current_user_id else False
     
-    # Tính stats cho các reply
+    # Tính stats cho các reply và lọc bỏ comment đã xóa
+    active_replies = []
     for r in c.replies:
+      if r.is_deleted:
+        continue
       r.like_count = get_comment_like_count(db, r.id)
       r.is_liked = is_comment_liked_by_user(db, r.id, current_user_id) if current_user_id else False
+      active_replies.append(r)
+    c.replies = active_replies
     
   return comments
 
