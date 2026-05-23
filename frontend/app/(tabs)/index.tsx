@@ -361,12 +361,12 @@ export default function HomeScreen() {
         prev.map((p) =>
           String(p.id) === String(data.postId)
             ? {
-                ...p,
-                is_liked: data.is_liked,
-                like_count: data.like_count,
-                comment_count: data.comment_count,
-                user_reaction: data.reaction_type ?? p.user_reaction,
-              }
+              ...p,
+              is_liked: data.is_liked,
+              like_count: data.like_count,
+              comment_count: data.comment_count,
+              user_reaction: data.reaction_type ?? p.user_reaction,
+            }
             : p
         )
       );

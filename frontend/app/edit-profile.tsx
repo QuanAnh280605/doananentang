@@ -19,6 +19,7 @@ import { ThemedView } from '@/components/themed-view';
 import { fetchCurrentUser, fetchFollowStatus, updateUserProfile, uploadUserAvatar, changePassword } from '@/lib/auth';
 import type { GenderValue } from '@/lib/auth';
 import { fetchPosts, API_URL } from '@/lib/api';
+import type { VisibilityLevel } from '@/lib/types';
 
 const surfaceClass = 'rounded-surface border border-app-border bg-app-surface';
 
@@ -163,6 +164,50 @@ function PasswordStrengthBar({ strength }: { strength: number }) {
   );
 }
 
+function PrivacySelector({
+  value,
+  onChange
+}: {
+  value: VisibilityLevel;
+  onChange: (val: VisibilityLevel) => void
+}) {
+  const options: { label: string; value: VisibilityLevel; icon: keyof typeof MaterialIcons.glyphMap }[] = [
+    { label: 'Công khai', value: 'public', icon: 'public' },
+    { label: 'Người theo dõi', value: 'followersonly', icon: 'group' },
+    { label: 'Chỉ mình tôi', value: 'onlyme', icon: 'lock' },
+  ];
+
+  return (
+    <View className="mt-2 flex-row flex-wrap gap-2">
+      {options.map((opt) => {
+        const isSelected = value === opt.value;
+        return (
+          <Pressable
+            key={opt.value}
+            onPress={() => onChange(opt.value)}
+            className={`flex-row items-center gap-1.5 rounded-full border px-3 py-1.5 ${
+              isSelected ? 'border-[#4A9FD8] bg-[#EAF4FB]' : 'border-slate-200 bg-white'
+            }`}
+          >
+            <MaterialIcons
+              name={opt.icon}
+              size={14}
+              color={isSelected ? '#0284C7' : '#64748B'}
+            />
+            <ThemedText
+              className={`text-xs font-medium ${
+                isSelected ? 'text-[#0284C7]' : 'text-slate-600'
+              }`}
+            >
+              {opt.label}
+            </ThemedText>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 // ─── Success / error banner ───────────────────────────────────────────────────
 
 function InlineBanner({
@@ -265,8 +310,8 @@ function LivePreviewCard({
         <View className="mt-4 flex-row gap-6 px-1">
           <View>
             <ThemedText className="text-lg font-semibold text-slate-950">
-              {typeof followerCount === 'number' && followerCount >= 1000 
-                ? (followerCount / 1000).toFixed(1) + 'k' 
+              {typeof followerCount === 'number' && followerCount >= 1000
+                ? (followerCount / 1000).toFixed(1) + 'k'
                 : followerCount}
             </ThemedText>
             <ThemedText className="text-xs text-slate-500">Người theo dõi</ThemedText>
@@ -318,6 +363,10 @@ export default function EditProfileScreen() {
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [hasNewAvatar, setHasNewAvatar] = useState(false);
 
+  // Privacy fields
+  const [contactPrivacy, setContactPrivacy] = useState<VisibilityLevel>('public');
+  const [emailPrivacy, setEmailPrivacy] = useState<VisibilityLevel>('public');
+  const [locationPrivacy, setLocationPrivacy] = useState<VisibilityLevel>('public');
   // Profile inline errors
   const [profileErrors, setProfileErrors] = useState<ProfileErrors>({});
 
@@ -343,7 +392,7 @@ export default function EditProfileScreen() {
     fetchCurrentUser()
       .then((user) => {
         if (!user || !mounted) return;
-        
+
         setFirstName(user.first_name || '');
         setLastName(user.last_name || '');
         setBio(user.bio || '');
@@ -354,17 +403,20 @@ export default function EditProfileScreen() {
         if (user.avatar_url) {
           setAvatarUri(user.avatar_url.startsWith('http') ? user.avatar_url : `${API_URL}${user.avatar_url}`);
         }
+        setContactPrivacy(user.contact_privacy || 'public');
+        setEmailPrivacy(user.email_privacy || 'public');
+        setLocationPrivacy(user.location_privacy || 'public');
 
         fetchFollowStatus(user.id)
           .then((status) => {
             if (mounted) setFollowerCount(status.followers_count);
           })
-          .catch(() => {});
+          .catch(() => { });
         fetchPosts(1, 1, user.id)
           .then((res) => {
             if (mounted) setPostCount(res.total);
           })
-          .catch(() => {});
+          .catch(() => { });
       })
       .catch(() => {
         if (mounted) setProfileBanner({ type: 'error', message: 'Không thể tải thông tin cá nhân' });
@@ -432,6 +484,9 @@ export default function EditProfileScreen() {
         phone: phone.trim() || null,
         city: city.trim() || null,
         gender,
+        contact_privacy: contactPrivacy,
+        email_privacy: emailPrivacy,
+        location_privacy: locationPrivacy,
       });
 
       setProfileBanner({ type: 'success', message: 'Cập nhật hồ sơ thành công!' });
@@ -662,6 +717,7 @@ export default function EditProfileScreen() {
                         editable={false}
                         placeholder="email@example.com"
                       />
+                      <PrivacySelector value={emailPrivacy} onChange={setEmailPrivacy} />
                     </View>
                     <View className="flex-1">
                       <FieldLabel label="Thành phố" />
@@ -670,6 +726,7 @@ export default function EditProfileScreen() {
                         onChangeText={setCity}
                         placeholder="Hà Nội, VN"
                       />
+                      <PrivacySelector value={locationPrivacy} onChange={setLocationPrivacy} />
                     </View>
                   </View>
                   <View className={`mt-4 ${isTablet ? 'flex-row gap-4' : 'gap-4'}`}>
@@ -681,6 +738,7 @@ export default function EditProfileScreen() {
                         placeholder="0912 345 678"
                         keyboardType="phone-pad"
                       />
+                      <PrivacySelector value={contactPrivacy} onChange={setContactPrivacy} />
                     </View>
                     <View className="flex-1" />
                   </View>

@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 
 import { apiFetch } from '@/lib/api';
 import { clearAuthTokens, getAccessToken, getRefreshToken, setAuthTokens } from '@/lib/session';
+import type { VisibilityLevel } from '@/lib/types';
 
 export type GenderValue = 'female' | 'male' | 'custom';
 
@@ -16,6 +17,9 @@ export type AuthUser = {
   bio: string | null;
   city: string | null;
   avatar_url: string | null;
+  contact_privacy: VisibilityLevel;
+  email_privacy: VisibilityLevel;
+  location_privacy: VisibilityLevel;
   created_at: string;
   updated_at: string;
 };
@@ -245,6 +249,9 @@ export type UserUpdatePayload = {
   gender?: GenderValue;
   birth_date?: string | null;
   city?: string | null;
+  contact_privacy?: VisibilityLevel;
+  email_privacy?: VisibilityLevel;
+  location_privacy?: VisibilityLevel;
 };
 
 export async function updateUserProfile(payload: UserUpdatePayload): Promise<AuthUser> {
