@@ -22,12 +22,12 @@ import { createComment as realCreateComment, deleteComment as realDeleteComment,
 import { fetchCurrentUser } from '@/lib/auth';
 import type { AuthUser } from '@/lib/auth';
 import type { Comment, Post } from '@/lib/types';
+import { getMockPostDetail, getMockComments, createMockComment } from '@/lib/mock-post';
 
 // BẬT CHẾ ĐỘ MOCK DATA (Issue #35):
 // Chuyển sang true để khóa thiết kế UI và trải nghiệm offline bằng mock data
 const IS_MOCK_MODE = false;
 
-import { getMockPostDetail, getMockComments, createMockComment, likeMockPost } from '@/lib/mock-post';
 const fetchPostDetail = IS_MOCK_MODE ? getMockPostDetail : realFetchPostDetail;
 const fetchComments = IS_MOCK_MODE ? getMockComments : realFetchComments;
 const createComment = IS_MOCK_MODE ? createMockComment : realCreateComment;

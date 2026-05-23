@@ -15,12 +15,12 @@ import type { ChatListItem, FollowUser } from '@/lib/api';
 import { fetchCurrentUser } from '@/lib/auth';
 import type { AuthUser } from '@/lib/auth';
 import type { Post } from '@/lib/types';
+import { getMockFeedPosts } from '@/lib/mock-post';
 
 // BẬT CHẾ ĐỘ MOCK DATA (Issue #35):
 // Chuyển sang true để khóa thiết kế UI và trải nghiệm offline bằng mock data
 const IS_MOCK_MODE = false;
 
-import { getMockFeedPosts } from '@/lib/mock-post';
 const fetchFeedPosts = IS_MOCK_MODE ? getMockFeedPosts : realFetchFeedPosts;
 
 type Shortcut = {
