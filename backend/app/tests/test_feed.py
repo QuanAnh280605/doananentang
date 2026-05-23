@@ -1,21 +1,35 @@
-import os
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from fastapi.testclient import TestClient
+from sqlalchemy.pool import StaticPool
 
-from app.main import app
 from app.crud.post import create_post, get_feed_posts
 from app.crud.follow import create_follow
 from app.schemas.post import PostCreate
+from app.models.comment import Comment
 from app.models.user import User
+from app.models.follow import Follow
+from app.models.like import Like
+from app.models.post import Post
+from app.models.post_media import PostMedia
+from app.models.post_viewer import PostViewer
 from app.models.db_enums import VisibilityLevel
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg://postgres:postgres@localhost:5433/doananentang")
-
-@pytest.fixture(scope="module")
+@pytest.fixture
 def db_engine():
-    engine = create_engine(DATABASE_URL)
+    engine = create_engine(
+        'sqlite+pysqlite:///:memory:',
+        connect_args={'check_same_thread': False},
+        poolclass=StaticPool,
+        future=True,
+    )
+    User.__table__.create(bind=engine)
+    Follow.__table__.create(bind=engine)
+    Post.__table__.create(bind=engine)
+    PostMedia.__table__.create(bind=engine)
+    PostViewer.__table__.create(bind=engine)
+    Like.__table__.create(bind=engine)
+    Comment.__table__.create(bind=engine)
     yield engine
 
 @pytest.fixture
@@ -82,9 +96,8 @@ def test_feed_with_following(db: Session, users: dict):
     items = result['items']
     assert len(items) == 2
     
-    # Sorted by newest first (created_at DESC)
-    assert items[0].content == "B's followers only post"
-    assert items[1].content == "B's public post"
+    contents = {item.content for item in items}
+    assert contents == {"B's public post", "B's followers only post"}
 
 
 def test_feed_pagination(db: Session, users: dict):

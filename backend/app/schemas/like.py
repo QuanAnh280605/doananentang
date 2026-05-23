@@ -3,6 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
+from app.models.db_enums import ReactionType
 from app.schemas.post import PostAuthorRead
 
 
@@ -11,6 +12,7 @@ class LikeStatusResponse(BaseModel):
   post_id: int | UUID
   liked: bool
   like_count: int
+  reaction_type: ReactionType | None = None
 
 
 class LikeUserRead(BaseModel):
@@ -19,6 +21,7 @@ class LikeUserRead(BaseModel):
   first_name: str
   last_name: str
   avatar_url: str | None = None
+  reaction_type: ReactionType | None = None
 
   model_config = ConfigDict(from_attributes=True)
 

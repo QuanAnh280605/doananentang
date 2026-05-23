@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.db_enums import MediaType, VisibilityLevel
+from app.models.db_enums import MediaType, VisibilityLevel, ReactionType
 
 
 class PostBase(BaseModel):
@@ -13,6 +13,8 @@ class PostBase(BaseModel):
 class PostCreate(PostBase):
   # Field giúp nhận một mảng chuỗi (tối đa 4 phần tử) từ payload
   media_urls: list[str] | None = Field(default=None, max_length=4)
+  feeling: str | None = None
+  tagged_users: list[dict] | None = None
 
 class PostMediaRead(BaseModel):
   id: int | UUID
@@ -49,6 +51,9 @@ class PostRead(PostBase):
   like_count: int = 0
   comment_count: int = 0
   is_liked: bool = False
+  user_reaction: ReactionType | None = None
+  feeling: str | None = None
+  tagged_users: list[dict] | None = None
 
   model_config = ConfigDict(from_attributes=True)
 

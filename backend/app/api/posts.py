@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, get_current_user_optional
 from app.core.database import get_db
 from app.crud.like import get_like_count, get_users_who_liked, is_liked_by_user, like_post, unlike_post
-from app.crud.post import create_post, delete_post, get_post, get_posts, update_post
-from app.models.db_enums import UserRole
+from app.crud.post import create_post, delete_post, get_post, get_posts, get_feed_posts, update_post
+from app.models.db_enums import UserRole, ReactionType
 from app.models.user import User
 from app.realtime import socket_server
 from app.realtime.socket_server import emit_post_metrics_updated
@@ -60,13 +60,13 @@ def upload_post_media(
   files: list[UploadFile] = File(...),
   current_user: User = Depends(get_current_user)
 ):
-  """Tải lên nhiều ảnh cho bài viết (Tối đa 4 ảnh)"""
+  """Tải lên nhiều ảnh/video cho bài viết (Tối đa 4 file)"""
 
   # 1. Kiểm tra số lượng file (tối đa 4 file)
   if len(files) > 4:
     raise HTTPException(
       status_code=status.HTTP_400_BAD_REQUEST,
-      detail="Bạn chỉ được phép tải lên tối đa 4 ảnh cho mỗi bài viết."
+      detail="Bạn chỉ được phép tải lên tối đa 4 file (ảnh hoặc video) cho mỗi bài viết."
     )
 
   POST_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
@@ -74,12 +74,12 @@ def upload_post_media(
 
   # 2. Duyệt qua từng file do client gửi lên
   for file in files:
-    # 2.1. Kiểm tra định dạng (chỉ cho phép định dạng ảnh)
+    # 2.1. Kiểm tra định dạng (cho phép ảnh hoặc video)
     content_type = file.content_type or ''
-    if not content_type.startswith('image/'):
+    if not (content_type.startswith('image/') or content_type.startswith('video/')):
       raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
-        detail=f"File '{file.filename}' không phải là ảnh hợp lệ."
+        detail=f"File '{file.filename}' không phải là ảnh hoặc video hợp lệ."
       )
 
     # 2.2. Tạo tên file duy nhất
@@ -137,7 +137,7 @@ def list_posts(
 
 
 # ──────────────────────────────────────────────────────────────
-# GET /api/posts/feed — Feed bài viết
+# GET /api/posts/feed — Feed bài viết từ người đang theo dõi
 # ──────────────────────────────────────────────────────────────
 @router.get('/feed', response_model=PaginatedPostsResponse)
 def get_feed(
@@ -146,8 +146,7 @@ def get_feed(
   current_user: User = Depends(get_current_user),
   db: Session = Depends(get_db),
 ):
-  """Lấy feed bài viết từ người đang theo dõi, sắp xếp mới nhất."""
-  from app.crud.post import get_feed_posts
+  """Lấy feed bài viết từ những người đang theo dõi và của chính tác giả."""
   result = get_feed_posts(
     db, 
     current_user_id=current_user.id,
@@ -232,20 +231,21 @@ def delete_post_endpoint(
 # ──────────────────────────────────────────────────────────────
 # POST /api/posts/{post_id}/like — Thích bài viết
 # ──────────────────────────────────────────────────────────────
-@router.post('/{post_id}/like', response_model=LikeStatusResponse)
+@router.post('/{post_id}/like', response_model=LikeStatusResponse, response_model_exclude_none=True)
 def like_post_endpoint(
   post_id: int,
+  reaction_type: ReactionType = Query(ReactionType.LIKE, description="Loại cảm xúc (like, love, haha, wow, sad, angry)"),
   current_user: User = Depends(get_current_user),
   db: Session = Depends(get_db),
 ):
-  """Thích bài viết."""
+  """Thích bài viết hoặc cập nhật cảm xúc."""
   post = get_post(db, post_id)
   if not post:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Post not found')
 
   already_liked = is_liked_by_user(db, post_id, current_user.id)
-  like_post(db, post_id, current_user.id)
-  if not already_liked:
+  like_post(db, post_id, current_user.id, reaction_type)
+  if not already_liked and post.author_id != current_user.id:
     create_social_notification(
       db,
       receiver_id=post.author_id,
@@ -264,13 +264,14 @@ def like_post_endpoint(
     comment_count=comment_count,
     liked=True,
   )
-  return LikeStatusResponse(post_id=post_id, liked=True, like_count=count)
+  response_reaction_type = reaction_type if reaction_type != ReactionType.LIKE else None
+  return LikeStatusResponse(post_id=post_id, liked=True, like_count=count, reaction_type=response_reaction_type)
 
 
 # ──────────────────────────────────────────────────────────────
 # DELETE /api/posts/{post_id}/like — Bỏ tương tác bài viết
 # ──────────────────────────────────────────────────────────────
-@router.delete('/{post_id}/like', response_model=LikeStatusResponse)
+@router.delete('/{post_id}/like', response_model=LikeStatusResponse, response_model_exclude_none=True)
 def unlike_post_endpoint(
   post_id: int,
   current_user: User = Depends(get_current_user),
@@ -280,7 +281,7 @@ def unlike_post_endpoint(
   post = get_post(db, post_id)
   if not post:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Post not found')
-  
+
   unlike_post(db, post_id, current_user.id)
   post = get_post(db, post_id)
   count = get_like_count(db, post_id)
@@ -309,7 +310,17 @@ def get_post_likers(
   if not post:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Post not found')
 
-  users = get_users_who_liked(db, post_id)
+  db_users = get_users_who_liked(db, post_id)
+  users = []
+  for user, r_type in db_users:
+    users.append({
+      "id": user.id,
+      "first_name": user.first_name,
+      "last_name": user.last_name,
+      "avatar_url": user.avatar_url,
+      "reaction_type": r_type
+    })
+    
   count = get_like_count(db, post_id)
   
   return PostLikersResponse(

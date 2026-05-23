@@ -582,7 +582,7 @@ export default function ProfileScreen() {
                       </ThemedView>
                     ) : (
                       posts.map((post) => (
-                        <FeedPost key={post.id} item={post} onDelete={handleDeletePost} />
+                        <FeedPost key={post.id} item={post} onDeleteSuccess={() => handleDeletePost(post.id)} />
                       ))
                     )}
                   </View>
