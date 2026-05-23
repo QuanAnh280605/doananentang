@@ -10,7 +10,11 @@ from app.models.follow import Follow
 from app.models.like import Like
 from app.models.post import Post
 from app.models.post_media import PostMedia
+<<<<<<< HEAD
 from app.models.post_viewer import PostViewer
+=======
+from app.models.post_tag import PostTag
+>>>>>>> 768c7e9 (update bai viet)
 from app.schemas.post import PostCreate, PostUpdate
 
 
@@ -20,10 +24,22 @@ def create_post(db: Session, post_in: PostCreate, author_id: int) -> Post:
     content=post_in.content,
     visibility=post_in.visibility,
     feeling=post_in.feeling,
+<<<<<<< HEAD
     tagged_users=post_in.tagged_users,
+=======
+    gif_url=post_in.gif_url,
+    location_name=post_in.location_name,
+    location_lat=post_in.location_lat,
+    location_lng=post_in.location_lng
+>>>>>>> 768c7e9 (update bai viet)
   )
   db.add(db_post)
   db.flush()  # Lấy ID trước khi tạo media
+  
+  if post_in.tagged_user_ids:
+    for tagged_id in post_in.tagged_user_ids:
+      db_tag = PostTag(post_id=db_post.id, user_id=tagged_id)
+      db.add(db_tag)
 
   # Nếu có mảng ảnh hoặc video được truyền lên
   if post_in.media_urls:
@@ -50,7 +66,11 @@ def get_post(db: Session, post_id: int, current_user_id: int | None = None) -> P
   """Lấy chi tiết bài viết (kèm media + tác giả + stats)"""
   post = (
     db.query(Post)
-    .options(joinedload(Post.media), joinedload(Post.author))
+    .options(
+      joinedload(Post.media), 
+      joinedload(Post.author),
+      joinedload(Post.tagged_users).joinedload(PostTag.user)
+    )
     .filter(Post.id == post_id, Post.is_deleted == False)
     .first()
   )
@@ -118,7 +138,11 @@ def get_posts(
   # Query có eager load media + author
   items = (
     query
-    .options(joinedload(Post.media), joinedload(Post.author))
+    .options(
+      joinedload(Post.media), 
+      joinedload(Post.author),
+      joinedload(Post.tagged_users).joinedload(PostTag.user)
+    )
     .order_by(order)
     .offset((page - 1) * page_size)
     .limit(page_size)
@@ -196,9 +220,19 @@ def get_feed_posts(
   order = Post.created_at.desc()
 
   posts = (
+<<<<<<< HEAD
     query
     .options(joinedload(Post.media), joinedload(Post.author))
     .order_by(order)
+=======
+    base_query
+    .options(
+      joinedload(Post.media), 
+      joinedload(Post.author),
+      joinedload(Post.tagged_users).joinedload(PostTag.user)
+    )
+    .order_by(Post.created_at.desc())
+>>>>>>> 768c7e9 (update bai viet)
     .offset((page - 1) * page_size)
     .limit(page_size)
     .all()

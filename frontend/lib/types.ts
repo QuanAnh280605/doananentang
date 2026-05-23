@@ -21,6 +21,10 @@ export type PostMedia = {
   display_order: number;
 };
 
+export type PostTag = {
+  user: PostAuthor;
+};
+
 /** Bài viết trả về từ API (kèm tác giả + media) */
 export type Post = {
   id: string;
@@ -37,6 +41,13 @@ export type Post = {
   comment_count: number;
   is_liked: boolean;
   user_reaction?: ReactionType | null;
+  top_reactions?: ReactionType[];
+  feeling?: string | null;
+  gif_url?: string | null;
+  location_name?: string | null;
+  location_lat?: number | null;
+  location_lng?: number | null;
+  tagged_users?: PostTag[];
 };
 
 /** Response phân trang từ GET /api/posts */

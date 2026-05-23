@@ -95,9 +95,19 @@ def get_replies_by_comment(db: Session, comment_id: int, current_user_id: int | 
 
 
 def delete_comment(db: Session, db_comment: Comment) -> Comment:
-  """Xóa bình luận."""
+  """Xóa bình luận và toàn bộ bình luận trả lời (replies) bên trong nó."""
   db_comment.is_deleted = True
   db_comment.content = "[Bình luận đã bị xóa]"
+  
+  # Xóa dây chuyền: Đánh dấu tất cả comment con là đã xóa
+  db.query(Comment).filter(
+      Comment.parent_comment_id == db_comment.id,
+      Comment.is_deleted == False
+  ).update(
+      {"is_deleted": True, "content": "[Bình luận đã bị xóa]"},
+      synchronize_session=False
+  )
+  
   db.commit()
   db.refresh(db_comment)
   return db_comment

@@ -9,12 +9,21 @@ from app.models.db_enums import MediaType, VisibilityLevel, ReactionType
 class PostBase(BaseModel):
   content: str | None = None
   visibility: VisibilityLevel = VisibilityLevel.PUBLIC
+  feeling: str | None = None
+  gif_url: str | None = None
+  location_name: str | None = None
+  location_lat: float | None = None
+  location_lng: float | None = None
 
 class PostCreate(PostBase):
   # Field giúp nhận một mảng chuỗi (tối đa 4 phần tử) từ payload
   media_urls: list[str] | None = Field(default=None, max_length=4)
+<<<<<<< HEAD
   feeling: str | None = None
   tagged_users: list[dict] | None = None
+=======
+  tagged_user_ids: list[int] | None = None
+>>>>>>> 768c7e9 (update bai viet)
 
 class PostMediaRead(BaseModel):
   id: int | UUID
@@ -40,6 +49,12 @@ class PostAuthorRead(BaseModel):
   model_config = ConfigDict(from_attributes=True)
 
 
+class PostTagRead(BaseModel):
+  user: PostAuthorRead
+
+  model_config = ConfigDict(from_attributes=True)
+
+
 class PostRead(PostBase):
   id: int | UUID
   author_id: int | UUID
@@ -48,6 +63,7 @@ class PostRead(PostBase):
   created_at: datetime
   updated_at: datetime
   media: list[PostMediaRead] = []
+  tagged_users: list[PostTagRead] = []
   like_count: int = 0
   comment_count: int = 0
   is_liked: bool = False
