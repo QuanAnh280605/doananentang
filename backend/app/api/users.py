@@ -267,18 +267,60 @@ def upload_avatar(
   db: Session = Depends(get_db)
 ):
   """Tải lên ảnh đại diện và lưu vào cơ sở dữ liệu"""
-  content_type = file.content_type or ''
-  if not content_type.startswith('image/'):
-    raise HTTPException(status_code=400, detail='File must be an image')
+  ALLOWED_MIME_TYPES = {'image/jpeg', 'image/png', 'image/gif', 'image/webp'}
+  ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
+  MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 
-  filename = file.filename or 'upload'
-  file_ext = filename.split('.')[-1]
+  # 1. Kiểm tra định dạng MIME
+  content_type = file.content_type or ''
+  if content_type not in ALLOWED_MIME_TYPES:
+    raise HTTPException(
+      status_code=status.HTTP_400_BAD_REQUEST,
+      detail=f"Định dạng tệp '{file.filename}' không được hỗ trợ. Chỉ chấp nhận các định dạng ảnh: JPEG, PNG, GIF, WEBP."
+    )
+
+  # 2. Kiểm tra đuôi mở rộng của tệp
+  filename = file.filename or 'upload.jpg'
+  file_ext = filename.split('.')[-1].lower() if '.' in filename else ''
+  if file_ext not in ALLOWED_EXTENSIONS:
+    raise HTTPException(
+      status_code=status.HTTP_400_BAD_REQUEST,
+      detail=f"Đuôi mở rộng của tệp '{file.filename}' không hợp lệ. Chỉ chấp nhận: .jpg, .jpeg, .png, .gif, .webp."
+    )
+
+  # 3. Kiểm tra dung lượng tệp tin (tối đa 5MB)
+  try:
+    file.file.seek(0, 2)
+    file_size = file.file.tell()
+    file.file.seek(0)
+  except Exception as e:
+    raise HTTPException(
+      status_code=status.HTTP_400_BAD_REQUEST,
+      detail=f"Không thể kiểm tra dung lượng tệp '{file.filename}': {str(e)}"
+    )
+
+  if file_size > MAX_FILE_SIZE:
+    raise HTTPException(
+      status_code=status.HTTP_400_BAD_REQUEST,
+      detail=f"Tệp tin '{file.filename}' vượt quá dung lượng tối đa cho phép là 5MB."
+    )
+
+  # 4. Sinh tên file duy nhất và an toàn
   new_filename = f"{current_user.id}_{uuid.uuid4().hex}.{file_ext}"
   AVATAR_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
   file_path = AVATAR_UPLOAD_DIR / new_filename
 
-  with file_path.open('wb') as buffer:
-    shutil.copyfileobj(file.file, buffer)
+  # 5. Lưu file vào thư mục uploads/avatars
+  try:
+    with file_path.open('wb') as buffer:
+      shutil.copyfileobj(file.file, buffer)
+  except IOError as e:
+    raise HTTPException(
+      status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+      detail=f"Lỗi lưu file: {str(e)}"
+    )
+  finally:
+    file.file.close()
 
   # Build full URL so clients can use it directly without knowing the API base URL
   settings = get_settings()
