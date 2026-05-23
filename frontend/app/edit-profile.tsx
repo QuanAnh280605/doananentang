@@ -16,8 +16,8 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Image } from 'expo-image';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { getMockUser, updateMockUser, uploadMockAvatar, changeMockPassword } from '@/lib/mock-profile';
-import type { GenderValue } from '@/lib/auth';
+import { fetchCurrentUser, fetchFollowStatus, updateUserProfile, uploadUserAvatar, changePassword, type GenderValue } from '@/lib/auth';
+import { fetchPosts, API_URL } from '@/lib/api';
 
 const surfaceClass = 'rounded-surface border border-app-border bg-app-surface';
 
@@ -176,9 +176,8 @@ function InlineBanner({
   const isSuccess = type === 'success';
   return (
     <View
-      className={`flex-row items-center justify-between rounded-[14px] px-4 py-3 ${
-        isSuccess ? 'bg-[#DCFCE7]' : 'bg-[#FEE2E2]'
-      }`}
+      className={`flex-row items-center justify-between rounded-[14px] px-4 py-3 ${isSuccess ? 'bg-[#DCFCE7]' : 'bg-[#FEE2E2]'
+        }`}
     >
       <View className="flex-1 flex-row items-center gap-2">
         <MaterialIcons
@@ -210,11 +209,15 @@ function LivePreviewCard({
   lastName,
   bio,
   avatarSource,
+  followerCount = 0,
+  postCount = 0,
 }: {
   firstName: string;
   lastName: string;
   bio: string;
   avatarSource: { uri: string } | null;
+  followerCount?: number | string;
+  postCount?: number | string;
 }) {
   const displayName = `${firstName} ${lastName}`.trim() || 'Tên của bạn';
   const initials = `${(firstName || 'N').charAt(0)}${(lastName || 'A').charAt(0)}`.toUpperCase();
@@ -257,14 +260,18 @@ function LivePreviewCard({
           </ThemedText>
         ) : null}
 
-        {/* Stats mock */}
+        {/* Stats */}
         <View className="mt-4 flex-row gap-6 px-1">
           <View>
-            <ThemedText className="text-lg font-semibold text-slate-950">2.4k</ThemedText>
+            <ThemedText className="text-lg font-semibold text-slate-950">
+              {typeof followerCount === 'number' && followerCount >= 1000 
+                ? (followerCount / 1000).toFixed(1) + 'k' 
+                : followerCount}
+            </ThemedText>
             <ThemedText className="text-xs text-slate-500">Người theo dõi</ThemedText>
           </View>
           <View>
-            <ThemedText className="text-lg font-semibold text-slate-950">14</ThemedText>
+            <ThemedText className="text-lg font-semibold text-slate-950">{postCount}</ThemedText>
             <ThemedText className="text-xs text-slate-500">Bài viết</ThemedText>
           </View>
         </View>
@@ -324,23 +331,41 @@ export default function EditProfileScreen() {
   // Password inline errors
   const [passwordErrors, setPasswordErrors] = useState<PasswordErrors>({});
 
-  // Load mock user
+  // Real stats
+  const [followerCount, setFollowerCount] = useState<number | string>(0);
+  const [postCount, setPostCount] = useState<number | string>(0);
+
+  // Load user data
   useEffect(() => {
     let mounted = true;
-    getMockUser()
-      .then((u) => {
-        if (mounted) {
-          setFirstName(u.first_name || '');
-          setLastName(u.last_name || '');
-          setBio(u.bio || '');
-          setPhone(u.phone || '');
-          setGender(u.gender || 'custom');
-          setCity(u.city || '');
-          setEmail(u.email || '');
+    fetchCurrentUser()
+      .then((user) => {
+        if (!user || !mounted) return;
+        
+        setFirstName(user.first_name || '');
+        setLastName(user.last_name || '');
+        setBio(user.bio || '');
+        setPhone(user.phone || '');
+        setGender(user.gender || 'custom');
+        setCity(user.city || '');
+        setEmail(user.email || '');
+        if (user.avatar_url) {
+          setAvatarUri(user.avatar_url.startsWith('http') ? user.avatar_url : `${API_URL}${user.avatar_url}`);
         }
+
+        fetchFollowStatus(user.id)
+          .then((status) => {
+            if (mounted) setFollowerCount(status.followers_count);
+          })
+          .catch(() => {});
+        fetchPosts(1, 1, user.id)
+          .then((res) => {
+            if (mounted) setPostCount(res.total);
+          })
+          .catch(() => {});
       })
       .catch(() => {
-        setProfileBanner({ type: 'error', message: 'Không thể tải thông tin cá nhân' });
+        if (mounted) setProfileBanner({ type: 'error', message: 'Không thể tải thông tin cá nhân' });
       })
       .finally(() => {
         if (mounted) setIsLoading(false);
@@ -392,11 +417,11 @@ export default function EditProfileScreen() {
     setIsSavingProfile(true);
     setProfileBanner(null);
     try {
-      if (avatarUri) {
-        await uploadMockAvatar(avatarUri);
+      if (avatarUri && !avatarUri.startsWith('http')) {
+        await uploadUserAvatar(avatarUri);
       }
 
-      await updateMockUser({
+      await updateUserProfile({
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         bio: bio.trim() || null,
@@ -452,7 +477,7 @@ export default function EditProfileScreen() {
     setIsSavingPassword(true);
     setPasswordBanner(null);
     try {
-      await changeMockPassword(currentPassword, newPassword);
+      await changePassword(currentPassword, newPassword);
       setPasswordBanner({ type: 'success', message: 'Đổi mật khẩu thành công!' });
       setCurrentPassword('');
       setNewPassword('');
@@ -507,10 +532,6 @@ export default function EditProfileScreen() {
                 <ThemedText className="text-lg">←</ThemedText>
               </Pressable>
               <ThemedText className="text-lg font-semibold text-slate-900">Chỉnh sửa hồ sơ</ThemedText>
-              {/* Mock indicator */}
-              <View className="ml-auto rounded-full bg-[#FEF9C3] px-3 py-1">
-                <ThemedText className="text-xs font-semibold text-[#854D0E]">MOCK DATA</ThemedText>
-              </View>
             </View>
 
             {/* Main 2-col layout */}
@@ -522,6 +543,8 @@ export default function EditProfileScreen() {
                   lastName={lastName}
                   bio={bio}
                   avatarSource={currentAvatarSource}
+                  followerCount={followerCount}
+                  postCount={postCount}
                 />
               </View>
 
@@ -709,7 +732,7 @@ export default function EditProfileScreen() {
                 <SectionCard>
                   <SectionHeader
                     title="Đổi mật khẩu"
-                    subtitle="Giữ tài khoản an toàn bằng mật khẩu mạnh, không dùng ở nơi khác. (Mock: nhập 'mock123' cho mật khẩu hiện tại)"
+                    subtitle="Giữ tài khoản an toàn bằng mật khẩu mạnh, không dùng ở nơi khác."
                   />
 
                   {/* Password banner */}

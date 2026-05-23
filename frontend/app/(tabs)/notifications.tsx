@@ -11,7 +11,7 @@ import { Avatar, surfaceClass } from '@/components/ui/core';
 import { useToast } from '@/hooks/useToast';
 import { useNotifications } from '@/hooks/useNotifications';
 import { fetchNotifications, markNotificationRead, markAllNotificationsRead } from '@/lib/api';
-import type { NotificationRead } from '@/lib/api';
+import type { NotificationRead } from '@/lib/types';
 
 type FilterType = 'all' | 'unread';
 
