@@ -72,18 +72,23 @@ def revoke_all_user_sessions(
   db: Session,
   user_id: int,
   *,
+  exclude_token: str | None = None,
   now: datetime | None = None,
   commit: bool = True,
 ) -> int:
   """Revoke every active session for a user (e.g. after password change)."""
   current_time = now or datetime.now(timezone.utc)
+  conditions = [
+    LoginSession.user_id == user_id,
+    LoginSession.revoked_at.is_(None),
+    LoginSession.expired_at > current_time,
+  ]
+  if exclude_token is not None:
+    conditions.append(LoginSession.refresh_token != exclude_token)
+
   statement = (
     update(LoginSession)
-    .where(
-      LoginSession.user_id == user_id,
-      LoginSession.revoked_at.is_(None),
-      LoginSession.expired_at > current_time,
-    )
+    .where(*conditions)
     .values(revoked_at=current_time)
     .execution_options(synchronize_session='fetch')
   )

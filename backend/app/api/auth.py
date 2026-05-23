@@ -295,6 +295,7 @@ def reset_password(token: str, password: str, db: Session = Depends(get_db)):
 @router.post("/change-password")
 def change_password(
   payload: ChangePasswordRequest,
+  request: Request,
   current_user: User = Depends(get_current_user),
   db: Session = Depends(get_db)
 ):
@@ -302,6 +303,22 @@ def change_password(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Mật khẩu hiện tại không đúng')
 
     current_user.hashed_password = hash_password(payload.new_password)
-    revoke_all_user_sessions(db, current_user.id, commit=False)
+
+    if payload.revoke_other_sessions:
+        current_refresh_token = None
+        try:
+            current_refresh_token = _extract_refresh_token(request, None)
+        except HTTPException:
+            pass
+
+        if current_refresh_token:
+            session = get_refresh_session_by_refresh_token(db, current_refresh_token)
+            if session and session.user_id == current_user.id and not session.is_revoked:
+                revoke_all_user_sessions(db, current_user.id, exclude_token=current_refresh_token, commit=False)
+            else:
+                revoke_all_user_sessions(db, current_user.id, commit=False)
+        else:
+            revoke_all_user_sessions(db, current_user.id, commit=False)
+
     db.commit()
     return {"message": "Đổi mật khẩu thành công"}

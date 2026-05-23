@@ -298,3 +298,91 @@ class TestAuthRouterLogoutRevoke:
       assert s1 is not None and s1.is_revoked is True
       assert s2 is not None and s2.is_revoked is True
 
+  def test_api_change_password_revokes_other_sessions_only(self) -> None:
+    from app.core.config import get_settings
+    settings = get_settings()
+
+    with self._build_test_session() as db:
+      user = self._seed_user(db)
+      _, t1 = _make_session(db, user_id=user.id)
+      _, t2 = _make_session(db, user_id=user.id)
+
+      client = self._build_client(db, current_user=user)
+      client.cookies.set(settings.web_refresh_cookie_name, t1)
+
+      response = client.post(
+        "/api/auth/change-password",
+        json={"current_password": "Password123", "new_password": "NewPassword123", "revoke_other_sessions": True}
+      )
+      assert response.status_code == 200
+      assert response.json()["message"] == "Đổi mật khẩu thành công"
+
+      db.expire_all()
+      s1 = get_refresh_session_by_refresh_token(db, t1)
+      s2 = get_refresh_session_by_refresh_token(db, t2)
+      assert s1 is not None and s1.is_revoked is False
+      assert s2 is not None and s2.is_revoked is True
+
+  def test_api_change_password_keep_sessions(self) -> None:
+    with self._build_test_session() as db:
+      user = self._seed_user(db)
+      _, t1 = _make_session(db, user_id=user.id)
+      _, t2 = _make_session(db, user_id=user.id)
+
+      client = self._build_client(db, current_user=user)
+
+      response = client.post(
+        "/api/auth/change-password",
+        json={
+          "current_password": "Password123",
+          "new_password": "NewPassword123",
+          "revoke_other_sessions": False
+        }
+      )
+      assert response.status_code == 200
+      assert response.json()["message"] == "Đổi mật khẩu thành công"
+
+      db.expire_all()
+      s1 = get_refresh_session_by_refresh_token(db, t1)
+      s2 = get_refresh_session_by_refresh_token(db, t2)
+      assert s1 is not None and s1.is_revoked is False
+      assert s2 is not None and s2.is_revoked is False
+
+  def test_api_change_password_wrong_current_password(self) -> None:
+    with self._build_test_session() as db:
+      user = self._seed_user(db)
+      client = self._build_client(db, current_user=user)
+
+      response = client.post(
+        "/api/auth/change-password",
+        json={"current_password": "WrongPassword123", "new_password": "NewPassword123"}
+      )
+      assert response.status_code == 400
+      assert "Mật khẩu hiện tại không đúng" in response.json()["detail"]
+
+  def test_api_change_password_weak_new_password(self) -> None:
+    with self._build_test_session() as db:
+      user = self._seed_user(db)
+      client = self._build_client(db, current_user=user)
+
+      # Ngắn hơn 8 ký tự
+      response = client.post(
+        "/api/auth/change-password",
+        json={"current_password": "Password123", "new_password": "Sh1"}
+      )
+      assert response.status_code == 422
+
+      # Không có chữ in hoa
+      response = client.post(
+        "/api/auth/change-password",
+        json={"current_password": "Password123", "new_password": "weakpassword123"}
+      )
+      assert response.status_code == 422
+
+      # Không có chữ số
+      response = client.post(
+        "/api/auth/change-password",
+        json={"current_password": "Password123", "new_password": "WeakPassword"}
+      )
+      assert response.status_code == 422
+

@@ -64,6 +64,7 @@ class ResetPasswordRequest(BaseModel):
 class ChangePasswordRequest(BaseModel):
   current_password: str
   new_password: str
+  revoke_other_sessions: bool = True
 
   @field_validator('new_password')
   @classmethod
