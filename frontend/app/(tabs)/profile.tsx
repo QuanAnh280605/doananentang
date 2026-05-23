@@ -262,6 +262,11 @@ export default function ProfileScreen() {
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [avatarPickerActive, setAvatarPickerActive] = useState(false);
   const [followStatus, setFollowStatus] = useState<FollowStatus | null>(null);
+  const [isEditingIntro, setIsEditingIntro] = useState(false);
+  const [tempIntro, setTempIntro] = useState('');
+  const [tempCity, setTempCity] = useState('');
+  const [isSavingIntro, setIsSavingIntro] = useState(false);
+  const [introSaved, setIntroSaved] = useState(false);
 
   const isWide = width >= 1180;
 
@@ -324,6 +329,7 @@ export default function ProfileScreen() {
       let isMounted = true;
       setLoadingPosts(true);
 
+<<<<<<< HEAD
       fetchPosts(1, 10, user.id)
         .then((res) => {
           if (isMounted) setPosts(res.items);
@@ -332,6 +338,12 @@ export default function ProfileScreen() {
         .finally(() => {
           if (isMounted) setLoadingPosts(false);
         });
+=======
+<<<<<<< HEAD
+=======
+    if (!user) return;
+>>>>>>> a2cdf5f (merge main into profile_app)
+>>>>>>> 1bedbf9 (merge main into profile_app)
 
       return () => {
         isMounted = false;
@@ -343,6 +355,31 @@ export default function ProfileScreen() {
     setPosts((current) => current.filter((p) => p.id !== postId));
   };
 
+  const handleSaveIntro = async () => {
+    setIsSavingIntro(true);
+    try {
+      const updatedUser = await updateUserProfile({
+        bio: tempIntro.trim() || null,
+        city: tempCity.trim() || null,
+      });
+      setUser(updatedUser);
+      setIsEditingIntro(false);
+      setIntroSaved(true);
+      setTimeout(() => setIntroSaved(false), 3000);
+    } catch {
+      // Xử lý lỗi
+    } finally {
+      setIsSavingIntro(false);
+    }
+  };
+
+  const handleCancelIntro = () => {
+    setTempIntro(user?.bio || '');
+    setTempCity(user?.city || '');
+    setIsEditingIntro(false);
+  };
+
+>>>>>>> a2cdf5f (merge main into profile_app)
   const profile = useMemo(() => buildProfileViewModel(user), [user]);
 
   if (isLoadingUser) {
@@ -370,7 +407,11 @@ export default function ProfileScreen() {
               >
                 <ThemedText className="text-xl">←</ThemedText>
               </Pressable>
+<<<<<<< HEAD
               <ThemedText className="text-[20px] font-bold text-slate-900">Hồ sơ</ThemedText>
+=======
+              <ThemedText className="text-lg font-semibold text-slate-900">Hồ sơ</ThemedText>
+>>>>>>> a2cdf5f (merge main into profile_app)
             </View>
 
             {/* Profile card */}
@@ -423,6 +464,7 @@ export default function ProfileScreen() {
                         {profile.intro}
                       </ThemedText>
                     ) : null}
+<<<<<<< HEAD
                     <View className="mt-4 flex-row flex-wrap gap-5">
                       {followStatus ? (
                         <>
@@ -459,32 +501,63 @@ export default function ProfileScreen() {
                         <ThemedText className="text-[15px] text-slate-500">bài viết</ThemedText>
                       </Pressable>
                     </View>
+=======
+                    {followStatus ? (
+                      <View className="mt-4 flex-row flex-wrap gap-5">
+<<<<<<< HEAD
+                        <Pressable 
+                          className="flex-row items-center gap-1.5 active:opacity-70"
+                          onPress={() => router.push({ pathname: '/profile/follows', params: { userId: user?.id, type: 'followers' } })}
+                        >
+                          <ThemedText className="text-[15px] font-bold text-slate-950">{followStatus.followers_count}</ThemedText>
+                          <ThemedText className="text-[15px] text-slate-500">người theo dõi</ThemedText>
+                        </Pressable>
+                        <Pressable 
+                          className="flex-row items-center gap-1.5 active:opacity-70"
+                          onPress={() => router.push({ pathname: '/profile/follows', params: { userId: user?.id, type: 'following' } })}
+                        >
+                          <ThemedText className="text-[15px] font-bold text-slate-950">{followStatus.following_count}</ThemedText>
+                          <ThemedText className="text-[15px] text-slate-500">đang theo dõi</ThemedText>
+                        </Pressable>
+=======
+                        <View className="flex-row items-center gap-1.5">
+                          <ThemedText className="text-[15px] font-bold text-slate-950">{followStatus.followers_count}</ThemedText>
+                          <ThemedText className="text-[15px] text-slate-500">người theo dõi</ThemedText>
+                        </View>
+                        <View className="flex-row items-center gap-1.5">
+                          <ThemedText className="text-[15px] font-bold text-slate-950">{followStatus.following_count}</ThemedText>
+                          <ThemedText className="text-[15px] text-slate-500">đang theo dõi</ThemedText>
+                        </View>
+>>>>>>> a2cdf5f (merge main into profile_app)
+                      </View>
+                    ) : null}
+>>>>>>> 1bedbf9 (merge main into profile_app)
                   </View>
 
                   <View className={`${isWide ? 'w-[360px]' : ''} gap-3`}>
-                    <View className="flex-row flex-wrap gap-3">
-                      <ActionButton
-                        icon="edit"
-                        label="Chỉnh sửa hồ sơ"
-                        filled
-                        onPress={() => router.push('/edit-profile')}
-                      />
+                      <View className="flex-row flex-wrap gap-3">
+                        <ActionButton
+                          icon="edit"
+                          label="Chỉnh sửa hồ sơ"
+                          filled
+                          onPress={() => router.push('/edit-profile')}
+                        />
+                      </View>
                     </View>
                   </View>
-                </View>
 
-                <View className="mt-6 flex-row flex-wrap gap-3">
-                  {tabs.map((tab) => (
-                    <ProfileTabButton
-                      key={tab.key}
-                      active={activeTab === tab.key}
-                      icon={tab.icon}
-                      label={tab.label}
-                      onPress={() => setActiveTab(tab.key)}
-                    />
-                  ))}
+                  <View className="mt-6 flex-row flex-wrap gap-3">
+                    {tabs.map((tab) => (
+                      <ProfileTabButton
+                        key={tab.key}
+                        active={activeTab === tab.key}
+                        icon={tab.icon}
+                        label={tab.label}
+                        onPress={() => setActiveTab(tab.key)}
+                      />
+                    ))}
+                  </View>
                 </View>
-              </View>
             </ThemedView>
 
             {/* Body: sidebar + main */}

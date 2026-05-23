@@ -220,7 +220,11 @@ function InlineBanner({
   const isSuccess = type === 'success';
   return (
     <View
+<<<<<<< HEAD
       className={`flex-row items-center justify-between rounded-[24px] px-4 py-3 mx-4 md:mx-0 ${isSuccess ? 'bg-[#DCFCE7]' : 'bg-[#FEE2E2]'
+=======
+      className={`flex-row items-center justify-between rounded-[14px] px-4 py-3 ${isSuccess ? 'bg-[#DCFCE7]' : 'bg-[#FEE2E2]'
+>>>>>>> a2cdf5f (merge main into profile_app)
         }`}
     >
       <View className="flex-1 flex-row items-center gap-2">
@@ -308,8 +312,13 @@ function LivePreviewCard({
         <View className="mt-4 flex-row gap-6 px-1">
           <View>
             <ThemedText className="text-lg font-semibold text-slate-950">
+<<<<<<< HEAD
               {typeof followerCount === 'number' && followerCount >= 1000
                 ? (followerCount / 1000).toFixed(1) + 'k'
+=======
+              {typeof followerCount === 'number' && followerCount >= 1000 
+                ? (followerCount / 1000).toFixed(1) + 'k' 
+>>>>>>> a2cdf5f (merge main into profile_app)
                 : followerCount}
             </ThemedText>
             <ThemedText className="text-xs text-slate-500">Người theo dõi</ThemedText>
@@ -385,13 +394,21 @@ export default function EditProfileScreen() {
   const [followerCount, setFollowerCount] = useState<number | string>(0);
   const [postCount, setPostCount] = useState<number | string>(0);
 
+<<<<<<< HEAD
   // Load real user
+=======
+  // Load user data
+>>>>>>> a2cdf5f (merge main into profile_app)
   useEffect(() => {
     let mounted = true;
     fetchCurrentUser()
       .then((user) => {
         if (!user || !mounted) return;
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> a2cdf5f (merge main into profile_app)
         setFirstName(user.first_name || '');
         setLastName(user.last_name || '');
         setBio(user.bio || '');
@@ -402,20 +419,31 @@ export default function EditProfileScreen() {
         if (user.avatar_url) {
           setAvatarUri(user.avatar_url.startsWith('http') ? user.avatar_url : `${API_URL}${user.avatar_url}`);
         }
+<<<<<<< HEAD
         setContactPrivacy(user.contact_privacy || 'public');
         setEmailPrivacy(user.email_privacy || 'public');
         setLocationPrivacy(user.location_privacy || 'public');
+=======
+>>>>>>> a2cdf5f (merge main into profile_app)
 
         fetchFollowStatus(user.id)
           .then((status) => {
             if (mounted) setFollowerCount(status.followers_count);
           })
+<<<<<<< HEAD
           .catch(() => { });
+=======
+          .catch(() => {});
+>>>>>>> a2cdf5f (merge main into profile_app)
         fetchPosts(1, 1, user.id)
           .then((res) => {
             if (mounted) setPostCount(res.total);
           })
+<<<<<<< HEAD
           .catch(() => { });
+=======
+          .catch(() => {});
+>>>>>>> a2cdf5f (merge main into profile_app)
       })
       .catch(() => {
         if (mounted) setProfileBanner({ type: 'error', message: 'Không thể tải thông tin cá nhân' });
@@ -472,7 +500,11 @@ export default function EditProfileScreen() {
     setIsSavingProfile(true);
     setProfileBanner(null);
     try {
+<<<<<<< HEAD
       if (avatarUri && hasNewAvatar) {
+=======
+      if (avatarUri && !avatarUri.startsWith('http')) {
+>>>>>>> a2cdf5f (merge main into profile_app)
         await uploadUserAvatar(avatarUri);
       }
 
@@ -598,6 +630,7 @@ export default function EditProfileScreen() {
             {/* Main 2-col layout */}
             <View className={isWide ? 'flex-row items-start gap-6' : 'gap-6'}>
               {/* Left: Live preview */}
+<<<<<<< HEAD
               {isTablet && (
                 <View className={isWide ? 'w-[280px]' : 'w-full'}>
                   <LivePreviewCard
@@ -610,6 +643,18 @@ export default function EditProfileScreen() {
                   />
                 </View>
               )}
+=======
+              <View className={isWide ? 'w-[280px]' : 'w-full'}>
+                <LivePreviewCard
+                  firstName={firstName}
+                  lastName={lastName}
+                  bio={bio}
+                  avatarSource={currentAvatarSource}
+                  followerCount={followerCount}
+                  postCount={postCount}
+                />
+              </View>
+>>>>>>> a2cdf5f (merge main into profile_app)
 
               {/* Right: Form panels */}
               <View className="flex-1 gap-6">
