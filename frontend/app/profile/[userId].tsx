@@ -201,7 +201,7 @@ export default function UserProfileScreen() {
   const { width, height } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const params = useLocalSearchParams<{ userId?: string; name?: string; initials?: string; preview?: string; bio?: string }>();
-  
+
   const userId = getSingleParam(params.userId, 'unknown');
   const fallbackName = getSingleParam(params.name, 'Guest profile');
   const fallbackPreview = getSingleParam(params.preview, 'Opened from search results.');
@@ -299,7 +299,7 @@ export default function UserProfileScreen() {
           setPosts(res.items);
         }
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => {
         if (isActive) setLoadingPosts(false);
       });
@@ -345,7 +345,7 @@ export default function UserProfileScreen() {
       <ThemedView className="flex-1 bg-[#F8FAFC]" style={{ minHeight: height }}>
         <ScrollView bounces={false} className="flex-1" contentContainerClassName="pb-8">
           <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-4 md:px-6">
-            
+
             {/* Header / Back */}
             <View className="flex-row items-center gap-3 rounded-surface border border-app-border bg-app-surface px-5 py-4">
               <Pressable
@@ -381,14 +381,20 @@ export default function UserProfileScreen() {
 
                     {followStatus ? (
                       <View className="mt-4 flex-row flex-wrap gap-5">
-                        <View className="flex-row items-center gap-1.5">
+                        <Pressable
+                          className="flex-row items-center gap-1.5 active:opacity-70"
+                          onPress={() => router.push({ pathname: '/profile/follows', params: { userId, type: 'followers' } })}
+                        >
                           <ThemedText className="text-[15px] font-bold text-slate-950">{followStatus.followers_count}</ThemedText>
                           <ThemedText className="text-[15px] text-slate-500">người theo dõi</ThemedText>
-                        </View>
-                        <View className="flex-row items-center gap-1.5">
+                        </Pressable>
+                        <Pressable
+                          className="flex-row items-center gap-1.5 active:opacity-70"
+                          onPress={() => router.push({ pathname: '/profile/follows', params: { userId, type: 'following' } })}
+                        >
                           <ThemedText className="text-[15px] font-bold text-slate-950">{followStatus.following_count}</ThemedText>
                           <ThemedText className="text-[15px] text-slate-500">đang theo dõi</ThemedText>
-                        </View>
+                        </Pressable>
                       </View>
                     ) : null}
                   </View>
@@ -432,7 +438,7 @@ export default function UserProfileScreen() {
             {/* Content panels */}
             <View className={isWide ? 'flex-row items-start gap-4' : 'gap-4'}>
               <View className={isWide ? 'w-[320px] gap-4' : 'gap-4'}>
-                
+
                 {/* Intro Sidebar */}
                 <SidebarCard title="Intro">
                   {profile.intro ? (
@@ -489,7 +495,7 @@ export default function UserProfileScreen() {
                       <ThemedText className="text-slate-500 text-center py-4">Chưa có bài viết nào.</ThemedText>
                     ) : (
                       posts.map((post) => (
-                        <FeedPost key={post.id} item={post} onDelete={handleDeletePost} />
+                        <FeedPost key={post.id} item={post} onDeleteSuccess={() => handleDeletePost(String(post.id))} />
                       ))
                     )}
                   </View>

@@ -45,6 +45,7 @@ export default function RootLayout() {
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="(auth)" options={{ headerShown: false }} />
               <Stack.Screen name="profile/[userId]" options={{ headerShown: false }} />
+              <Stack.Screen name="profile/follows" options={{ headerShown: false }} />
               <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
               <Stack.Screen name="(post)" options={{ headerShown: false }} />
             </Stack>
