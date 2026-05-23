@@ -1,7 +1,7 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, TextInput, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -9,8 +9,8 @@ import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { API_URL, fetchPosts } from '@/lib/api';
-import { fetchCurrentUser, updateUserProfile, fetchFollowStatus, type AuthUser, type FollowStatus } from '@/lib/auth';
-import type { Post } from '@/lib/types';
+import { fetchCurrentUser, fetchFollowStatus, type AuthUser, type FollowStatus } from '@/lib/auth';
+import type { Post, VisibilityLevel } from '@/lib/types';
 
 type ProfileTab = 'posts' | 'about' | 'media';
 
@@ -26,7 +26,11 @@ type ProfileViewModel = {
   initials: string;
   intro: string;
   location: string;
+  locationPrivacy: VisibilityLevel;
   email: string;
+  emailPrivacy: VisibilityLevel;
+  phone: string;
+  contactPrivacy: VisibilityLevel;
   avatarUrl: string | null;
 };
 
@@ -67,6 +71,12 @@ function buildProfileViewModel(user: AuthUser | null): ProfileViewModel {
   const intro = user?.bio || '';
   const location = user?.city || '';
   const email = user?.email || '';
+  const phone = user?.phone || '';
+
+  const locationPrivacy = user?.location_privacy || 'public';
+  const emailPrivacy = user?.email_privacy || 'public';
+  const contactPrivacy = user?.contact_privacy || 'public';
+
   const avatarUrl = user?.avatar_url
     ? (user.avatar_url.startsWith('http') ? user.avatar_url : `${API_URL}${user.avatar_url}`)
     : null;
@@ -75,7 +85,11 @@ function buildProfileViewModel(user: AuthUser | null): ProfileViewModel {
     initials: initials || 'NA',
     intro,
     location,
+    locationPrivacy,
     email,
+    emailPrivacy,
+    phone,
+    contactPrivacy,
     avatarUrl,
   };
 }
@@ -258,11 +272,6 @@ export default function ProfileScreen() {
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [avatarPickerActive, setAvatarPickerActive] = useState(false);
   const [followStatus, setFollowStatus] = useState<FollowStatus | null>(null);
-  const [isEditingIntro, setIsEditingIntro] = useState(false);
-  const [tempIntro, setTempIntro] = useState('');
-  const [tempCity, setTempCity] = useState('');
-  const [isSavingIntro, setIsSavingIntro] = useState(false);
-  const [introSaved, setIntroSaved] = useState(false);
 
   const isWide = width >= 1180;
 
@@ -275,8 +284,6 @@ export default function ProfileScreen() {
       .then((nextUser) => {
         if (isMounted) {
           setUser(nextUser);
-          setTempIntro(nextUser.bio || '');
-          setTempCity(nextUser.city || '');
         }
       })
       .catch(() => {
@@ -343,30 +350,6 @@ export default function ProfileScreen() {
 
   const handleDeletePost = (postId: string) => {
     setPosts((current) => current.filter((p) => p.id !== postId));
-  };
-
-  const handleSaveIntro = async () => {
-    setIsSavingIntro(true);
-    try {
-      const updatedUser = await updateUserProfile({
-        bio: tempIntro.trim() || null,
-        city: tempCity.trim() || null,
-      });
-      setUser(updatedUser);
-      setIsEditingIntro(false);
-      setIntroSaved(true);
-      setTimeout(() => setIntroSaved(false), 3000);
-    } catch {
-      // Xử lý lỗi
-    } finally {
-      setIsSavingIntro(false);
-    }
-  };
-
-  const handleCancelIntro = () => {
-    setTempIntro(user?.bio || '');
-    setTempCity(user?.city || '');
-    setIsEditingIntro(false);
   };
 
   const profile = useMemo(() => buildProfileViewModel(user), [user]);
@@ -461,135 +444,65 @@ export default function ProfileScreen() {
                   </View>
 
                   <View className={`${isWide ? 'w-[360px]' : ''} gap-3`}>
-                      <View className="flex-row flex-wrap gap-3">
-                        <ActionButton
-                          icon="edit"
-                          label="Chỉnh sửa hồ sơ"
-                          filled
-                          onPress={() => router.push('/edit-profile')}
-                        />
-                      </View>
+                    <View className="flex-row flex-wrap gap-3">
+                      <ActionButton
+                        icon="edit"
+                        label="Chỉnh sửa hồ sơ"
+                        filled
+                        onPress={() => router.push('/edit-profile')}
+                      />
                     </View>
                   </View>
-
-                  <View className="mt-6 flex-row flex-wrap gap-3">
-                    {tabs.map((tab) => (
-                      <ProfileTabButton
-                        key={tab.key}
-                        active={activeTab === tab.key}
-                        icon={tab.icon}
-                        label={tab.label}
-                        onPress={() => setActiveTab(tab.key)}
-                      />
-                    ))}
-                  </View>
                 </View>
+
+                <View className="mt-6 flex-row flex-wrap gap-3">
+                  {tabs.map((tab) => (
+                    <ProfileTabButton
+                      key={tab.key}
+                      active={activeTab === tab.key}
+                      icon={tab.icon}
+                      label={tab.label}
+                      onPress={() => setActiveTab(tab.key)}
+                    />
+                  ))}
+                </View>
+              </View>
             </ThemedView>
 
             {/* Body: sidebar + main */}
             <View className={isWide ? 'flex-row items-start gap-4' : 'gap-4'}>
               {/* Sidebar */}
               <View className={isWide ? 'w-[320px] gap-4' : 'gap-4'}>
-                {/* Success banner sau khi lưu intro */}
-                {introSaved && (
-                  <SuccessBanner
-                    message="Đã lưu thông tin giới thiệu"
-                    onDismiss={() => setIntroSaved(false)}
-                  />
-                )}
+                <SidebarCard title="Giới thiệu">
+                  <View className="gap-3">
+                    {[
+                      { icon: 'mail-outline' as const, value: profile.email, privacy: profile.emailPrivacy },
+                      { icon: 'phone' as const, value: profile.phone, privacy: profile.contactPrivacy },
+                      { icon: 'location-on' as const, value: profile.location, privacy: profile.locationPrivacy },
+                    ]
+                      .filter((item) => !!item.value)
+                      .map((item) => {
+                        let privacyIcon: keyof typeof MaterialIcons.glyphMap | null = null;
+                        if (item.privacy === 'onlyme') privacyIcon = 'lock';
+                        else if (item.privacy === 'followersonly') privacyIcon = 'group';
 
-                <SidebarCard
-                  title="Giới thiệu"
-                  action={
-                    !isEditingIntro ? (
-                      <Pressable
-                        onPress={() => setIsEditingIntro(true)}
-                        className="h-9 w-9 items-center justify-center active:opacity-60"
-                        accessibilityLabel="Chỉnh sửa giới thiệu"
-                      >
-                        <MaterialIcons name="edit" size={20} color="#64748B" />
-                      </Pressable>
-                    ) : null
-                  }
-                >
-                  {isEditingIntro ? (
-                    <View className="gap-4">
-                      <View>
-                        <ThemedText className="mb-2 text-xs font-semibold uppercase tracking-[1px] text-slate-500">
-                          Thành phố
-                        </ThemedText>
-                        <TextInput
-                          className="rounded-[18px] border border-slate-200 bg-[#F7F8FA] px-4 py-3 text-base text-slate-900"
-                          value={tempCity}
-                          onChangeText={setTempCity}
-                          placeholder="VD: Hà Nội, VN"
-                          placeholderTextColor="#94A3B8"
-                        />
-                      </View>
-
-                      <View>
-                        <ThemedText className="mb-2 text-xs font-semibold uppercase tracking-[1px] text-slate-500">
-                          Bio / Giới thiệu
-                        </ThemedText>
-                        <TextInput
-                          className="rounded-[18px] border border-slate-200 bg-[#F7F8FA] px-4 py-3 text-base text-slate-900"
-                          multiline
-                          numberOfLines={4}
-                          value={tempIntro}
-                          onChangeText={setTempIntro}
-                          placeholder="Giới thiệu về bạn..."
-                          placeholderTextColor="#94A3B8"
-                          textAlignVertical="top"
-                        />
-                      </View>
-
-                      <View className="flex-row gap-2">
-                        <Pressable
-                          onPress={handleSaveIntro}
-                          disabled={isSavingIntro}
-                          className="flex-1 items-center rounded-[18px] bg-[#4A9FD8] py-3 active:opacity-80 disabled:opacity-50"
-                        >
-                          {isSavingIntro ? (
-                            <ActivityIndicator size="small" color="#FFFFFF" />
-                          ) : (
-                            <ThemedText className="text-sm font-semibold text-white">Lưu</ThemedText>
-                          )}
-                        </Pressable>
-                        <Pressable
-                          onPress={handleCancelIntro}
-                          className="flex-1 items-center rounded-[18px] bg-[#F7F8FA] py-3 active:opacity-80"
-                        >
-                          <ThemedText className="text-sm font-semibold text-slate-700">Huỷ</ThemedText>
-                        </Pressable>
-                      </View>
-                    </View>
-                  ) : (
-                    <>
-                      {profile.intro ? (
-                        <ThemedText className="text-base leading-7 text-slate-700">{profile.intro}</ThemedText>
-                      ) : (
-                        <ThemedText className="text-base italic text-slate-400">Chưa có giới thiệu.</ThemedText>
-                      )}
-
-                      <View className="mt-4 gap-3">
-                        {[
-                          { icon: 'mail-outline' as const, value: profile.email },
-                          { icon: 'location-on' as const, value: profile.location },
-                        ]
-                          .filter((item) => !!item.value)
-                          .map((item) => (
-                            <View key={item.icon} className="flex-row items-center gap-3">
-                              <View className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA]">
-                                <MaterialIcons name={item.icon} size={20} color="#64748B" />
-                              </View>
-                              <ThemedText className="flex-1 text-base font-medium text-slate-800" numberOfLines={1}>
+                        return (
+                          <View key={item.icon} className="flex-row items-center gap-3">
+                            <View className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA]">
+                              <MaterialIcons name={item.icon} size={20} color="#64748B" />
+                            </View>
+                            <View className="flex-1 flex-row items-center gap-2">
+                              <ThemedText className="text-base font-medium text-slate-800" numberOfLines={1}>
                                 {item.value}
                               </ThemedText>
+                              {privacyIcon && (
+                                <MaterialIcons name={privacyIcon} size={14} color="#94A3B8" />
+                              )}
                             </View>
-                          ))}
-                      </View>
-                    </>
-                  )}
+                          </View>
+                        );
+                      })}
+                  </View>
                 </SidebarCard>
 
                 <SidebarCard title="Featured media">

@@ -39,7 +39,7 @@ function formatTime(isoString: string): string {
     return `${days} ngày trước`;
 }
 
-export function FeedPost({ item, onDeleteSuccess, onDelete }: { item: Post; onDeleteSuccess?: () => void; onDelete?: (postId: string) => void }) {
+export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSuccess?: () => void }) {
     const [liked, setLiked] = useState(item.is_liked);
     const [reactionType, setReactionType] = useState<ReactionType | null | undefined>(item.user_reaction);
     const [count, setCount] = useState(item.like_count);
@@ -49,7 +49,7 @@ export function FeedPost({ item, onDeleteSuccess, onDelete }: { item: Post; onDe
     const [isViewerVisible, setIsViewerVisible] = useState(false);
     const [viewerIndex, setViewerIndex] = useState(0);
     const [aspectRatio, setAspectRatio] = useState(1.5); // Mặc định 3:2
-    
+
     // Edit states
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState('');
@@ -97,11 +97,11 @@ export function FeedPost({ item, onDeleteSuccess, onDelete }: { item: Post; onDe
 
     const handleToggleLike = async (rType?: ReactionType) => {
         if (loading) return;
-        
+
         // Nếu truyền rType: đang chọn reaction (từ reaction bar)
         // Nếu không truyền: bấm thẳng nút Like
         const newReaction = rType || 'like';
-        
+
         // Nếu đã like cùng reaction đó thì là unlike
         const isUnliking = liked && (!rType || reactionType === newReaction);
 
@@ -186,7 +186,6 @@ export function FeedPost({ item, onDeleteSuccess, onDelete }: { item: Post; onDe
                     await deletePost(String(item.id));
                     setIsDeleted(true);
                     onDeleteSuccess?.();
-                    onDelete?.(String(item.id));
                     DeviceEventEmitter.emit('postDeleted', { postId: String(item.id) });
                 } catch {
                     window.alert("Lỗi: Không thể xóa bài viết.");
@@ -195,15 +194,14 @@ export function FeedPost({ item, onDeleteSuccess, onDelete }: { item: Post; onDe
         } else {
             Alert.alert("Xác nhận xóa", "Bạn có chắc chắn muốn xóa bài viết này không?", [
                 { text: "Hủy", style: "cancel" },
-                { 
-                    text: "Xóa", 
-                    style: "destructive", 
+                {
+                    text: "Xóa",
+                    style: "destructive",
                     onPress: async () => {
                         try {
                             await deletePost(String(item.id));
                             setIsDeleted(true);
                             onDeleteSuccess?.();
-                            onDelete?.(String(item.id));
                             DeviceEventEmitter.emit('postDeleted', { postId: String(item.id) });
                         } catch {
                             Alert.alert("Lỗi", "Không thể xóa bài viết.");
@@ -251,7 +249,7 @@ export function FeedPost({ item, onDeleteSuccess, onDelete }: { item: Post; onDe
                         </View>
                     </Pressable>
                 </Link>
-                
+
                 <View style={{ position: 'relative', zIndex: 100 }}>
                     <Pressable onPress={handleOptionsClick} className="active:opacity-70">
                         {showMenu ? (
@@ -262,22 +260,22 @@ export function FeedPost({ item, onDeleteSuccess, onDelete }: { item: Post; onDe
                             <ActionBubble icon="more-horiz" />
                         )}
                     </Pressable>
-                    
+
                     {showMenu && (
-                        <View 
-                            style={{ 
-                                position: 'absolute', 
-                                right: 0, 
-                                top: 50, 
-                                backgroundColor: 'white', 
-                                borderRadius: 16, 
-                                shadowColor: '#000', 
-                                shadowOffset: { width: 0, height: 4 }, 
-                                shadowOpacity: 0.1, 
-                                shadowRadius: 12, 
-                                elevation: 5, 
+                        <View
+                            style={{
+                                position: 'absolute',
+                                right: 0,
+                                top: 50,
+                                backgroundColor: 'white',
+                                borderRadius: 16,
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 4 },
+                                shadowOpacity: 0.1,
+                                shadowRadius: 12,
+                                elevation: 5,
                                 width: 160,
-                                zIndex: 999 
+                                zIndex: 999
                             }}
                             className="border border-[#E4E8EE] overflow-hidden"
                         >
@@ -313,14 +311,14 @@ export function FeedPost({ item, onDeleteSuccess, onDelete }: { item: Post; onDe
                             autoFocus
                         />
                         <View className="mt-3 flex-row justify-end gap-3">
-                            <Pressable 
+                            <Pressable
                                 onPress={() => setIsEditing(false)}
                                 disabled={isSaving}
                                 className="rounded-[20px] bg-[#E4E8EE] px-4 py-2 active:opacity-80"
                             >
                                 <ThemedText className="font-medium text-slate-900">Hủy</ThemedText>
                             </Pressable>
-                            <Pressable 
+                            <Pressable
                                 onPress={handleSaveEdit}
                                 disabled={isSaving || !editContent.trim()}
                                 className={`flex-row items-center justify-center rounded-[20px] bg-[#0A0A0A] px-4 py-2 active:opacity-80 ${isSaving || !editContent.trim() ? 'opacity-70' : ''}`}
@@ -356,14 +354,14 @@ export function FeedPost({ item, onDeleteSuccess, onDelete }: { item: Post; onDe
                             } else if (mediaUrls.length === 3) {
                                 itemClass += index === 0 ? "w-full aspect-[2/1] mb-1" : "w-[49%] aspect-square";
                             }
-                            
+
                             return (
-                                <Pressable 
+                                <Pressable
                                     key={index}
                                     onPress={() => {
                                         setViewerIndex(index);
                                         setIsViewerVisible(true);
-                                    }} 
+                                    }}
                                     className={`${itemClass} active:opacity-95`}
                                     style={mediaUrls.length === 1 ? { aspectRatio, maxHeight: 800 } : {}}
                                 >
@@ -438,13 +436,13 @@ export function FeedPost({ item, onDeleteSuccess, onDelete }: { item: Post; onDe
             {/* Thanh hành động */}
             <View className="mt-4 flex-row flex-wrap gap-3 border-t border-[#E4E8EE] pt-4 relative">
                 {showReactions && (
-                    <View 
+                    <View
                         className="absolute left-0 -top-14 flex-row items-center gap-2 rounded-full bg-white px-3 py-2 shadow-sm border border-[#E4E8EE]"
                         style={{ elevation: 5, zIndex: 100 }}
                     >
                         {REACTIONS.map((r) => (
-                            <Pressable 
-                                key={r.type} 
+                            <Pressable
+                                key={r.type}
                                 onPress={() => handleToggleLike(r.type as ReactionType)}
                                 className="active:scale-125 transition-transform p-1"
                             >

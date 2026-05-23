@@ -4,11 +4,7 @@ import uuid
 from pathlib import Path
 
 from anyio import from_thread
-<<<<<<< HEAD
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
-=======
-from fastapi import APIRouter, Depends, HTTPException, Query, status
->>>>>>> 4df61f6 (update UI profile)
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -47,7 +43,6 @@ from app.services.notification import create_social_notification
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-<<<<<<< HEAD
 CHAT_MEDIA_DIR = Path('uploads') / 'chats'
 
 
@@ -75,15 +70,6 @@ async def _emit_message_created_to_user_rooms(payload: dict[str, object], user_i
   for user_id in user_ids:
     await socket_server.sio.emit(MESSAGE_CREATED_EVENT, payload, room=socket_server.get_user_room_name(user_id))
 
-
-=======
-
-async def _emit_message_created_to_user_rooms(payload: dict[str, object], user_ids: list[int]) -> None:
-  for user_id in user_ids:
-    await socket_server.sio.emit(MESSAGE_CREATED_EVENT, payload, room=socket_server.get_user_room_name(user_id))
-
-
->>>>>>> 4df61f6 (update UI profile)
 @router.get('', response_model=PaginatedChatsResponse)
 def list_chats_endpoint(
   page: int = Query(1, ge=1),
@@ -132,7 +118,6 @@ def create_direct_chat_endpoint(
   return DirectChatRead(chat_id=chat.id, participant_user_id=payload.target_user_id, created_at=chat.created_at)
 
 
-<<<<<<< HEAD
 @router.post('/upload-media', status_code=status.HTTP_201_CREATED)
 def upload_chat_media(
   file: UploadFile = File(...),
@@ -167,9 +152,6 @@ def upload_chat_media(
     'media_type': content_type,
   }
 
-
-=======
->>>>>>> 4df61f6 (update UI profile)
 @router.post('/{chat_id}/read', response_model=ChatReadStatusRead)
 def mark_chat_read_endpoint(
   chat_id: int,
@@ -205,12 +187,8 @@ def list_chat_messages_endpoint(
   total = count_chat_messages(db, chat_id)
   total_pages = (total + page_size - 1) // page_size if total > 0 else 0
   skip = (page - 1) * page_size
-<<<<<<< HEAD
   messages = list_chat_messages(db, chat_id, skip=skip, limit=page_size)
   items = [_build_message_read(db, message) for message in messages]
-=======
-  items = [MessageRead.model_validate(message) for message in list_chat_messages(db, chat_id, skip=skip, limit=page_size)]
->>>>>>> 4df61f6 (update UI profile)
 
   return PaginatedMessagesResponse(
     items=items,
@@ -261,11 +239,7 @@ def create_chat_message_endpoint(
 
   try:
     response_payload = response.model_dump(mode='json')
-<<<<<<< HEAD
     from_thread.run(_emit_message_created_to_user_rooms, response_payload, member_ids)
-=======
-    from_thread.run(_emit_message_created_to_user_rooms, response_payload, get_chat_member_user_ids(db, chat_id))
->>>>>>> 4df61f6 (update UI profile)
   except Exception:
     logger.exception('Failed to emit message-created event', extra={'chat_id': chat_id, 'message_id': response.id})
   return response

@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, computed_field, field_validator
 
-from app.models.db_enums import UserRole
+from app.models.db_enums import UserRole, VisibilityLevel
 
 GenderValue = Literal['female', 'male', 'custom']
 
@@ -56,9 +56,12 @@ class UserRead(UserBase):
   id: int
   bio: str | None = None
   avatar_url: str | None = None
-  email: EmailStr
+  email: EmailStr | None = None
   phone: str | None = None
   city: str | None = None
+  contact_privacy: VisibilityLevel
+  email_privacy: VisibilityLevel
+  location_privacy: VisibilityLevel
   role: UserRole
   is_active: bool
   created_at: datetime
@@ -101,6 +104,9 @@ class UserUpdate(BaseModel):
   birth_date: date | None = None
   gender: GenderValue | None = None
   city: str | None = None
+  contact_privacy: VisibilityLevel | None = None
+  email_privacy: VisibilityLevel | None = None
+  location_privacy: VisibilityLevel | None = None
 
 class PaginatedUsersResponse(BaseModel):
   items: list[UserSearchRead]

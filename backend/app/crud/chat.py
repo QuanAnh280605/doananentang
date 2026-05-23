@@ -7,14 +7,9 @@ from sqlalchemy.orm import Session, aliased
 from app.models.group import Chat
 from app.models.group_member import ChatMember
 from app.models.message import Message
-<<<<<<< HEAD
 from app.models.message_media import MessageMedia
 from app.models.message_read import MessageStatus
 from app.models.db_enums import MediaType, MessageStatusType
-=======
-from app.models.message_read import MessageStatus
-from app.models.db_enums import MessageStatusType
->>>>>>> 4df61f6 (update UI profile)
 from app.models.user import User
 
 
