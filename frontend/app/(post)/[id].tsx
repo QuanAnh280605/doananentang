@@ -18,10 +18,22 @@ import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Avatar, surfaceClass } from '@/components/ui/core';
-import { createComment, deleteComment, fetchComments, fetchPostDetail, likeComment, unlikeComment } from '@/lib/api';
+import { createComment as realCreateComment, deleteComment as realDeleteComment, fetchComments as realFetchComments, fetchPostDetail as realFetchPostDetail, likeComment as realLikeComment, unlikeComment as realUnlikeComment } from '@/lib/api';
 import { fetchCurrentUser } from '@/lib/auth';
 import type { AuthUser } from '@/lib/auth';
 import type { Comment, Post } from '@/lib/types';
+
+// BẬT CHẾ ĐỘ MOCK DATA (Issue #35):
+// Chuyển sang true để khóa thiết kế UI và trải nghiệm offline bằng mock data
+const IS_MOCK_MODE = false;
+
+import { getMockPostDetail, getMockComments, createMockComment, likeMockPost } from '@/lib/mock-post';
+const fetchPostDetail = IS_MOCK_MODE ? getMockPostDetail : realFetchPostDetail;
+const fetchComments = IS_MOCK_MODE ? getMockComments : realFetchComments;
+const createComment = IS_MOCK_MODE ? createMockComment : realCreateComment;
+const deleteComment = IS_MOCK_MODE ? async (id: string) => {} : realDeleteComment;
+const likeComment = IS_MOCK_MODE ? async (id: string) => ({ like_count: 0 }) : realLikeComment;
+const unlikeComment = IS_MOCK_MODE ? async (id: string) => ({ like_count: 0 }) : realUnlikeComment;
 
 /** Tính initials từ tên tác giả comment */
 function getCommentInitials(author: Comment['author']): string {
@@ -61,14 +73,20 @@ function CommentItem({
         if (loading) return;
         setLoading(true);
         try {
-            if (liked) {
-                const res = await unlikeComment(String(comment.id));
-                setLiked(false);
-                setLikeCount(res.like_count);
+            if (IS_MOCK_MODE) {
+                // Mock comment like đơn giản trên UI
+                setLiked(!liked);
+                setLikeCount(liked ? likeCount - 1 : likeCount + 1);
             } else {
-                const res = await likeComment(String(comment.id));
-                setLiked(true);
-                setLikeCount(res.like_count);
+                if (liked) {
+                    const res = await unlikeComment(String(comment.id));
+                    setLiked(false);
+                    setLikeCount(res.like_count);
+                } else {
+                    const res = await likeComment(String(comment.id));
+                    setLiked(true);
+                    setLikeCount(res.like_count);
+                }
             }
         } catch (err) {
             console.error('Like comment error:', err);
@@ -79,8 +97,12 @@ function CommentItem({
 
     const handleDelete = async () => {
         try {
-            await deleteComment(String(comment.id));
-            onDelete?.(String(comment.id));
+            if (IS_MOCK_MODE) {
+                onDelete?.(String(comment.id));
+            } else {
+                await deleteComment(String(comment.id));
+                onDelete?.(String(comment.id));
+            }
         } catch {
             alert('Không thể xóa bình luận');
         }
@@ -284,6 +306,13 @@ export default function PostDetailScreen() {
                             }
                         >
                             <View className="mx-auto w-full max-w-[800px] px-4 py-6">
+                                {IS_MOCK_MODE && (
+                                    <View className="flex-row justify-end mb-3">
+                                        <View className="rounded-full bg-[#FEF9C3] px-3 py-1 border border-[#FDE047]">
+                                            <ThemedText className="text-xs font-semibold text-[#854D0E]">MOCK DATA MODE</ThemedText>
+                                        </View>
+                                    </View>
+                                )}
                                 {/* Bài viết gốc */}
                                 <FeedPost item={post} onDeleteSuccess={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')} />
 
