@@ -431,14 +431,20 @@ export default function ProfileScreen() {
                     ) : null}
                     {followStatus ? (
                       <View className="mt-4 flex-row flex-wrap gap-5">
-                        <View className="flex-row items-center gap-1.5">
+                        <Pressable 
+                          className="flex-row items-center gap-1.5 active:opacity-70"
+                          onPress={() => router.push({ pathname: '/profile/follows', params: { userId: user?.id, type: 'followers' } })}
+                        >
                           <ThemedText className="text-[15px] font-bold text-slate-950">{followStatus.followers_count}</ThemedText>
                           <ThemedText className="text-[15px] text-slate-500">người theo dõi</ThemedText>
-                        </View>
-                        <View className="flex-row items-center gap-1.5">
+                        </Pressable>
+                        <Pressable 
+                          className="flex-row items-center gap-1.5 active:opacity-70"
+                          onPress={() => router.push({ pathname: '/profile/follows', params: { userId: user?.id, type: 'following' } })}
+                        >
                           <ThemedText className="text-[15px] font-bold text-slate-950">{followStatus.following_count}</ThemedText>
                           <ThemedText className="text-[15px] text-slate-500">đang theo dõi</ThemedText>
-                        </View>
+                        </Pressable>
                       </View>
                     ) : null}
                   </View>

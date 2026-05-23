@@ -40,6 +40,10 @@ export type SearchUser = {
   bio: string | null;
 };
 
+export type FollowUser = SearchUser & {
+  is_following: boolean;
+};
+
 export type FollowStatus = {
   user_id: number;
   is_following: boolean;
@@ -170,6 +174,14 @@ export async function fetchUserProfile(userId: number): Promise<AuthUser> {
 
 import type { PaginatedUsers } from './types';
 
+export type PaginatedFollowUsers = {
+  items: FollowUser[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+};
+
 export async function searchUsers(query: string, page = 1, pageSize = 20): Promise<PaginatedUsers<SearchUser>> {
   const params = new URLSearchParams({
     q: query,
@@ -177,6 +189,22 @@ export async function searchUsers(query: string, page = 1, pageSize = 20): Promi
     page_size: String(pageSize),
   });
   return apiFetch<PaginatedUsers<SearchUser>>(`/api/users/search?${params}`);
+}
+
+export async function fetchFollowers(userId: number, page = 1, pageSize = 20): Promise<PaginatedFollowUsers> {
+  const params = new URLSearchParams({
+    page: String(page),
+    page_size: String(pageSize),
+  });
+  return apiFetch<PaginatedFollowUsers>(`/api/users/${userId}/followers?${params}`);
+}
+
+export async function fetchFollowing(userId: number, page = 1, pageSize = 20): Promise<PaginatedFollowUsers> {
+  const params = new URLSearchParams({
+    page: String(page),
+    page_size: String(pageSize),
+  });
+  return apiFetch<PaginatedFollowUsers>(`/api/users/${userId}/following?${params}`);
 }
 
 export async function fetchFollowStatus(userId: number): Promise<FollowStatus> {
