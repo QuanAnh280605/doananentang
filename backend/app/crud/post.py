@@ -109,17 +109,19 @@ def get_posts(
 
   # Xác định cột sắp xếp
   if sort_by == 'relevance' and rank_expr is not None:
-    order = rank_expr.desc()
+    order_by_args = (rank_expr.desc(),)
   else:
     actual_sort_by = sort_by if sort_by != 'relevance' else 'created_at'
     sort_column = getattr(Post, actual_sort_by, Post.created_at)
-    order = sort_column.asc() if sort_order == 'asc' else sort_column.desc()
+    primary_order = sort_column.asc() if sort_order == 'asc' else sort_column.desc()
+    secondary_order = Post.id.asc() if sort_order == 'asc' else Post.id.desc()
+    order_by_args = (primary_order, secondary_order)
 
   # Query có eager load media + author
   items = (
     query
     .options(joinedload(Post.media), joinedload(Post.author))
-    .order_by(order)
+    .order_by(*order_by_args)
     .offset((page - 1) * page_size)
     .limit(page_size)
     .all()
@@ -193,12 +195,12 @@ def get_feed_posts(
   total_pages = math.ceil(total / page_size) if total > 0 else 1
 
   # Sắp xếp mới nhất
-  order = Post.created_at.desc()
+  order_by_args = (Post.created_at.desc(), Post.id.desc())
 
   posts = (
     query
     .options(joinedload(Post.media), joinedload(Post.author))
-    .order_by(order)
+    .order_by(*order_by_args)
     .offset((page - 1) * page_size)
     .limit(page_size)
     .all()
