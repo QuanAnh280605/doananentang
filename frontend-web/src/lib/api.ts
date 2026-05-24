@@ -302,9 +302,9 @@ export function fetchPostLikers(postId: string): Promise<PostLikersResponse> {
 }
 
 export function createPost(
-  content: string, 
-  mediaUrls: string[] = [], 
-  feeling: string | null = null, 
+  content: string,
+  mediaUrls: string[] = [],
+  feeling: string | null = null,
   taggedUsers: TaggedUser[] | null = null
 ): Promise<Post> {
   return apiFetch<Post>('/api/posts', {
@@ -403,7 +403,6 @@ export function createChatMessage(chatId: string, payload: SendChatMessageReques
   });
 }
 
-<<<<<<< HEAD
 // ─── Admin ──────────────────────────────────────────────────────────────────
 
 export type AdminUser = {
@@ -470,7 +469,7 @@ export async function adminFetchPostReports(
   }
 
   const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
-  
+
   type BackendReportItem = {
     post_id: number;
     user_id: number;
@@ -550,8 +549,6 @@ export function uploadChatMedia(file: File): Promise<{ url: string; media_type: 
   });
 }
 
-=======
->>>>>>> 4df61f6 (update UI profile)
 export function markChatRead(chatId: string): Promise<ChatReadStatusResponse> {
   return apiFetch<ChatReadStatusResponse>(`/api/chats/${chatId}/read`, { method: 'POST' });
 }
