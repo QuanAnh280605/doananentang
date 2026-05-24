@@ -34,10 +34,7 @@ import {
   prependMessagesById,
   runOptimisticMessageSend,
   sendMessage,
-<<<<<<< HEAD
   sendMessageWithMedia,
-=======
->>>>>>> 4df61f6 (update UI profile)
   hasUnreadMessages,
 } from '@/lib/chat';
 import type { ChatMessage, ChatMessageResponse, DirectChat, InboxThreadData } from '@/lib/chat.types';
@@ -578,7 +575,6 @@ export function InboxView() {
         const { url: mediaUrl, media_type: mediaType } = await uploadChatMedia(mediaFile);
         setIsUploadingMedia(false);
 
-<<<<<<< HEAD
         // Send message with media
         const serverMessage = await sendMessageWithMedia(
           selectedChat.id,
@@ -638,15 +634,6 @@ export function InboxView() {
         }));
         await refreshThreads();
       }
-=======
-      setMessages(workflowResult.finalMessages);
-      setMessagesPage(1);
-      setThreads((currentThreads) => applyMessagePreviewToThreads(currentThreads, workflowResult.serverMessage, {
-        currentUserId: currentUser?.id ?? null,
-        selectedChatId: selectedChat.id,
-      }));
-      await refreshThreads();
->>>>>>> 4df61f6 (update UI profile)
     } catch (error: unknown) {
       setIsUploadingMedia(false);
       setMessageError(error instanceof Error ? error.message : 'Không thể gửi tin nhắn lúc này.');

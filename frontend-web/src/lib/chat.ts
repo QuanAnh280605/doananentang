@@ -355,7 +355,6 @@ export async function sendMessage(chatId: string, content: string): Promise<Chat
   return mapChatMessageResponse(message, participantUserId);
 }
 
-<<<<<<< HEAD
 export async function sendMessageWithMedia(chatId: string, mediaUrl: string, mediaType: string, content?: string): Promise<ChatMessage> {
   const { createChatMessage } = await import('./api');
   const participantUserId = participantUserIdByChatId.get(chatId) ?? null;
@@ -366,8 +365,6 @@ export async function sendMessageWithMedia(chatId: string, mediaUrl: string, med
   return mapChatMessageResponse(message, participantUserId);
 }
 
-=======
->>>>>>> 4df61f6 (update UI profile)
 export async function markDirectChatRead(chatId: string): Promise<void> {
   const { markChatRead } = await import('./api');
   await markChatRead(chatId);
