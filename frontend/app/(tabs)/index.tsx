@@ -10,18 +10,11 @@ import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Avatar, surfaceClass } from '@/components/ui/core';
-import { fetchFollowingUsers, fetchFeedPosts as realFetchFeedPosts, listDirectChats } from '@/lib/api';
+import { fetchFollowingUsers, fetchFeedPosts, listDirectChats } from '@/lib/api';
 import type { ChatListItem, FollowUser } from '@/lib/api';
 import { fetchCurrentUser } from '@/lib/auth';
 import type { AuthUser } from '@/lib/auth';
 import type { Post } from '@/lib/types';
-import { getMockFeedPosts } from '@/lib/mock-post';
-
-// BẬT CHẾ ĐỘ MOCK DATA (Issue #35):
-// Chuyển sang true để khóa thiết kế UI và trải nghiệm offline bằng mock data
-const IS_MOCK_MODE = false;
-
-const fetchFeedPosts = IS_MOCK_MODE ? getMockFeedPosts : realFetchFeedPosts;
 
 type Shortcut = {
   icon: keyof typeof MaterialIcons.glyphMap;
@@ -442,15 +435,6 @@ export default function HomeScreen() {
                   : 'LE'
               }
             />
-
-            {IS_MOCK_MODE && (
-              <View className="flex-row justify-end mt-2">
-                <View className="rounded-full bg-[#FEF9C3] px-3 py-1 border border-[#FDE047]">
-                  <ThemedText className="text-xs font-semibold text-[#854D0E]">MOCK DATA MODE</ThemedText>
-                </View>
-              </View>
-            )}
-
             <View className={`mt-4 gap-4 ${isDesktop ? 'flex-row items-start' : ''}`}>
               {isDesktop && (
                 <View className="w-[350px]">
