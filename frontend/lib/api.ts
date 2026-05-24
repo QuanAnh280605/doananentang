@@ -425,11 +425,10 @@ export function deletePost(postId: string): Promise<void> {
   return apiFetch<void>(`/api/posts/${postId}`, { method: 'DELETE' });
 }
 
-export async function uploadPostMedia(uris: string | string[]): Promise<{ data: string[] }> {
+export async function uploadPostMedia(uris: string[]): Promise<{ data: string[] }> {
   const formData = new FormData();
-  const uriArray = Array.isArray(uris) ? uris : [uris];
 
-  for (const uri of uriArray) {
+  for (const uri of uris) {
     const filename = uri.split('/').pop() || 'image.jpg';
     const match = /\.(\w+)$/.exec(filename);
     const ext = match ? match[1] : 'jpg';

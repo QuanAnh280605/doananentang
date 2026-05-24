@@ -9,7 +9,6 @@ import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { getMockUser, getMockPosts, updateMockUser } from '@/lib/mock-profile';
-import { logoutUser } from '@/lib/auth';
 import type { AuthUser } from '@/lib/auth';
 import type { Post } from '@/lib/types';
 
@@ -252,16 +251,6 @@ function MediaPanel() {
 
 export default function ProfileScreen() {
   const { width, height } = useWindowDimensions();
-
-  const handleLogout = async () => {
-    try {
-      await logoutUser();
-      router.replace('/login');
-    } catch (err) {
-      console.warn('Lỗi đăng xuất:', err);
-      router.replace('/login');
-    }
-  };
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
@@ -437,11 +426,6 @@ export default function ProfileScreen() {
                         label="Chỉnh sửa hồ sơ"
                         filled
                         onPress={() => router.push('/edit-profile')}
-                      />
-                      <ActionButton
-                        icon="logout"
-                        label="Đăng xuất"
-                        onPress={handleLogout}
                       />
                     </View>
                   </View>

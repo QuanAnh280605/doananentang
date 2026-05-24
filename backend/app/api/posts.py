@@ -66,57 +66,28 @@ def upload_post_media(
   if len(files) > 4:
     raise HTTPException(
       status_code=status.HTTP_400_BAD_REQUEST,
-      detail="Bạn chỉ được phép tải lên tối đa 4 ảnh cho mỗi bài viết."
+      detail="Bạn chỉ được phép tải lên tối đa 4 file (ảnh hoặc video) cho mỗi bài viết."
     )
 
   POST_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
   uploaded_urls = []
 
-  ALLOWED_MIME_TYPES = {'image/jpeg', 'image/png', 'image/gif', 'image/webp'}
-  ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
-  MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
-
   # 2. Duyệt qua từng file do client gửi lên
   for file in files:
-    # 2.1. Kiểm tra định dạng MIME
+    # 2.1. Kiểm tra định dạng (cho phép ảnh hoặc video)
     content_type = file.content_type or ''
-    if content_type not in ALLOWED_MIME_TYPES:
+    if not (content_type.startswith('image/') or content_type.startswith('video/')):
       raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
-        detail=f"Định dạng tệp '{file.filename}' không được hỗ trợ. Chỉ chấp nhận các định dạng ảnh: JPEG, PNG, GIF, WEBP."
+        detail=f"File '{file.filename}' không phải là ảnh hoặc video hợp lệ."
       )
 
-    # 2.2. Kiểm tra đuôi mở rộng của tệp
-    filename = file.filename or 'upload.jpg'
-    file_ext = filename.split('.')[-1].lower() if '.' in filename else ''
-    if file_ext not in ALLOWED_EXTENSIONS:
-      raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail=f"Đuôi mở rộng của tệp '{file.filename}' không hợp lệ. Chỉ chấp nhận: .jpg, .jpeg, .png, .gif, .webp."
-      )
-
-    # 2.3. Kiểm tra dung lượng tệp tin (tối đa 5MB)
-    try:
-      file.file.seek(0, 2)
-      file_size = file.file.tell()
-      file.file.seek(0)
-    except Exception as e:
-      raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail=f"Không thể kiểm tra dung lượng tệp '{file.filename}': {str(e)}"
-      )
-
-    if file_size > MAX_FILE_SIZE:
-      raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail=f"Tệp tin '{file.filename}' vượt quá dung lượng tối đa cho phép là 5MB."
-      )
-
-    # 2.4. Tạo tên file duy nhất
+    # 2.2. Tạo tên file duy nhất
+    file_ext = file.filename.split('.')[-1] if file.filename else 'jpg'
     unique_filename = f"{uuid.uuid4().hex}.{file_ext}"
     file_path = POST_MEDIA_DIR / unique_filename
 
-    # 2.5. Lưu file vào thư mục uploads/posts
+    # 2.3. Lưu file vào thư mục uploads/posts
     try:
       with file_path.open('wb') as buffer:
         shutil.copyfileobj(file.file, buffer)
@@ -126,7 +97,7 @@ def upload_post_media(
         detail=f"Lỗi lưu file: {str(e)}"
       )
 
-    # 2.6. Lưu URL vào danh sách trả về
+    # 2.4. Lưu URL vào danh sách trả về
     uploaded_urls.append(f"/static/posts/{unique_filename}")
     file.file.close()
 
