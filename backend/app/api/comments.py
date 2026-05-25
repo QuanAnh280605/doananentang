@@ -68,6 +68,10 @@ def create_comment_endpoint(
       raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Parent comment does not belong to this post')
     receiver_id = parent.author_id
 
+    # Phẳng hóa: nếu parent là reply (cấp 2+), quy về con của comment gốc
+    if parent.parent_comment_id is not None:
+      payload.parent_comment_id = parent.parent_comment_id
+
   comment = create_comment(db, post_id, current_user.id, payload)
   create_social_notification(
     db,
