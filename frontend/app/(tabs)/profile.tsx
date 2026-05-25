@@ -35,8 +35,8 @@ type ProfileViewModel = {
   avatarUrl: string | null;
 };
 
-const surfaceClass = 'rounded-surface border border-app-border bg-app-surface';
-const mutedSurfaceClass = 'rounded-[24px] bg-[#F7F8FA]';
+const surfaceClass = 'rounded-[32px] border border-app-border bg-app-surface';
+const mutedSurfaceClass = 'rounded-[32px] bg-[#F7F8FA]';
 
 const tabs: { key: ProfileTab; label: string; icon: keyof typeof MaterialIcons.glyphMap }[] = [
   { key: 'posts', label: 'Posts', icon: 'grid-view' },
@@ -114,8 +114,8 @@ function AvatarBlock({
 }) {
   const containerClassName =
     size === 'large'
-      ? `h-[92px] w-[92px] rounded-[28px] overflow-hidden ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`
-      : `h-14 w-14 rounded-[22px] overflow-hidden ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`;
+      ? `h-[92px] w-[92px] rounded-full overflow-hidden ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`
+      : `h-14 w-14 rounded-full overflow-hidden ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`;
   const textClassName = size === 'large' ? 'text-[28px]' : 'text-base';
 
   return (
@@ -134,7 +134,7 @@ function AvatarBlock({
         )}
         {/* Camera overlay khi picker mode bật */}
         {showPickerHint && size === 'large' && (
-          <View className="absolute inset-0 items-center justify-center rounded-[28px] bg-black/40">
+          <View className="absolute inset-0 items-center justify-center rounded-full bg-black/40">
             <MaterialIcons name="camera-alt" size={28} color="#FFFFFF" />
           </View>
         )}
@@ -157,7 +157,7 @@ function ActionButton({
   return (
     <Pressable
       onPress={onPress}
-      className={`min-w-[150px] flex-1 flex-row items-center justify-center gap-2 rounded-[18px] px-4 py-[14px] active:opacity-90 ${filled ? 'bg-[#4A9FD8]' : 'bg-[#F7F8FA]'}`}
+      className={`min-w-[150px] flex-1 flex-row items-center justify-center gap-2 rounded-full px-4 py-[14px] active:opacity-90 ${filled ? 'bg-[#4A9FD8]' : 'bg-[#F7F8FA]'}`}
     >
       <MaterialIcons color={filled ? '#FFFFFF' : '#0F172A'} name={icon} size={20} />
       <ThemedText className={`text-base font-medium ${filled ? 'text-white' : 'text-slate-900'}`}>{label}</ThemedText>
@@ -178,7 +178,7 @@ function ProfileTabButton({
 }) {
   return (
     <Pressable
-      className={`min-w-[112px] flex-1 flex-row items-center justify-center gap-2 rounded-[18px] px-4 py-[14px] active:opacity-90 ${active ? 'bg-[#0A0A0A]' : 'bg-[#F7F8FA]'}`}
+      className={`min-w-[112px] flex-1 flex-row items-center justify-center gap-2 rounded-full px-4 py-[14px] active:opacity-90 ${active ? 'bg-[#0A0A0A]' : 'bg-[#F7F8FA]'}`}
       onPress={onPress}
     >
       <MaterialIcons color={active ? '#FFFFFF' : '#0F172A'} name={icon} size={18} />
@@ -211,7 +211,7 @@ function SidebarCard({ title, children, action }: { title: string; children: Rea
 // Banner thông báo thành công sau khi lưu inline intro
 function SuccessBanner({ message, onDismiss }: { message: string; onDismiss: () => void }) {
   return (
-    <View className="flex-row items-center justify-between rounded-[14px] bg-[#DCFCE7] px-4 py-3 mx-4 md:mx-0">
+    <View className="flex-row items-center justify-between rounded-[24px] bg-[#DCFCE7] px-4 py-3 mx-4 md:mx-0">
       <View className="flex-row items-center gap-2">
         <MaterialIcons name="check-circle" size={18} color="#16A34A" />
         <ThemedText className="text-sm font-medium text-[#15803D]">{message}</ThemedText>
@@ -237,7 +237,7 @@ function AboutPanel({ profile }: { profile: ProfileViewModel }) {
         )}
         <View className="flex-row flex-wrap gap-3">
           {[profile.location].filter(Boolean).map((item) => (
-            <View key={item} className="rounded-[16px] bg-[#F1F5F9] px-4 py-3">
+            <View key={item} className="rounded-full bg-[#F1F5F9] px-4 py-3">
               <ThemedText className="text-[15px] font-medium text-slate-700">{item}</ThemedText>
             </View>
           ))}
@@ -254,7 +254,7 @@ function MediaPanel() {
       <View className="mt-5 gap-4 lg:flex-row">
         {featuredMedia.map((item) => (
           <View key={item.id} className="flex-1 gap-3">
-            <View className={`h-[220px] rounded-[24px] bg-[#F7F8FA] ${item.fillClassName}`} />
+            <View className={`h-[220px] rounded-[32px] bg-[#F7F8FA] ${item.fillClassName}`} />
             <ThemedText className="text-[17px] font-bold text-slate-900">{item.title}</ThemedText>
             <ThemedText className="text-[15px] leading-6 text-slate-500">{item.subtitle}</ThemedText>
           </View>
@@ -381,7 +381,7 @@ export default function ProfileScreen() {
             </View>
 
             {/* Profile card */}
-            <ThemedView className="bg-white shadow-sm overflow-hidden md:rounded-[32px] md:border md:border-[#E4E8EE]">
+            <ThemedView className="bg-white shadow-sm overflow-hidden rounded-b-[32px] md:rounded-[32px] md:border md:border-[#E4E8EE]">
               <View className="h-[180px] bg-[#D9ECF8]" />
               <View className="px-5 pb-5">
                 <View className="-mt-12 flex-row items-end justify-between gap-4">

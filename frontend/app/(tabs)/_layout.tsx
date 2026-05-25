@@ -1,15 +1,23 @@
 import { Tabs } from 'expo-router';
-import React from 'react';
-import { useWindowDimensions, Platform } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { useWindowDimensions, Platform, Image, View } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useNotifications } from '@/hooks/useNotifications';
+import { fetchCurrentUser } from '@/lib/auth';
+import type { AuthUser } from '@/lib/auth';
+import { API_URL } from '@/lib/api';
 
 export default function TabLayout() {
   const { unreadCount } = useNotifications();
   const { width } = useWindowDimensions();
   const isDesktopOrTablet = width >= 960;
+  const [user, setUser] = useState<AuthUser | null>(null);
+
+  useEffect(() => {
+    fetchCurrentUser().then(setUser).catch(() => {});
+  }, []);
 
   return (
     <Tabs
@@ -21,7 +29,6 @@ export default function TabLayout() {
         tabBarStyle: isDesktopOrTablet ? {
           display: 'none',
         } : {
-          position: 'absolute',
           borderTopWidth: 0,
           elevation: 10,
           shadowColor: '#000',
@@ -52,7 +59,6 @@ export default function TabLayout() {
       <Tabs.Screen
         name="explore"
         options={{
-          href: '/(tabs)/explore',
           title: 'Search',
           tabBarIcon: ({ color }) => <IconSymbol size={26} name="magnifyingglass" color={color} />,
         }}
@@ -60,7 +66,6 @@ export default function TabLayout() {
       <Tabs.Screen
         name="inbox"
         options={{
-          href: '/(tabs)/inbox',
           title: 'Inbox',
           tabBarIcon: ({ color }) => <IconSymbol size={26} name="paperplane.fill" color={color} />,
         }}
@@ -68,7 +73,6 @@ export default function TabLayout() {
       <Tabs.Screen
         name="notifications"
         options={{
-          href: '/(tabs)/notifications',
           title: 'Alerts',
           tabBarIcon: ({ color }) => <IconSymbol size={26} name="bell.fill" color={color} />,
           tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
@@ -77,9 +81,21 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          href: '/profile',
           title: 'Profile',
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="person.fill" color={color} />,
+          tabBarIcon: ({ color }) => {
+            if (user?.avatar_url) {
+              const uri = user.avatar_url.startsWith('http') ? user.avatar_url : `${API_URL}${user.avatar_url}`;
+              return (
+                <View pointerEvents="none">
+                  <Image
+                    source={{ uri }}
+                    style={{ width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: color === '#0F172A' ? color : 'transparent' }}
+                  />
+                </View>
+              );
+            }
+            return <IconSymbol size={26} name="person.fill" color={color} />;
+          },
         }}
       />
     </Tabs>

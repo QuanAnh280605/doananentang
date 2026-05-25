@@ -303,11 +303,11 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                 <View style={{ position: 'relative', zIndex: 100 }}>
                     <Pressable onPress={handleOptionsClick} className="active:opacity-70">
                         {showMenu ? (
-                            <View className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#F7F8FA]">
+                            <View className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F7F8FA]">
                                 <X size={24} color="#666666" weight="bold" />
                             </View>
                         ) : (
-                            <View className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#F7F8FA]">
+                            <View className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F7F8FA]">
                                 <DotsThree size={24} color="#666666" weight="bold" />
                             </View>
                         )}
@@ -320,7 +320,7 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                                 right: 0,
                                 top: 50,
                                 backgroundColor: 'white',
-                                borderRadius: 16,
+                                borderRadius: 24,
                                 shadowColor: '#000',
                                 shadowOffset: { width: 0, height: 4 },
                                 shadowOpacity: 0.1,
@@ -354,7 +354,7 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                 {isEditing ? (
                     <View className="mt-4">
                         <TextInput
-                            className="rounded-[20px] bg-[#F7F8FA] px-5 py-4 text-base text-slate-900"
+                            className="rounded-[24px] bg-[#F7F8FA] px-5 py-4 text-base text-slate-900"
                             multiline
                             value={editContent}
                             onChangeText={setEditContent}
@@ -383,14 +383,14 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                             <Pressable
                                 onPress={() => setIsEditing(false)}
                                 disabled={isSaving}
-                                className="rounded-[20px] bg-[#E4E8EE] px-4 py-2 active:opacity-80"
+                                className="rounded-full bg-[#E4E8EE] px-5 py-2 active:opacity-80"
                             >
                                 <ThemedText className="font-medium text-slate-900">Hủy</ThemedText>
                             </Pressable>
                             <Pressable
                                 onPress={handleSaveEdit}
                                 disabled={isSaving || !editContent.trim()}
-                                className={`flex-row items-center justify-center rounded-[20px] bg-[#0A0A0A] px-4 py-2 active:opacity-80 ${isSaving || !editContent.trim() ? 'opacity-70' : ''}`}
+                                className={`flex-row items-center justify-center rounded-full bg-[#0A0A0A] px-5 py-2 active:opacity-80 ${isSaving || !editContent.trim() ? 'opacity-70' : ''}`}
                             >
                                 {isSaving ? (
                                     <ActivityIndicator size="small" color="#FFFFFF" />
@@ -415,7 +415,7 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                 {mediaUrls.length > 0 && (
                     <View className="mt-4 flex-row flex-wrap justify-between gap-y-2">
                         {mediaUrls.map((url, index) => {
-                            let itemClass = "relative overflow-hidden rounded-[16px] ";
+                            let itemClass = "relative overflow-hidden rounded-[24px] ";
                             if (mediaUrls.length === 1) {
                                 itemClass += "w-full";
                             } else if (mediaUrls.length === 2 || mediaUrls.length === 4) {
@@ -436,7 +436,7 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                                 >
                                     <Image
                                         source={{ uri: url }}
-                                        className="h-full w-full rounded-[16px]"
+                                        className="h-full w-full rounded-[24px]"
                                         resizeMode="cover"
                                         onLoad={(event) => {
                                             if (mediaUrls.length === 1) {
@@ -537,31 +537,31 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
 
             {/* Thanh hành động (Modern Iconic Style) */}
             <View className="mt-3 flex-row flex-wrap items-center justify-between pt-2 relative">
-                <View className="flex-row items-center gap-4">
+                <View className="flex-row items-center gap-3">
                     {/* Like */}
                     <Pressable
                         onPress={() => handleToggleLike()}
                         disabled={loading}
-                        className="flex-row items-center gap-1.5 active:opacity-60 p-1"
+                        className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-50 active:opacity-60"
                     >
-                        <ThumbsUp color={liked ? "#4A9FD8" : "#0F172A"} size={26} weight={liked ? "fill" : "regular"} />
+                        <ThumbsUp color={liked ? "#4A9FD8" : "#0F172A"} size={22} weight={liked ? "fill" : "regular"} />
                     </Pressable>
 
                     {/* Comment */}
                     <Link href={`/(post)/${item.id}`} asChild>
-                        <Pressable className="flex-row items-center gap-1.5 active:opacity-60 p-1">
-                            <ChatCircleDots color="#0F172A" size={26} weight="regular" />
+                        <Pressable className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-50 active:opacity-60">
+                            <ChatCircleDots color="#0F172A" size={22} weight="regular" />
                         </Pressable>
                     </Link>
 
                     {/* Share */}
-                    <Pressable onPress={handleShare} className="flex-row items-center gap-1.5 active:opacity-60 p-1">
-                        <ShareNetwork color="#0F172A" size={26} weight="regular" />
+                    <Pressable onPress={handleShare} className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-50 active:opacity-60">
+                        <ShareNetwork color="#0F172A" size={22} weight="regular" />
                     </Pressable>
                 </View>
                 
-                <Pressable className="p-1 active:opacity-60">
-                    <MaterialIcons color="#0F172A" name="bookmark-border" size={26} />
+                <Pressable className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-50 active:opacity-60">
+                    <MaterialIcons color="#0F172A" name="bookmark-border" size={22} />
                 </Pressable>
             </View>
 
