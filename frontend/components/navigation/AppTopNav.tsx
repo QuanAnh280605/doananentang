@@ -98,7 +98,9 @@ export function AppTopNav({
         </View>
 
         <View className="flex-row items-center gap-3">
-          <NavActionBubble icon="mail-outline" />
+          <Pressable onPress={() => router.push('/(tabs)/inbox')} className="active:opacity-70">
+            <NavActionBubble icon="mail-outline" />
+          </Pressable>
           <Pressable onPress={() => router.push('/(tabs)/notifications')}>
             <View className="relative">
               <NavActionBubble icon="notifications-none" />

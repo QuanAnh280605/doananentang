@@ -13,6 +13,8 @@ import {
   Alert,
   Modal,
   Image,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -29,9 +31,10 @@ import {
   sendChatMessage,
   markChatAsRead,
   uploadChatMedia,
+  createDirectChat,
   API_URL,
 } from '@/lib/api';
-import { fetchCurrentUser, type AuthUser } from '@/lib/auth';
+import { fetchCurrentUser, searchUsers, type AuthUser, type SearchUser } from '@/lib/auth';
 import type { ChatListItemRead, ChatMessageRead, ChatParticipant } from '@/lib/types';
 
 const surfaceClass = 'rounded-surface border border-app-border bg-app-surface';
@@ -89,7 +92,7 @@ export default function InboxScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ openChatId?: string }>();
   const { width, height } = useWindowDimensions();
-  
+
   // Layout breakpoints
   const useViewportLayout = width >= 1100;
   const isTablet = width >= 768;
@@ -101,11 +104,17 @@ export default function InboxScreen() {
   const [activeChatId, setActiveChatId] = useState<number | null>(null);
   const [messages, setMessages] = useState<ChatMessageRead[]>([]);
   const [draftMessage, setDraftMessage] = useState('');
-  
+
   const [isLoadingChats, setIsLoadingChats] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+
+  // New Chat Search states
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [newChatSearchQuery, setNewChatSearchQuery] = useState('');
+  const [newChatSearchResults, setNewChatSearchResults] = useState<SearchUser[]>([]);
+  const [isSearchingUsers, setIsSearchingUsers] = useState(false);
 
   // Search states
   const [inboxNavSearchQuery, setInboxNavSearchQuery] = useState('');
@@ -169,7 +178,7 @@ export default function InboxScreen() {
         scrollToBottom();
         // Mark as read in DB
         markChatAsRead(activeChatId).catch((err) => console.error('Failed to mark read:', err));
-        
+
         // Instant updates in the local chat list unread badge
         setChats((prevChats) =>
           prevChats.map((c) => (c.chat_id === activeChatId ? { ...c, unread_count: 0 } : c))
@@ -202,7 +211,7 @@ export default function InboxScreen() {
           }
         })
         .catch((err) => console.error('Polling error:', err));
-        
+
       // Also update chats list to fetch preview messages
       listDirectChats(1, 30)
         .then((res) => {
@@ -213,6 +222,23 @@ export default function InboxScreen() {
 
     return () => clearInterval(interval);
   }, [activeChatId]);
+
+  // 5. Debounced User Search for starting new chats
+  useEffect(() => {
+    if (!showNewChatModal) return;
+
+    setIsSearchingUsers(true);
+    const delayDebounceFn = setTimeout(() => {
+      searchUsers(newChatSearchQuery, 1, 20)
+        .then((res) => {
+          setNewChatSearchResults(res.items);
+        })
+        .catch((err) => console.error('Failed to search users:', err))
+        .finally(() => setIsSearchingUsers(false));
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [newChatSearchQuery, showNewChatModal]);
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -230,11 +256,26 @@ export default function InboxScreen() {
   }, [activeChat]);
 
   // Get Initials for Avatar
-  const getInitials = (participant: ChatParticipant | null): string => {
+  const getInitials = (participant: ChatParticipant | null | SearchUser): string => {
     if (!participant) return '??';
     const first = participant.first_name ? participant.first_name[0] : '';
     const last = participant.last_name ? participant.last_name[0] : '';
     return (first + last).toUpperCase() || participant.full_name.slice(0, 2).toUpperCase();
+  };
+
+  // Handle Start Chat with User from Search
+  const handleStartNewChat = async (targetUserId: number) => {
+    setShowNewChatModal(false);
+    setNewChatSearchQuery('');
+    setNewChatSearchResults([]);
+
+    try {
+      const chat = await createDirectChat(targetUserId);
+      await loadChats();
+      setActiveChatId(chat.chat_id);
+    } catch (err: any) {
+      Alert.alert('Lỗi', 'Không thể bắt đầu cuộc trò chuyện: ' + err.message);
+    }
   };
 
   // Handle Send Text Message
@@ -249,8 +290,6 @@ export default function InboxScreen() {
       const newMsg = await sendChatMessage(activeChatId, messageText);
       setMessages((prev) => [...prev, newMsg]);
       scrollToBottom();
-      
-      // Update preview in list
       loadChats();
     } catch (err: any) {
       setDraftMessage(messageText); // restore draft
@@ -285,7 +324,7 @@ export default function InboxScreen() {
       setIsUploading(true);
 
       const uploadRes = await uploadChatMedia(selectedUri);
-      
+
       // Send chat message with uploaded media URL
       const newMsg = await sendChatMessage(activeChatId, undefined, uploadRes.url);
       setMessages((prev) => [...prev, newMsg]);
@@ -342,19 +381,28 @@ export default function InboxScreen() {
   // Profile details items list
   const profileDetails: ProfilePanelStatData[] = activeParticipant
     ? [
-        { label: 'Vai trò', value: activeParticipant.bio ? 'Thành viên chính thức' : 'Người dùng mạng xã hội' },
-        { label: 'User ID', value: activeParticipant.id.toString() },
-        { label: 'Tài khoản', value: 'Công khai' },
-      ]
+      { label: 'Vai trò', value: activeParticipant.bio ? 'Thành viên chính thức' : 'Người dùng mạng xã hội' },
+      { label: 'User ID', value: activeParticipant.id.toString() },
+      { label: 'Tài khoản', value: 'Công khai' },
+    ]
     : [];
+
+  const newChatButton = (
+    <Pressable
+      className="h-10 w-10 items-center justify-center rounded-[14px] bg-slate-100 active:opacity-90 border border-slate-200"
+      onPress={() => setShowNewChatModal(true)}>
+      <MaterialIcons color="#4A9FD8" name="chat" size={20} />
+    </Pressable>
+  );
 
   // Content for Cột 1: Inbox List
   const renderInboxList = () => (
     <SectionShell
       title="Hộp thư"
       subtitle="Các cuộc trò chuyện gần đây"
-      className={useViewportLayout ? 'h-full' : ''}
-      contentClassName={useViewportLayout ? 'min-h-0 flex-1' : ''}>
+      className="h-full"
+      contentClassName="min-h-0 flex-1"
+      headerAction={newChatButton}>
       <SearchInput onChangeText={setInboxSearchQuery} placeholder="Tìm kiếm hội thoại..." value={inboxSearchQuery} />
 
       <ScrollView
@@ -366,8 +414,17 @@ export default function InboxScreen() {
             <ActivityIndicator color="#4A9FD8" size="large" />
           </View>
         ) : mappedInboxThreads.length === 0 ? (
-          <View className="py-8 items-center">
-            <ThemedText className="text-slate-400 text-sm">Không tìm thấy cuộc trò chuyện nào.</ThemedText>
+          <View className="py-12 items-center justify-center gap-4">
+            <MaterialIcons color="#94A3B8" name="chat-bubble-outline" size={40} />
+            <ThemedText className="text-slate-400 text-sm text-center">
+              Chưa có cuộc trò chuyện nào.
+            </ThemedText>
+            <Pressable
+              className="rounded-[18px] bg-slate-900 px-4 py-3 active:opacity-90 flex-row items-center gap-2"
+              onPress={() => setShowNewChatModal(true)}>
+              <MaterialIcons color="#FFFFFF" name="add" size={16} />
+              <ThemedText className="text-xs font-semibold text-white">Bắt đầu trò chuyện</ThemedText>
+            </Pressable>
           </View>
         ) : (
           mappedInboxThreads.map((item) => (
@@ -389,57 +446,74 @@ export default function InboxScreen() {
     if (activeChatId === null || !activeParticipant) {
       return (
         <ThemedView className={`${surfaceClass} p-5 items-center justify-center flex-1 min-h-[350px] bg-[#FCFDFE]`}>
-          <MaterialIcons color="#94A3B8" name="forum" size={48} />
-          <ThemedText className="mt-4 text-lg font-semibold text-slate-800">
+          <MaterialIcons color="#4A9FD8" name="forum" size={56} />
+          <ThemedText className="mt-4 text-lg font-bold text-slate-800">
             Chưa chọn cuộc hội thoại nào
           </ThemedText>
-          <ThemedText className="mt-2 text-sm text-slate-500 text-center">
-            Hãy chọn một cuộc hội thoại ở danh sách bên trái hoặc nhắn tin từ trang cá nhân của bạn bè.
+          <ThemedText className="mt-2 text-sm text-slate-500 text-center max-w-[280px]">
+            Hãy chọn một cuộc hội thoại từ danh sách bên trái hoặc nhấn nút **Tin nhắn mới** để bắt đầu chat!
           </ThemedText>
+          <Pressable
+            className="mt-5 rounded-[18px] bg-[#4A9FD8] px-5 py-3 active:opacity-90 flex-row items-center gap-2"
+            onPress={() => setShowNewChatModal(true)}>
+            <MaterialIcons color="#FFFFFF" name="chat" size={18} />
+            <ThemedText className="text-sm font-semibold text-white">Tin nhắn mới</ThemedText>
+          </Pressable>
         </ThemedView>
       );
     }
 
-    const initials = getInitials(activeParticipant);
-    const backButton = !useViewportLayout ? (
-      <Pressable
-        className="mr-3 h-10 w-10 items-center justify-center rounded-[14px] bg-slate-100 active:opacity-90"
-        onPress={() => setActiveChatId(null)}>
-        <MaterialIcons color="#475569" name="arrow-back" size={20} />
-      </Pressable>
-    ) : null;
 
-    const infoButton = !useViewportLayout ? (
-      <Pressable
-        className="h-10 w-10 items-center justify-center rounded-[14px] bg-slate-100 active:opacity-90"
-        onPress={() => setShowProfileOverlay(true)}>
-        <MaterialIcons color="#475569" name="info-outline" size={20} />
-      </Pressable>
-    ) : null;
+
+    const initials = getInitials(activeParticipant);
+    const getAbsoluteAvatarUrl = (url: string | null) => {
+      if (!url) return null;
+      if (url.startsWith('http://') || url.startsWith('https://')) return url;
+      return `${API_URL}${url}`;
+    };
 
     return (
-      <SectionShell
-        title="Trò chuyện"
-        subtitle={`${activeParticipant.full_name}`}
-        className={useViewportLayout ? 'h-full' : ''}
-        contentClassName={useViewportLayout ? 'min-h-0 flex-1' : ''}
-        headerAction={infoButton}>
-        <View className="flex-row items-center justify-between gap-3 rounded-[24px] bg-[#F8FAFC] px-4 py-4">
-          <View className="flex-row items-center gap-3 flex-1">
-            {backButton}
-            <AvatarPill initials={initials} />
+      <ThemedView className={`${surfaceClass} flex-1 h-full min-h-[350px] bg-[#FCFDFE] p-3`}>
+        {/* Header tinh gọn ở phía trên */}
+        <View className="flex-row items-center gap-3 pb-3 mb-2 border-b border-slate-100">
+          {/* Nút Back - Chỉ hiển thị trên mobile/tablet */}
+          {!useViewportLayout && (
+            <Pressable
+              className="h-9 w-9 items-center justify-center rounded-[12px] bg-slate-100 active:opacity-80"
+              onPress={() => setActiveChatId(null)}>
+              <MaterialIcons color="#475569" name="arrow-back" size={20} />
+            </Pressable>
+          )}
+
+          {/* Avatar & Tên người nhắn (Ấn vào để mở profile) */}
+          <Pressable
+            className="flex-row items-center gap-2.5 active:opacity-80 flex-1"
+            onPress={() => {
+              router.push(`/profile/${activeParticipant.id}`);
+            }}>
+            {activeParticipant.avatar_url ? (
+              <Image
+                source={{ uri: getAbsoluteAvatarUrl(activeParticipant.avatar_url)! }}
+                className="h-9 w-9 rounded-[12px] bg-slate-200 border border-slate-200"
+              />
+            ) : (
+              <View className="h-9 w-9 items-center justify-center rounded-[12px] bg-[#DBEAFE]">
+                <ThemedText className="text-xs font-semibold text-slate-900">{initials}</ThemedText>
+              </View>
+            )}
             <View className="flex-1">
-              <ThemedText className="text-base font-semibold text-slate-950 truncate">
+              <ThemedText className="text-[15px] font-bold text-slate-900 truncate">
                 {activeParticipant.full_name}
               </ThemedText>
-              <ThemedText className="text-sm text-slate-500">
-                Đang trực tuyến
+              <ThemedText className="text-[11px] text-slate-400 mt-0.5">
+                Đang hoạt động
               </ThemedText>
             </View>
-          </View>
+          </Pressable>
         </View>
 
-        <View className={`min-h-0 flex-1 rounded-[28px] bg-[#FCFDFE] px-4 py-4 border border-slate-100 ${useViewportLayout ? '' : 'min-h-[420px]'}`}>
+        {/* Phần danh sách tin nhắn chiếm trọn không gian */}
+        <View className="min-h-0 flex-1 rounded-[24px] bg-[#FCFDFE] px-2 py-2 border border-slate-100">
           {isLoadingMessages ? (
             <View className="flex-1 justify-center items-center">
               <ActivityIndicator color="#4A9FD8" size="large" />
@@ -448,7 +522,7 @@ export default function InboxScreen() {
             <ScrollView
               ref={scrollViewRef}
               className="min-h-0 flex-1"
-              contentContainerClassName="gap-4"
+              contentContainerClassName="gap-3.5 py-2 px-1"
               onContentSizeChange={scrollToBottom}
               showsVerticalScrollIndicator={false}>
               {mappedMessages.map((item) => (
@@ -458,44 +532,47 @@ export default function InboxScreen() {
           )}
         </View>
 
-        <View className="rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-4 mt-2">
+        {/* Thanh nhập tin nhắn siêu tối giản - Đã bỏ nút Back và Info dưới thanh nhập */}
+        <View className="flex-row items-center gap-2 rounded-[20px] border border-slate-200 bg-slate-50 px-2 py-1.5 mt-2">
+          {/* Nút Chọn Ảnh */}
+          <Pressable
+            className="h-9 w-9 items-center justify-center rounded-[12px] bg-white border border-slate-200 active:opacity-80 shadow-sm"
+            disabled={isUploading}
+            onPress={handleSelectImage}>
+            {isUploading ? (
+              <ActivityIndicator color="#4A9FD8" size="small" />
+            ) : (
+              <MaterialIcons color="#475569" name="image" size={18} />
+            )}
+          </Pressable>
+
+          {/* Ô Nhập Tin Nhắn */}
           <TextInput
-            className="min-h-[50px] text-base leading-6 text-slate-900"
-            cursorColor="#0F172A"
+            className="flex-1 max-h-[60px] min-h-[36px] text-[15px] leading-5 text-slate-900 px-3 py-1.5 bg-white rounded-[12px] border border-slate-200"
+            cursorColor="#4A9FD8"
             multiline
             onChangeText={setDraftMessage}
             placeholder="Nhập tin nhắn..."
-            placeholderTextColor="#64748B"
-            selectionColor="rgba(15, 23, 42, 0.24)"
-            textAlignVertical="top"
+            placeholderTextColor="#94A3B8"
+            selectionColor="rgba(74, 159, 216, 0.24)"
+            textAlignVertical="center"
             underlineColorAndroid="transparent"
             value={draftMessage}
           />
-          <View className="mt-4 flex-row items-center justify-between gap-3 border-t border-slate-200 pt-4">
-            <View className="flex-row items-center gap-2">
-              <Pressable
-                className="h-11 w-11 items-center justify-center rounded-[18px] bg-white border border-slate-100 active:opacity-90"
-                disabled={isUploading}
-                onPress={handleSelectImage}>
-                {isUploading ? (
-                  <ActivityIndicator color="#4A9FD8" size="small" />
-                ) : (
-                  <MaterialIcons color="#475569" name="image" size={20} />
-                )}
-              </Pressable>
-            </View>
-            <Pressable
-              className="rounded-[18px] bg-slate-900 px-5 py-3 active:opacity-90 flex-row items-center"
-              disabled={isSending || !draftMessage.trim()}
-              onPress={handleSendMessage}>
-              {isSending ? (
-                <ActivityIndicator color="#FFFFFF" size="small" style={{ marginRight: 6 }} />
-              ) : null}
-              <ThemedText className="text-sm font-semibold text-white">Gửi</ThemedText>
-            </Pressable>
-          </View>
+
+          {/* Nút Gửi (Send) */}
+          <Pressable
+            className={`h-9 w-9 items-center justify-center rounded-[12px] ${!draftMessage.trim() || isSending ? 'bg-slate-100 border border-slate-200' : 'bg-[#4A9FD8]'} active:opacity-80 shadow-sm`}
+            disabled={isSending || !draftMessage.trim()}
+            onPress={handleSendMessage}>
+            {isSending ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <MaterialIcons color={!draftMessage.trim() ? '#94A3B8' : '#FFFFFF'} name="send" size={18} />
+            )}
+          </Pressable>
         </View>
-      </SectionShell>
+      </ThemedView>
     );
   };
 
@@ -566,13 +643,15 @@ export default function InboxScreen() {
     <>
       <StatusBar style="dark" />
       <ThemedView className="flex-1 bg-[#F8FAFC]">
-        <ThemedView className="mx-auto w-full max-w-[1720px] px-4 pb-6 pt-4 md:px-6">
-          <AppTopNav
-            isTablet={isTablet}
-            onSearchChange={setInboxNavSearchQuery}
-            searchPlaceholder="Tìm kiếm thư, liên lạc hoặc tệp tin..."
-            searchValue={inboxNavSearchQuery}
-          />
+        <ThemedView className="mx-auto w-full max-w-[1720px] px-4 pb-6 pt-4 md:px-6 flex-1">
+          {!useViewportLayout && activeChatId !== null ? null : (
+            <AppTopNav
+              isTablet={isTablet}
+              onSearchChange={setInboxNavSearchQuery}
+              searchPlaceholder="Tìm kiếm thư, liên lạc hoặc tệp tin..."
+              searchValue={inboxNavSearchQuery}
+            />
+          )}
 
           {useViewportLayout ? (
             // Desktop/Web Layout: 3 Columns
@@ -585,11 +664,16 @@ export default function InboxScreen() {
             </View>
           ) : (
             // Mobile/Tablet Adaptive Layout: Single-view based on active conversation
-            <View className="mt-4 gap-5">
+            <View className="mt-2 flex-1 w-full" style={activeChatId === null ? { height: height - 150 } : undefined}>
               {activeChatId === null ? (
-                <View className="w-full">{renderInboxList()}</View>
+                <View className="w-full h-full">{renderInboxList()}</View>
               ) : (
-                <View className="w-full">{renderConversation()}</View>
+                <KeyboardAvoidingView
+                  behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                  style={{ flex: 1 }}
+                  keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}>
+                  <View className="w-full flex-1">{renderConversation()}</View>
+                </KeyboardAvoidingView>
               )}
             </View>
           )}
@@ -617,6 +701,90 @@ export default function InboxScreen() {
           </ThemedView>
         </Modal>
       )}
+
+      {/* NEW CHAT MODAL - Allows starting direct chat directly from Inbox */}
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setShowNewChatModal(false)}
+        transparent={true}
+        visible={showNewChatModal}>
+        <View className="flex-1 items-center justify-center bg-black/50 px-4">
+          <ThemedView className="w-full max-w-[500px] rounded-[32px] bg-white p-6 shadow-2xl">
+            <View className="flex-row items-center justify-between pb-4 border-b border-slate-100">
+              <ThemedText className="text-lg font-bold text-slate-900">Trò chuyện mới</ThemedText>
+              <Pressable
+                className="h-9 w-9 items-center justify-center rounded-full bg-slate-100 active:opacity-80"
+                onPress={() => {
+                  setShowNewChatModal(false);
+                  setNewChatSearchQuery('');
+                  setNewChatSearchResults([]);
+                }}>
+                <MaterialIcons color="#475569" name="close" size={18} />
+              </Pressable>
+            </View>
+
+            <View className="mt-4">
+              <SearchInput
+                onChangeText={setNewChatSearchQuery}
+                placeholder="Tìm tên hoặc email bạn bè..."
+                value={newChatSearchQuery}
+              />
+            </View>
+
+            <ScrollView className="mt-4 max-h-[280px]" showsVerticalScrollIndicator={false}>
+              {isSearchingUsers ? (
+                <View className="py-6 justify-center items-center">
+                  <ActivityIndicator color="#4A9FD8" size="small" />
+                </View>
+              ) : newChatSearchResults.length === 0 ? (
+                <View className="py-8 items-center justify-center">
+                  <ThemedText className="text-slate-400 text-sm">
+                    {newChatSearchQuery ? 'Không tìm thấy người dùng nào.' : 'Nhập từ khóa để tìm bạn bè...'}
+                  </ThemedText>
+                </View>
+              ) : (
+                newChatSearchResults.map((user) => {
+                  const initials = getInitials(user);
+                  const getAbsoluteAvatarUrl = (url: string | null) => {
+                    if (!url) return null;
+                    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+                    return `${API_URL}${url}`;
+                  };
+
+                  return (
+                    <Pressable
+                      key={user.id}
+                      className="flex-row items-center justify-between rounded-[22px] bg-slate-50 hover:bg-slate-100 active:bg-slate-100 px-4 py-3.5 mb-2 transition-colors border border-slate-100"
+                      onPress={() => handleStartNewChat(user.id)}>
+                      <View className="flex-row items-center gap-3 flex-1 mr-3">
+                        {user.avatar_url ? (
+                          <Image
+                            source={{ uri: getAbsoluteAvatarUrl(user.avatar_url)! }}
+                            className="h-10 w-10 rounded-[14px] bg-slate-200"
+                          />
+                        ) : (
+                          <AvatarPill initials={initials} muted />
+                        )}
+                        <View className="flex-1">
+                          <ThemedText className="text-[15px] font-semibold text-slate-900 truncate">
+                            {user.full_name}
+                          </ThemedText>
+                          <ThemedText className="text-xs text-slate-500 truncate mt-0.5">
+                            {user.bio || 'Chưa cập nhật giới thiệu.'}
+                          </ThemedText>
+                        </View>
+                      </View>
+                      <View className="rounded-[14px] bg-[#4A9FD8] px-3.5 py-2">
+                        <ThemedText className="text-xs font-semibold text-white">Nhắn tin</ThemedText>
+                      </View>
+                    </Pressable>
+                  );
+                })
+              )}
+            </ScrollView>
+          </ThemedView>
+        </View>
+      </Modal>
     </>
   );
 }
