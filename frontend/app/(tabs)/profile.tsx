@@ -8,7 +8,8 @@ import { router } from 'expo-router';
 import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { getMockUser, getMockPosts, updateMockUser } from '@/lib/mock-profile';
+import { fetchCurrentUser, updateUserProfile } from '@/lib/auth';
+import { fetchPosts } from '@/lib/api';
 import type { AuthUser } from '@/lib/auth';
 import type { Post } from '@/lib/types';
 
@@ -67,7 +68,10 @@ function buildProfileViewModel(user: AuthUser | null): ProfileViewModel {
   const intro = user?.bio || '';
   const location = user?.city || '';
   const email = user?.email || '';
-  const avatarUrl = user?.avatar_url ?? null;
+  let avatarUrl = user?.avatar_url ?? null;
+  if (avatarUrl && !avatarUrl.startsWith('http')) {
+    avatarUrl = `${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000'}${avatarUrl}`;
+  }
   return {
     displayName,
     initials: initials || 'NA',
@@ -272,7 +276,7 @@ export default function ProfileScreen() {
     let isMounted = true;
     setIsLoadingUser(true);
 
-    getMockUser()
+    fetchCurrentUser()
       .then((nextUser) => {
         if (isMounted) {
           setUser(nextUser);
@@ -297,10 +301,11 @@ export default function ProfileScreen() {
   const [loadingPosts, setLoadingPosts] = useState(true);
 
   useEffect(() => {
+    if (!user) return;
     let isMounted = true;
     setLoadingPosts(true);
 
-    getMockPosts()
+    fetchPosts(1, 10, user.id)
       .then((res) => {
         if (isMounted) setPosts(res.items);
       })
@@ -312,7 +317,7 @@ export default function ProfileScreen() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [user]);
 
   const handleDeletePost = (postId: string) => {
     setPosts((current) => current.filter((p) => p.id !== postId));
@@ -321,7 +326,7 @@ export default function ProfileScreen() {
   const handleSaveIntro = async () => {
     setIsSavingIntro(true);
     try {
-      const updatedUser = await updateMockUser({
+      const updatedUser = await updateUserProfile({
         bio: tempIntro.trim() || null,
         city: tempCity.trim() || null,
       });
@@ -367,10 +372,6 @@ export default function ProfileScreen() {
                 <ThemedText className="text-lg">←</ThemedText>
               </Pressable>
               <ThemedText className="text-lg font-semibold text-slate-900">Hồ sơ</ThemedText>
-              {/* Mock indicator badge */}
-              <View className="ml-auto rounded-full bg-[#FEF9C3] px-3 py-1">
-                <ThemedText className="text-xs font-semibold text-[#854D0E]">MOCK DATA</ThemedText>
-              </View>
             </View>
 
             {/* Profile card */}

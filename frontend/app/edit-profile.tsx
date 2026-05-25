@@ -16,7 +16,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Image } from 'expo-image';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { getMockUser, updateMockUser, uploadMockAvatar, changeMockPassword } from '@/lib/mock-profile';
+import { fetchCurrentUser, updateUserProfile, uploadUserAvatar, changePassword } from '@/lib/auth';
 import type { GenderValue } from '@/lib/auth';
 
 const surfaceClass = 'rounded-surface border border-app-border bg-app-surface';
@@ -308,6 +308,7 @@ export default function EditProfileScreen() {
   const [city, setCity] = useState('');
   const [email, setEmail] = useState('');
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [hasNewAvatar, setHasNewAvatar] = useState(false);
 
   // Profile inline errors
   const [profileErrors, setProfileErrors] = useState<ProfileErrors>({});
@@ -324,10 +325,10 @@ export default function EditProfileScreen() {
   // Password inline errors
   const [passwordErrors, setPasswordErrors] = useState<PasswordErrors>({});
 
-  // Load mock user
+  // Load real user
   useEffect(() => {
     let mounted = true;
-    getMockUser()
+    fetchCurrentUser()
       .then((u) => {
         if (mounted) {
           setFirstName(u.first_name || '');
@@ -337,6 +338,13 @@ export default function EditProfileScreen() {
           setGender(u.gender || 'custom');
           setCity(u.city || '');
           setEmail(u.email || '');
+          
+          let aUri = u.avatar_url ?? null;
+          if (aUri && !aUri.startsWith('http')) {
+            aUri = `${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000'}${aUri}`;
+          }
+          setAvatarUri(aUri);
+          setHasNewAvatar(false);
         }
       })
       .catch(() => {
@@ -363,6 +371,7 @@ export default function EditProfileScreen() {
 
       if (!result.canceled && result.assets[0]?.uri) {
         setAvatarUri(result.assets[0].uri);
+        setHasNewAvatar(true);
       }
     } catch {
       setProfileBanner({ type: 'error', message: 'Không thể mở thư viện ảnh' });
@@ -392,11 +401,11 @@ export default function EditProfileScreen() {
     setIsSavingProfile(true);
     setProfileBanner(null);
     try {
-      if (avatarUri) {
-        await uploadMockAvatar(avatarUri);
+      if (avatarUri && hasNewAvatar) {
+        await uploadUserAvatar(avatarUri);
       }
 
-      await updateMockUser({
+      await updateUserProfile({
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         bio: bio.trim() || null,
@@ -452,7 +461,7 @@ export default function EditProfileScreen() {
     setIsSavingPassword(true);
     setPasswordBanner(null);
     try {
-      await changeMockPassword(currentPassword, newPassword);
+      await changePassword(currentPassword, newPassword);
       setPasswordBanner({ type: 'success', message: 'Đổi mật khẩu thành công!' });
       setCurrentPassword('');
       setNewPassword('');
@@ -507,10 +516,6 @@ export default function EditProfileScreen() {
                 <ThemedText className="text-lg">←</ThemedText>
               </Pressable>
               <ThemedText className="text-lg font-semibold text-slate-900">Chỉnh sửa hồ sơ</ThemedText>
-              {/* Mock indicator */}
-              <View className="ml-auto rounded-full bg-[#FEF9C3] px-3 py-1">
-                <ThemedText className="text-xs font-semibold text-[#854D0E]">MOCK DATA</ThemedText>
-              </View>
             </View>
 
             {/* Main 2-col layout */}
@@ -709,7 +714,7 @@ export default function EditProfileScreen() {
                 <SectionCard>
                   <SectionHeader
                     title="Đổi mật khẩu"
-                    subtitle="Giữ tài khoản an toàn bằng mật khẩu mạnh, không dùng ở nơi khác. (Mock: nhập 'mock123' cho mật khẩu hiện tại)"
+                    subtitle="Giữ tài khoản an toàn bằng mật khẩu mạnh, không dùng ở nơi khác."
                   />
 
                   {/* Password banner */}

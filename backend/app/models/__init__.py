@@ -11,6 +11,7 @@ from app.models.post import Post
 from app.models.post_media import PostMedia
 from app.models.post_report import PostReport
 from app.models.post_viewer import PostViewer
+from app.models.post_tag import PostTag
 from app.models.refresh_session import LoginSession, RefreshSession
 from app.models.story import Story
 from app.models.story_view import StoryView
@@ -36,6 +37,7 @@ __all__ = [
   'PostMedia',
   'PostReport',
   'PostViewer',
+  'PostTag',
   'RefreshSession',
   'Story',
   'StoryView',

@@ -2,7 +2,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, DeviceEventEmitter, FlatList, Pressable, RefreshControl, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, View, useWindowDimensions, RefreshControl, Image, DeviceEventEmitter } from 'react-native';
 
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ComposerCard } from '@/components/post/ComposerCard';
@@ -23,10 +23,11 @@ type Shortcut = {
 
 type Story = {
   id: string;
-  title: string;
-  time: string;
-  fill: string;
+  authorName: string;
+  mediaUrl: string;
   initials: string;
+  avatarUrl?: string | null;
+  ringColor?: string;
 };
 
 type Contact = {
@@ -55,9 +56,9 @@ const shortcuts: Shortcut[] = [
 ];
 
 const stories: Story[] = [
-  { id: '1', title: 'Morning run club', time: '2h ago', fill: 'bg-[#66D575]', initials: 'MN' },
-  { id: '2', title: 'Desk setup refresh', time: '5h ago', fill: 'bg-[#874FFF]', initials: 'DS' },
-  { id: '3', title: 'Client moodboard', time: 'Yesterday', fill: 'bg-[#F24822]', initials: 'KM' },
+  { id: '1', authorName: 'Lena Evere', mediaUrl: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=400&q=80', initials: 'LE', ringColor: '#4A9FD8' },
+  { id: '2', authorName: 'Alex Chen', mediaUrl: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=400&q=80', initials: 'AC', ringColor: '#41A36D' },
+  { id: '3', authorName: 'Sarah Kim', mediaUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=400&q=80', initials: 'SK', ringColor: '#F59E0B' },
 ];
 
 function buildInitials(firstName?: string | null, lastName?: string | null): string {
@@ -109,15 +110,89 @@ function ShortcutRow({ item }: { item: Shortcut }) {
   );
 }
 
-function StoryCard({ item }: { item: Story }) {
+function StoryStrip({ currentUser }: { currentUser: AuthUser | null }) {
+  const initials = buildInitials(currentUser?.first_name, currentUser?.last_name);
+  const userAvatarUrl = currentUser?.avatar_url
+    ? currentUser.avatar_url.startsWith('http')
+      ? currentUser.avatar_url
+      : `${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000'}${currentUser.avatar_url}`
+    : null;
+
   return (
-    <View className={`${item.fill} mr-4 w-[180px] overflow-hidden rounded-[28px] p-5`}>
-      <Avatar initials={item.initials} />
-      <View className="mt-24 gap-1">
-        <ThemedText className="text-lg font-semibold text-white">{item.title}</ThemedText>
-        <ThemedText className="text-sm text-white/80">{item.time}</ThemedText>
+    <ThemedView className={`${surfaceClass} p-4 shadow-sm`}>
+      <View className="mb-4 flex-row items-center justify-between px-1">
+        <View>
+          <ThemedText className="text-[22px] font-bold text-slate-900 tracking-tight">
+            Tin
+          </ThemedText>
+          <ThemedText className="text-[13px] font-medium text-slate-500">
+            Xem nhanh khoảnh khắc từ bạn bè
+          </ThemedText>
+        </View>
+        <Pressable className="rounded-[18px] px-4 py-2 bg-[#EAF4FB] active:opacity-80">
+          <ThemedText className="text-[14px] font-bold text-[#4A9FD8]">
+            Tạo tin
+          </ThemedText>
+        </Pressable>
       </View>
-    </View>
+
+      <FlatList
+        horizontal
+        data={stories}
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={{ paddingRight: 4 }}
+        ListHeaderComponent={
+          <Pressable className="mr-3 h-[216px] w-[124px] overflow-hidden rounded-[24px] border border-[#E4E8EE] bg-[#F7F8FA] active:opacity-90">
+            <View className="h-[142px] bg-[#EAF4FB] items-center justify-center">
+              {userAvatarUrl ? (
+                <Image source={{ uri: userAvatarUrl }} className="h-full w-full" resizeMode="cover" />
+              ) : (
+                <ThemedText className="text-[28px] font-bold text-[#4A9FD8]">{initials}</ThemedText>
+              )}
+            </View>
+            <View className="absolute left-1/2 top-[120px] ml-[-22px] h-[44px] w-[44px] items-center justify-center rounded-full border-[4px] border-[#FFFFFF] bg-[#4A9FD8]">
+              <MaterialIcons name="add" size={24} color="#FFFFFF" />
+            </View>
+            <View className="mt-8 items-center px-2">
+              <ThemedText className="text-[14px] font-bold text-slate-900 text-center">Tạo tin</ThemedText>
+            </View>
+          </Pressable>
+        }
+        renderItem={({ item }) => {
+          const avatarUri = item.avatarUrl
+            ? item.avatarUrl.startsWith('http')
+              ? item.avatarUrl
+              : `${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000'}${item.avatarUrl}`
+            : null;
+          return (
+            <Pressable className="mr-3 h-[216px] w-[124px] overflow-hidden rounded-[24px] bg-slate-900 active:opacity-90">
+              <Image source={{ uri: item.mediaUrl }} className="absolute h-full w-full opacity-90" resizeMode="cover" />
+              {/* Overlay for text readability */}
+              <View className="absolute bottom-0 left-0 right-0 h-28" style={{ backgroundColor: 'rgba(0,0,0,0.3)' }} />
+              
+              {/* Avatar */}
+              <View className="absolute left-3 top-3 h-11 w-11 items-center justify-center rounded-full bg-white border-2" style={{ borderColor: item.ringColor || '#E4E8EE' }}>
+                {avatarUri ? (
+                  <Image source={{ uri: avatarUri }} style={{ width: 36, height: 36, borderRadius: 18 }} resizeMode="cover" />
+                ) : (
+                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#EAF4FB', alignItems: 'center', justifyContent: 'center' }}>
+                    <ThemedText style={{ fontSize: 12, fontWeight: '700', color: item.ringColor || '#4A9FD8' }}>{item.initials}</ThemedText>
+                  </View>
+                )}
+              </View>
+              
+              {/* Name */}
+              <View className="absolute bottom-4 left-3 right-3">
+                <ThemedText className="text-[14px] font-bold text-white leading-tight" numberOfLines={2}>
+                  {item.authorName}
+                </ThemedText>
+              </View>
+            </Pressable>
+          );
+        }}
+      />
+    </ThemedView>
   );
 }
 
@@ -444,14 +519,7 @@ export default function HomeScreen() {
               <View className={`${isDesktop ? 'flex-1' : 'w-full'} gap-4`}>
                 <ComposerCard onPostCreated={() => loadPosts(1, false)} currentUser={currentUser} />
                 {/* Stories */}
-                <FlatList
-                  horizontal
-                  data={stories}
-                  keyExtractor={(s) => s.id}
-                  renderItem={({ item }) => <StoryCard item={item} />}
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ paddingRight: 16 }}
-                />
+                <StoryStrip currentUser={currentUser} />
                 {/* Loading / Error / Empty */}
                 {loading && (
                   <View className="items-center py-12">
