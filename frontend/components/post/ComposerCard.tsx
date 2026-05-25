@@ -179,38 +179,38 @@ export function ComposerCard({
   return (
     <>
       {/* ── Trigger card (luôn hiện) ── */}
-      <ThemedView className={`${surfaceClass} p-5`}>
+      <ThemedView className="bg-white mb-2 px-4 py-4">
         <Pressable
           onPress={() => setIsOpen(true)}
-          className="flex-row items-center gap-4 active:opacity-90"
+          className="flex-row items-center gap-3 active:opacity-90"
         >
           <Avatar initials={initials} soft avatarUrl={currentUser?.avatar_url} />
           <View
             style={{
               flex: 1,
-              borderRadius: 18,
-              backgroundColor: '#F7F8FA',
-              paddingHorizontal: 18,
-              paddingVertical: 14,
+              borderRadius: 99,
+              backgroundColor: '#F1F5F9',
+              paddingHorizontal: 16,
+              paddingVertical: 10,
+              justifyContent: 'center',
             }}
           >
-            <ThemedText style={{ color: '#94A3B8', fontWeight: '500', fontSize: 15 }}>
-              Chia sẻ suy nghĩ của bạn!
+            <ThemedText style={{ color: '#64748B', fontWeight: '500', fontSize: 15 }}>
+              Chia sẻ suy nghĩ của bạn...
             </ThemedText>
           </View>
           {/* Quick photo button */}
           <Pressable
             onPress={handlePickPhoto}
+            className="active:opacity-70"
             style={{
-              width: 44,
-              height: 44,
-              borderRadius: 14,
-              backgroundColor: '#F7F8FA',
+              width: 40,
+              height: 40,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <MaterialIcons name="image" size={22} color="#41A36D" />
+            <MaterialIcons name="image" size={26} color="#41A36D" />
           </Pressable>
         </Pressable>
       </ThemedView>

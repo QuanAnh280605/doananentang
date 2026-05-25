@@ -201,31 +201,44 @@ function SectionTitle({ title, subtitle, action }: { title: string; subtitle?: s
 
 function SidebarCard({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   return (
-    <ThemedView className={`${surfaceClass} p-5`}>
+    <ThemedView className="bg-white p-5 mb-2 shadow-sm md:rounded-[32px] md:border md:border-[#E4E8EE]">
       <SectionTitle title={title} action={action} />
       <View className="mt-5 gap-4">{children}</View>
     </ThemedView>
   );
 }
 
-
+// Banner thông báo thành công sau khi lưu inline intro
+function SuccessBanner({ message, onDismiss }: { message: string; onDismiss: () => void }) {
+  return (
+    <View className="flex-row items-center justify-between rounded-[14px] bg-[#DCFCE7] px-4 py-3 mx-4 md:mx-0">
+      <View className="flex-row items-center gap-2">
+        <MaterialIcons name="check-circle" size={18} color="#16A34A" />
+        <ThemedText className="text-sm font-medium text-[#15803D]">{message}</ThemedText>
+      </View>
+      <Pressable onPress={onDismiss} className="h-8 w-8 items-center justify-center" accessibilityLabel="Đóng">
+        <MaterialIcons name="close" size={16} color="#15803D" />
+      </Pressable>
+    </View>
+  );
+}
 
 function AboutPanel({ profile }: { profile: ProfileViewModel }) {
   return (
-    <ThemedView className={`${surfaceClass} p-5`}>
+    <ThemedView className="bg-white p-5 mb-2 shadow-sm md:rounded-[32px] md:border md:border-[#E4E8EE]">
       <SectionTitle title="About" subtitle="Thông tin cơ bản" />
       <View className="mt-5 gap-4">
         {profile.intro ? (
           <View className={`${mutedSurfaceClass} px-4 py-4`}>
-            <ThemedText className="text-base leading-7 text-slate-700">{profile.intro}</ThemedText>
+            <ThemedText className="text-[15px] leading-7 text-slate-700">{profile.intro}</ThemedText>
           </View>
         ) : (
           <ThemedText className="text-base italic text-slate-400">Chưa có giới thiệu.</ThemedText>
         )}
         <View className="flex-row flex-wrap gap-3">
           {[profile.location].filter(Boolean).map((item) => (
-            <View key={item} className="rounded-full bg-[#F7F8FA] px-4 py-3">
-              <ThemedText className="text-sm font-medium text-slate-700">{item}</ThemedText>
+            <View key={item} className="rounded-[16px] bg-[#F1F5F9] px-4 py-3">
+              <ThemedText className="text-[15px] font-medium text-slate-700">{item}</ThemedText>
             </View>
           ))}
         </View>
@@ -236,14 +249,14 @@ function AboutPanel({ profile }: { profile: ProfileViewModel }) {
 
 function MediaPanel() {
   return (
-    <ThemedView className={`${surfaceClass} p-5`}>
+    <ThemedView className="bg-white p-5 mb-2 shadow-sm md:rounded-[32px] md:border md:border-[#E4E8EE]">
       <SectionTitle title="Media" subtitle="Ảnh và tài liệu đã chia sẻ" />
       <View className="mt-5 gap-4 lg:flex-row">
         {featuredMedia.map((item) => (
           <View key={item.id} className="flex-1 gap-3">
             <View className={`h-[220px] rounded-[24px] bg-[#F7F8FA] ${item.fillClassName}`} />
-            <ThemedText className="text-lg font-semibold text-slate-950">{item.title}</ThemedText>
-            <ThemedText className="text-sm leading-6 text-slate-600">{item.subtitle}</ThemedText>
+            <ThemedText className="text-[17px] font-bold text-slate-900">{item.title}</ThemedText>
+            <ThemedText className="text-[15px] leading-6 text-slate-500">{item.subtitle}</ThemedText>
           </View>
         ))}
       </View>
@@ -353,23 +366,23 @@ export default function ProfileScreen() {
   return (
     <>
       <StatusBar style="dark" />
-      <ThemedView className="flex-1 bg-[#F8FAFC]" style={{ minHeight: height }}>
+      <ThemedView className="flex-1 bg-[#F1F5F9]" style={{ minHeight: height }}>
         <ScrollView bounces={false} className="flex-1" contentContainerClassName="pb-8">
-          <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-4 md:px-6">
+          <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 pb-6 pt-2 md:px-6">
             {/* Back header */}
-            <View className="flex-row items-center gap-3 rounded-surface border border-app-border bg-app-surface px-5 py-4">
+            <View className="flex-row items-center gap-3 bg-white px-4 py-3 border-b border-[#E4E8EE]">
               <Pressable
                 onPress={() => router.push('/')}
-                className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA] active:opacity-80"
+                className="h-10 w-10 items-center justify-center rounded-full bg-[#F1F5F9] active:opacity-80"
               >
-                <ThemedText className="text-lg">←</ThemedText>
+                <ThemedText className="text-xl">←</ThemedText>
               </Pressable>
-              <ThemedText className="text-lg font-semibold text-slate-900">Hồ sơ</ThemedText>
+              <ThemedText className="text-[20px] font-bold text-slate-900">Hồ sơ</ThemedText>
             </View>
 
             {/* Profile card */}
-            <ThemedView className={`${surfaceClass} overflow-hidden`}>
-              <View className="h-[210px] bg-[#D9ECF8]" />
+            <ThemedView className="bg-white shadow-sm overflow-hidden md:rounded-[32px] md:border md:border-[#E4E8EE]">
+              <View className="h-[180px] bg-[#D9ECF8]" />
               <View className="px-5 pb-5">
                 <View className="-mt-12 flex-row items-end justify-between gap-4">
                   <View className="flex-row items-end gap-4">

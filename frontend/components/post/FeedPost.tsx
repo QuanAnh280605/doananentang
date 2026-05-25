@@ -253,7 +253,7 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
     if (isDeleted) return null;
 
     return (
-        <ThemedView className={`${surfaceClass} p-5`} style={{ zIndex: showMenu ? 10 : 1 }}>
+        <ThemedView className="bg-white mb-2 px-4 py-4" style={{ zIndex: showMenu ? 10 : 1 }}>
             {/* Header */}
             <View className="flex-row items-start justify-between gap-4 relative" style={{ zIndex: showMenu ? 50 : 1 }}>
                 <Link href="/(tabs)/profile" asChild>
@@ -535,41 +535,33 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                 })()}
             </View>
 
-            {/* Thanh hành động */}
-            <View className="mt-4 flex-row flex-wrap gap-3 border-t border-[#E4E8EE] pt-4 relative">
-                {/* Like */}
-                <Pressable
-                    onPress={() => handleToggleLike()}
-                    disabled={loading}
-                    className="min-w-[140px] flex-1 flex-row items-center justify-center gap-2 rounded-[20px] bg-[#F7F8FA] px-4 py-4 active:opacity-80"
-                >
-                    {liked ? (
-                        <>
-                            <ThumbsUp color="#4A9FD8" size={20} weight="fill" />
-                            <ThemedText style={{ color: '#4A9FD8' }} className="text-base font-semibold">
-                                Thích
-                            </ThemedText>
-                        </>
-                    ) : (
-                        <>
-                            <ThumbsUp color="#666666" size={20} weight="regular" />
-                            <ThemedText className="text-base font-semibold text-slate-900">Thích</ThemedText>
-                        </>
-                    )}
-                </Pressable>
-
-                {/* Comment */}
-                <Link href={`/(post)/${item.id}`} asChild>
-                    <Pressable className="min-w-[140px] flex-1 flex-row items-center justify-center gap-2 rounded-[20px] bg-[#F7F8FA] px-4 py-4 active:opacity-80">
-                        <ChatCircleDots color="#666666" size={20} weight="regular" />
-                        <ThemedText className="text-base font-medium text-slate-900">Comment</ThemedText>
+            {/* Thanh hành động (Modern Iconic Style) */}
+            <View className="mt-3 flex-row flex-wrap items-center justify-between pt-2 relative">
+                <View className="flex-row items-center gap-4">
+                    {/* Like */}
+                    <Pressable
+                        onPress={() => handleToggleLike()}
+                        disabled={loading}
+                        className="flex-row items-center gap-1.5 active:opacity-60 p-1"
+                    >
+                        <ThumbsUp color={liked ? "#4A9FD8" : "#0F172A"} size={26} weight={liked ? "fill" : "regular"} />
                     </Pressable>
-                </Link>
 
-                {/* Share */}
-                <Pressable onPress={handleShare} className="min-w-[140px] flex-1 flex-row items-center justify-center gap-2 rounded-[20px] bg-[#F7F8FA] px-4 py-4 active:opacity-80">
-                    <ShareNetwork color="#666666" size={20} weight="regular" />
-                    <ThemedText className="text-base font-medium text-slate-900">Share</ThemedText>
+                    {/* Comment */}
+                    <Link href={`/(post)/${item.id}`} asChild>
+                        <Pressable className="flex-row items-center gap-1.5 active:opacity-60 p-1">
+                            <ChatCircleDots color="#0F172A" size={26} weight="regular" />
+                        </Pressable>
+                    </Link>
+
+                    {/* Share */}
+                    <Pressable onPress={handleShare} className="flex-row items-center gap-1.5 active:opacity-60 p-1">
+                        <ShareNetwork color="#0F172A" size={26} weight="regular" />
+                    </Pressable>
+                </View>
+                
+                <Pressable className="p-1 active:opacity-60">
+                    <MaterialIcons color="#0F172A" name="bookmark-border" size={26} />
                 </Pressable>
             </View>
 

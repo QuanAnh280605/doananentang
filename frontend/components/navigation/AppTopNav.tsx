@@ -38,7 +38,7 @@ function NavAvatar({ initials, avatarUrl }: { initials: string; avatarUrl?: stri
   );
 }
 
-type IconComponent = React.ComponentType<{ size?: number; color?: string; weight?: string }>;
+type IconComponent = React.ComponentType<{ size?: number; color?: string; weight?: any }>;
 
 function NavActionBubble({ icon: Icon }: { icon: IconComponent }) {
   return (
@@ -77,62 +77,85 @@ export function AppTopNav({
   };
 
   return (
-    <ThemedView className="rounded-surface border border-app-border bg-app-surface px-5 py-4">
-      <View className={`items-center gap-4 ${isTablet ? 'flex-row justify-between' : 'flex-col'}`}>
-        <View className={`items-center gap-4 ${isTablet ? 'flex-1 flex-row' : 'w-full flex-row'}`}>
-          <View className="flex-row items-center gap-3">
-            <View className="h-12 w-12 items-center justify-center rounded-[18px] bg-slate-950 shadow-lg shadow-slate-950/20">
-              <Aperture color="#FFFFFF" size={20} weight="fill" />
+    <ThemedView className={`bg-app-surface ${isTablet ? 'rounded-surface border border-app-border px-5 py-4' : 'px-2 py-3'}`}>
+      {isTablet ? (
+        <View className="flex-row items-center justify-between gap-4">
+          <View className="flex-1 flex-row items-center gap-4">
+            <View className="flex-row items-center gap-3">
+              <View className="h-12 w-12 items-center justify-center rounded-[18px] bg-[#4A9FD8]">
+                <Aperture color="#FFFFFF" size={22} weight="bold" />
+              </View>
+              <View>
+                <ThemedText className="text-[26px] font-semibold tracking-[-0.5px] text-slate-950">Northfeed</ThemedText>
+                <ThemedText className="text-sm text-slate-500">studio</ThemedText>
+              </View>
             </View>
-            <View>
-              <ThemedText className="text-[26px] font-semibold tracking-[-0.5px] text-slate-950">Northfeed</ThemedText>
-              <ThemedText className="text-sm text-slate-500">studio</ThemedText>
-            </View>
+
+            {isControlled ? (
+              <SearchInput
+                className="ml-6 max-w-[560px] flex-1"
+                onChangeText={handleSearchChange}
+                placeholder={searchPlaceholder}
+                value={resolvedSearchValue}
+              />
+            ) : (
+              <Pressable 
+                className="ml-6 max-w-[560px] flex-1"
+                onPress={handleSearchFocus}
+              >
+                <View pointerEvents="none">
+                  <SearchInput
+                    onChangeText={() => {}}
+                    placeholder={searchPlaceholder}
+                    value={resolvedSearchValue}
+                  />
+                </View>
+              </Pressable>
+            )}
           </View>
 
-          {isControlled ? (
-            <SearchInput
-              className={isTablet ? 'ml-6 max-w-[560px] flex-1' : 'w-full'}
-              onChangeText={handleSearchChange}
-              placeholder={searchPlaceholder}
-              value={resolvedSearchValue}
-            />
-          ) : (
-            <Pressable 
-              className={isTablet ? 'ml-6 max-w-[560px] flex-1' : 'w-full'}
-              onPress={handleSearchFocus}
-            >
-              <View pointerEvents="none">
-                <SearchInput
-                  onChangeText={() => {}}
-                  placeholder={searchPlaceholder}
-                  value={resolvedSearchValue}
-                />
+          <View className="flex-row items-center gap-3">
+            <NavActionBubble icon={EnvelopeSimple} />
+            <Pressable onPress={() => router.push('/(tabs)/notifications')}>
+              <View className="relative">
+                <NavActionBubble icon={Bell} />
+                {unreadCount > 0 && (
+                  <View className="absolute -right-1 -top-1 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5">
+                    <ThemedText className="text-[10px] font-bold text-white">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </ThemedText>
+                  </View>
+                )}
               </View>
             </Pressable>
-          )}
+            <NavActionBubble icon={SquaresFour} />
+            <Pressable onPress={() => router.push('/profile')} className="active:opacity-70">
+              <NavAvatar initials={avatarInitials} avatarUrl={avatarUrl} />
+            </Pressable>
+          </View>
         </View>
-
-        <View className="flex-row items-center gap-3">
-          <NavActionBubble icon={EnvelopeSimple} />
-          <Pressable onPress={() => router.push('/(tabs)/notifications')}>
-            <View className="relative">
-              <NavActionBubble icon={Bell} />
-              {unreadCount > 0 && (
-                <View className="absolute -right-1 -top-1 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5">
-                  <ThemedText className="text-[10px] font-bold text-white">
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </ThemedText>
-                </View>
-              )}
+      ) : (
+        /* Mobile Header */
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center gap-2">
+            <View className="h-9 w-9 items-center justify-center rounded-xl bg-[#4A9FD8]">
+              <Aperture color="#FFFFFF" size={18} weight="bold" />
             </View>
-          </Pressable>
-          <NavActionBubble icon={SquaresFour} />
-          <Pressable onPress={() => router.push('/profile')} className="active:opacity-70">
-            <NavAvatar initials={avatarInitials} avatarUrl={avatarUrl} />
-          </Pressable>
+            <ThemedText className="text-xl font-bold tracking-tight text-slate-950">Northfeed</ThemedText>
+          </View>
+          <View className="flex-row items-center gap-2">
+             <Pressable onPress={() => router.push('/(tabs)/notifications')} className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 active:opacity-70">
+                <Bell color="#0F172A" size={22} weight="regular" />
+                {unreadCount > 0 && (
+                  <View className="absolute right-0 top-0 h-3 w-3 rounded-full bg-red-500 border-2 border-white" />
+                )}
+             </Pressable>
+             <Pressable onPress={() => router.push('/(tabs)/inbox')} className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 active:opacity-70">
+                <EnvelopeSimple color="#0F172A" size={22} weight="regular" />
+             </Pressable>
+          </View>
         </View>
-      </View>
+      )}
     </ThemedView>
   );
 }
