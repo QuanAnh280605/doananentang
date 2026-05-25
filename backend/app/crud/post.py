@@ -21,7 +21,6 @@ def create_post(db: Session, post_in: PostCreate, author_id: int) -> Post:
     content=post_in.content,
     visibility=post_in.visibility,
     feeling=post_in.feeling,
-    tagged_users=post_in.tagged_users,
     gif_url=post_in.gif_url,
     location_name=post_in.location_name,
     location_lat=post_in.location_lat,

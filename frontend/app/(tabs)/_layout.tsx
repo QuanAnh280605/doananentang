@@ -35,7 +35,7 @@ export default function TabLayout() {
         options={{
           href: null,
           title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="magnifyingglass" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -43,7 +43,7 @@ export default function TabLayout() {
         options={{
           href: null,
           title: 'Inbox',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="envelope.fill" color={color} />,
         }}
       />
       <Tabs.Screen

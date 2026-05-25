@@ -1,4 +1,4 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { Aperture, EnvelopeSimple, Bell, SquaresFour } from 'phosphor-react-native';
 import { Pressable, View , Image} from 'react-native';
 import { router } from 'expo-router';
 
@@ -38,10 +38,12 @@ function NavAvatar({ initials, avatarUrl }: { initials: string; avatarUrl?: stri
   );
 }
 
-function NavActionBubble({ icon }: { icon: keyof typeof MaterialIcons.glyphMap }) {
+type IconComponent = React.ComponentType<{ size?: number; color?: string; weight?: string }>;
+
+function NavActionBubble({ icon: Icon }: { icon: IconComponent }) {
   return (
     <View className="h-12 w-12 items-center justify-center rounded-[18px] bg-[#F7F8FA]">
-      <MaterialIcons color="#666666" name={icon} size={21} />
+      <Icon color="#666666" size={21} weight="regular" />
     </View>
   );
 }
@@ -79,8 +81,8 @@ export function AppTopNav({
       <View className={`items-center gap-4 ${isTablet ? 'flex-row justify-between' : 'flex-col'}`}>
         <View className={`items-center gap-4 ${isTablet ? 'flex-1 flex-row' : 'w-full flex-row'}`}>
           <View className="flex-row items-center gap-3">
-            <View className="h-12 w-12 items-center justify-center rounded-[18px] bg-[#4A9FD8]">
-              <MaterialIcons color="#FFFFFF" name="filter-tilt-shift" size={22} />
+            <View className="h-12 w-12 items-center justify-center rounded-[18px] bg-slate-950 shadow-lg shadow-slate-950/20">
+              <Aperture color="#FFFFFF" size={20} weight="fill" />
             </View>
             <View>
               <ThemedText className="text-[26px] font-semibold tracking-[-0.5px] text-slate-950">Northfeed</ThemedText>
@@ -112,10 +114,10 @@ export function AppTopNav({
         </View>
 
         <View className="flex-row items-center gap-3">
-          <NavActionBubble icon="mail-outline" />
+          <NavActionBubble icon={EnvelopeSimple} />
           <Pressable onPress={() => router.push('/(tabs)/notifications')}>
             <View className="relative">
-              <NavActionBubble icon="notifications-none" />
+              <NavActionBubble icon={Bell} />
               {unreadCount > 0 && (
                 <View className="absolute -right-1 -top-1 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5">
                   <ThemedText className="text-[10px] font-bold text-white">
@@ -125,7 +127,7 @@ export function AppTopNav({
               )}
             </View>
           </Pressable>
-          <NavActionBubble icon="apps" />
+          <NavActionBubble icon={SquaresFour} />
           <Pressable onPress={() => router.push('/profile')} className="active:opacity-70">
             <NavAvatar initials={avatarInitials} avatarUrl={avatarUrl} />
           </Pressable>

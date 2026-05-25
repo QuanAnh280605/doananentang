@@ -13,6 +13,7 @@ from app.models.like import Like
 from app.models.post import Post
 from app.models.post_media import PostMedia
 from app.models.post_viewer import PostViewer
+from app.models.post_tag import PostTag
 from app.models.db_enums import VisibilityLevel
 
 @pytest.fixture
@@ -26,6 +27,7 @@ def db_engine():
     User.__table__.create(bind=engine)
     Follow.__table__.create(bind=engine)
     Post.__table__.create(bind=engine)
+    PostTag.__table__.create(bind=engine)
     PostMedia.__table__.create(bind=engine)
     PostViewer.__table__.create(bind=engine)
     Like.__table__.create(bind=engine)
