@@ -1,13 +1,14 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View, Alert } from 'react-native';
 
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { fetchFollowStatus, followUser, type FollowStatus, unfollowUser } from '@/lib/auth';
+import { createDirectChat } from '@/lib/api';
 
 const surfaceClass = 'rounded-surface border border-app-border bg-app-surface';
 
@@ -34,6 +35,7 @@ export default function UserProfileScreen() {
   const [isLoadingFollowStatus, setIsLoadingFollowStatus] = useState(false);
   const [isSubmittingFollow, setIsSubmittingFollow] = useState(false);
   const [followErrorMessage, setFollowErrorMessage] = useState<string | null>(null);
+  const [isCreatingChat, setIsCreatingChat] = useState(false);
 
   useEffect(() => {
     if (numericUserId === null) {
@@ -92,6 +94,26 @@ export default function UserProfileScreen() {
       });
   };
 
+  const handleStartChat = async () => {
+    if (numericUserId === null || isCreatingChat) {
+      return;
+    }
+
+    setIsCreatingChat(true);
+    try {
+      const chat = await createDirectChat(numericUserId);
+      router.push({
+        pathname: '/inbox',
+        params: { openChatId: chat.chat_id.toString() },
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Không thể bắt đầu cuộc hội thoại.';
+      Alert.alert('Lỗi', message);
+    } finally {
+      setIsCreatingChat(false);
+    }
+  };
+
   return (
     <>
       <StatusBar style="dark" />
@@ -131,9 +153,15 @@ export default function UserProfileScreen() {
                             : 'Follow'}
                       </ThemedText>
                     </Pressable>
-                    <View className="rounded-[20px] bg-[#F7F8FA] px-4 py-4">
+                    <Pressable
+                      className="rounded-[20px] bg-[#F7F8FA] px-4 py-4 active:opacity-90 flex-row items-center justify-center"
+                      disabled={numericUserId === null || isCreatingChat}
+                      onPress={handleStartChat}>
+                      {isCreatingChat ? (
+                        <ActivityIndicator color="#0F172A" size="small" style={{ marginRight: 6 }} />
+                      ) : null}
                       <ThemedText className="text-base font-medium text-slate-900">Message</ThemedText>
-                    </View>
+                    </Pressable>
                   </View>
                   {followErrorMessage ? <ThemedText className="text-sm text-rose-600">{followErrorMessage}</ThemedText> : null}
                 </View>
