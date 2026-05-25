@@ -7,14 +7,17 @@ import { ActivityIndicator, DeviceEventEmitter, FlatList, Pressable, RefreshCont
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ComposerCard } from '@/components/post/ComposerCard';
 import { FeedPost } from '@/components/post/FeedPost';
+import { CreateStoryModal } from '@/components/story/CreateStoryModal';
+import { StoryStrip, groupStoriesByAuthor, type StoryGroup } from '@/components/story/StoryStrip';
+import { StoryViewerModal } from '@/components/story/StoryViewerModal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Avatar, surfaceClass } from '@/components/ui/core';
-import { fetchFollowingUsers, fetchFeedPosts as realFetchFeedPosts, listDirectChats } from '@/lib/api';
+import { fetchFollowingUsers, fetchFeedPosts as realFetchFeedPosts, listDirectChats, fetchStories } from '@/lib/api';
 import type { ChatListItem, FollowUser } from '@/lib/api';
 import { fetchCurrentUser } from '@/lib/auth';
 import type { AuthUser } from '@/lib/auth';
-import type { Post } from '@/lib/types';
+import type { Post, Story as RealStory } from '@/lib/types';
 import { getMockFeedPosts } from '@/lib/mock-post';
 
 // BẬT CHẾ ĐỘ MOCK DATA (Issue #35):
@@ -26,14 +29,6 @@ const fetchFeedPosts = IS_MOCK_MODE ? getMockFeedPosts : realFetchFeedPosts;
 type Shortcut = {
   icon: keyof typeof MaterialIcons.glyphMap;
   label: string;
-};
-
-type Story = {
-  id: string;
-  title: string;
-  time: string;
-  fill: string;
-  initials: string;
 };
 
 type Contact = {
@@ -59,12 +54,6 @@ const shortcuts: Shortcut[] = [
   { icon: 'home-filled', label: 'Home' },
   { icon: 'bookmark-border', label: 'Saved sets' },
   { icon: 'autorenew', label: 'Circle updates' },
-];
-
-const stories: Story[] = [
-  { id: '1', title: 'Morning run club', time: '2h ago', fill: 'bg-[#66D575]', initials: 'MN' },
-  { id: '2', title: 'Desk setup refresh', time: '5h ago', fill: 'bg-[#874FFF]', initials: 'DS' },
-  { id: '3', title: 'Client moodboard', time: 'Yesterday', fill: 'bg-[#F24822]', initials: 'KM' },
 ];
 
 function buildInitials(firstName?: string | null, lastName?: string | null): string {
@@ -116,17 +105,7 @@ function ShortcutRow({ item }: { item: Shortcut }) {
   );
 }
 
-function StoryCard({ item }: { item: Story }) {
-  return (
-    <View className={`${item.fill} mr-4 w-[180px] overflow-hidden rounded-[28px] p-5`}>
-      <Avatar initials={item.initials} />
-      <View className="mt-24 gap-1">
-        <ThemedText className="text-lg font-semibold text-white">{item.title}</ThemedText>
-        <ThemedText className="text-sm text-white/80">{item.time}</ThemedText>
-      </View>
-    </View>
-  );
-}
+
 
 function ContactRow({ item }: { item: Contact }) {
   return (
@@ -332,8 +311,24 @@ export default function HomeScreen() {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
+  // States cho tính năng Story
+  const [storiesList, setStoriesList] = useState<RealStory[]>([]);
+  const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [activeStoryGroup, setActiveStoryGroup] = useState<StoryGroup | null>(null);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+
   useEffect(() => {
     fetchCurrentUser().then(setCurrentUser).catch(() => { });
+  }, []);
+
+  const loadStories = useCallback(async () => {
+    try {
+      const data = await fetchStories();
+      setStoriesList(data);
+    } catch (err) {
+      console.error('Không thể tải tin:', err);
+    }
   }, []);
 
   const loadPosts = useCallback(async (pageNum = 1, shouldAppend = false) => {
@@ -389,7 +384,8 @@ export default function HomeScreen() {
 
   useEffect(() => {
     loadPosts(1, false);
-  }, [loadPosts]);
+    loadStories();
+  }, [loadPosts, loadStories]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -399,6 +395,8 @@ export default function HomeScreen() {
       setPosts(result.items);
       setHasMore(result.page < result.total_pages);
       setPage(result.page);
+      
+      await loadStories();
     } catch (err: any) {
       setError(err.message ?? 'Không thể tải bài viết');
     } finally {
@@ -410,6 +408,16 @@ export default function HomeScreen() {
     if (!loadingMore && hasMore) {
       loadPosts(page + 1, true);
     }
+  };
+
+  const handleStoryCreated = (newStory: RealStory) => {
+    setStoriesList((prev) => [newStory, ...prev]);
+  };
+
+  const handleStoryViewed = (storyId: string | number) => {
+    setStoriesList((prev) =>
+      prev.map((s) => (String(s.id) === String(storyId) ? { ...s, is_viewed: true } : s))
+    );
   };
 
   return (
@@ -460,13 +468,17 @@ export default function HomeScreen() {
               <View className={`${isDesktop ? 'flex-1' : 'w-full'} gap-4`}>
                 <ComposerCard onPostCreated={() => loadPosts(1, false)} currentUser={currentUser} />
                 {/* Stories */}
-                <FlatList
-                  horizontal
-                  data={stories}
-                  keyExtractor={(s) => s.id}
-                  renderItem={({ item }) => <StoryCard item={item} />}
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ paddingRight: 16 }}
+                <StoryStrip
+                  currentUser={currentUser}
+                  stories={storiesList}
+                  onImageSelected={(uri) => {
+                    setSelectedImageUri(uri);
+                    setIsCreateOpen(true);
+                  }}
+                  onOpenStoryGroup={(group) => {
+                    setActiveStoryGroup(group);
+                    setIsViewerOpen(true);
+                  }}
                 />
                 {/* Loading / Error / Empty */}
                 {loading && (
@@ -563,6 +575,31 @@ export default function HomeScreen() {
           ) : null
         }
       />
+
+      {selectedImageUri && (
+        <CreateStoryModal
+          imageUri={selectedImageUri}
+          visible={isCreateOpen}
+          onClose={() => {
+            setIsCreateOpen(false);
+            setSelectedImageUri(null);
+          }}
+          onStoryCreated={handleStoryCreated}
+        />
+      )}
+
+      {isViewerOpen && activeStoryGroup && (
+        <StoryViewerModal
+          visible={isViewerOpen}
+          onClose={() => {
+            setIsViewerOpen(false);
+            setActiveStoryGroup(null);
+          }}
+          initialGroup={activeStoryGroup}
+          allGroups={groupStoriesByAuthor(storiesList)}
+          onStoryViewed={handleStoryViewed}
+        />
+      )}
     </ThemedView>
   );
 }

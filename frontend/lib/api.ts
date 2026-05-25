@@ -29,6 +29,9 @@ import type {
   Post,
   ReactionType,
   VisibilityLevel,
+  Story,
+  StoryCreatePayload,
+  StoryViewStatus,
 } from '@/lib/types';
 
 const FALLBACK_PORT = '8000';
@@ -544,3 +547,46 @@ export function markAllNotificationsRead(): Promise<{ updated_count: number }> {
     method: 'PATCH',
   });
 }
+
+// ─── Story API ───────────────────────────────────────────────
+
+export function fetchStories(): Promise<Story[]> {
+  return apiFetch<Story[]>('/api/stories');
+}
+
+export async function uploadStoryMedia(uri: string): Promise<{ file_url: string }> {
+  const formData = new FormData();
+  const filename = uri.split('/').pop() || 'image.jpg';
+  const match = /\.(\w+)$/.exec(filename);
+  const ext = match ? match[1] : 'jpg';
+  const mimeType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+
+  if (Platform.OS === 'web') {
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    formData.append('file', new File([blob], filename, { type: mimeType }));
+  } else {
+    formData.append('file', {
+      uri,
+      name: filename,
+      type: mimeType,
+    } as any);
+  }
+
+  return apiFetch<{ file_url: string }>('/api/stories/upload-media', {
+    method: 'POST',
+    body: formData,
+  });
+}
+
+export function createStory(payload: StoryCreatePayload): Promise<Story> {
+  return apiFetch<Story>('/api/stories', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function markStoryViewed(storyId: string | number): Promise<StoryViewStatus> {
+  return apiFetch<StoryViewStatus>(`/api/stories/${storyId}/views`, { method: 'POST' });
+}
+

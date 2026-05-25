@@ -113,3 +113,40 @@ export type NotificationListResponse = {
   unread_count: number;
 };
 
+// ─── Story ────────────────────────────────────────────────────
+
+export type StoryAuthor = {
+  id: string | number;
+  first_name: string;
+  last_name: string;
+  avatar_url: string | null;
+};
+
+export type Story = {
+  id: string | number;
+  user_id: string | number;
+  file_url: string;
+  caption: string | null;
+  type: 'image' | 'video' | 'audio';
+  visibility: 'public' | 'followersonly' | 'custom' | 'onlyme';
+  expired_at: string;
+  created_at: string;
+  view_count: number;
+  is_viewed: boolean;
+  author: StoryAuthor;
+};
+
+export type StoryCreatePayload = {
+  file_url: string;
+  caption?: string | null;
+  type?: 'image';
+  visibility?: 'public' | 'followersonly' | 'custom' | 'onlyme';
+};
+
+export type StoryViewStatus = {
+  story_id: string | number;
+  viewed: boolean;
+  view_count: number;
+};
+
+
