@@ -809,7 +809,7 @@ export function InboxView() {
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-50 text-slate-500 hover:bg-[#EAF4FB] hover:text-[#4A9FD8] transition-all active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" fill="currentColor">
-                      <path d="M216,40H40A16,16,0,0,0,24,56V200a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40Zm0,16V158.75l-26.07-26.06a16,16,0,0,0-22.63,0l-20,20-44-44a16,16,0,0,0-22.62,0L40,149.37V56ZM40,200V172l52-52,44,44,28-28,52,52.07V200Z"/>
+                      <path d="M216,40H40A16,16,0,0,0,24,56V200a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40Zm0,16V158.75l-26.07-26.06a16,16,0,0,0-22.63,0l-20,20-44-44a16,16,0,0,0-22.62,0L40,149.37V56ZM40,200V172l52-52,44,44,28-28,52,52.07V200Z" />
                     </svg>
                   </button>
 
@@ -837,11 +837,10 @@ export function InboxView() {
                     value={draftMessage}
                   />
                   <button
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white transition-all active:scale-[0.95] ${
-                      (normalizedDraftMessage.length === 0 && !mediaFile) || isSendingMessage || !selectedChat
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white transition-all active:scale-[0.95] ${(normalizedDraftMessage.length === 0 && !mediaFile) || isSendingMessage || !selectedChat
                         ? 'cursor-not-allowed bg-slate-300'
                         : 'bg-slate-900 hover:bg-[#4A9FD8]'
-                    }`}
+                      }`}
                     disabled={(normalizedDraftMessage.length === 0 && !mediaFile) || isSendingMessage || !selectedChat}
                     onClick={handleSendMessage}
                     type="button"
@@ -850,7 +849,7 @@ export function InboxView() {
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                     ) : (
                       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 256 256" fill="currentColor">
-                        <path d="M231.87,114l-168-95.89A16,16,0,0,0,40.92,37l19.58,78.31A4,4,0,0,0,64.4,118H136a8,8,0,0,1,0,16H64.4a4,4,0,0,0-3.9,2.69L41,215.06A16,16,0,0,0,56.07,236a16.14,16.14,0,0,0,7.86-2.06l168-95.89A16,16,0,0,0,231.87,114Z"/>
+                        <path d="M231.87,114l-168-95.89A16,16,0,0,0,40.92,37l19.58,78.31A4,4,0,0,0,64.4,118H136a8,8,0,0,1,0,16H64.4a4,4,0,0,0-3.9,2.69L41,215.06A16,16,0,0,0,56.07,236a16.14,16.14,0,0,0,7.86-2.06l168-95.89A16,16,0,0,0,231.87,114Z" />
                       </svg>
                     )}
                   </button>

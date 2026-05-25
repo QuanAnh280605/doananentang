@@ -213,7 +213,7 @@ export function applyMessagePreviewToThreads<TThread extends {
   );
 
   const targetIndex = threads.findIndex((t) => t.chatId === message.chatId);
-  
+
   if (targetIndex === -1) {
     return [...threads];
   }

@@ -302,9 +302,9 @@ export function fetchPostLikers(postId: string): Promise<PostLikersResponse> {
 }
 
 export function createPost(
-  content: string, 
-  mediaUrls: string[] = [], 
-  feeling: string | null = null, 
+  content: string,
+  mediaUrls: string[] = [],
+  feeling: string | null = null,
   taggedUsers: TaggedUser[] | null = null
 ): Promise<Post> {
   return apiFetch<Post>('/api/posts', {
@@ -469,7 +469,7 @@ export async function adminFetchPostReports(
   }
 
   const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
-  
+
   type BackendReportItem = {
     post_id: number;
     user_id: number;

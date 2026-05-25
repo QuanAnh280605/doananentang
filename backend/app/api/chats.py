@@ -70,7 +70,6 @@ async def _emit_message_created_to_user_rooms(payload: dict[str, object], user_i
   for user_id in user_ids:
     await socket_server.sio.emit(MESSAGE_CREATED_EVENT, payload, room=socket_server.get_user_room_name(user_id))
 
-
 @router.get('', response_model=PaginatedChatsResponse)
 def list_chats_endpoint(
   page: int = Query(1, ge=1),
@@ -152,7 +151,6 @@ def upload_chat_media(
     'url': f'/static/chats/{unique_filename}',
     'media_type': content_type,
   }
-
 
 @router.post('/{chat_id}/read', response_model=ChatReadStatusRead)
 def mark_chat_read_endpoint(
