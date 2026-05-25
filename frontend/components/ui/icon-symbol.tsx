@@ -1,30 +1,28 @@
-// Fallback for using MaterialIcons on Android and web.
+// Fallback for using Phosphor Icons on Android, iOS and web.
 
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { House, PaperPlaneTilt, Bell, User, EnvelopeSimple, MagnifyingGlass, Code, CaretRight } from 'phosphor-react-native';
 import { SymbolWeight, SymbolViewProps } from 'expo-symbols';
-import { ComponentProps } from 'react';
 import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
 
-type IconMapping = Record<SymbolViewProps['name'], ComponentProps<typeof MaterialIcons>['name']>;
+/**
+ * Mappings from SF Symbols name to Phosphor Icon components
+ */
+const MAPPING = {
+  'house.fill': House,
+  'paperplane.fill': PaperPlaneTilt,
+  'chevron.left.forwardslash.chevron.right': Code,
+  'chevron.right': CaretRight,
+  'bell.fill': Bell,
+  'envelope.fill': EnvelopeSimple,
+  'person.fill': User,
+  'magnifyingglass': MagnifyingGlass,
+} as const;
+
 type IconSymbolName = keyof typeof MAPPING;
 
 /**
- * Add your SF Symbols to Material Icons mappings here.
- * - see Material Icons in the [Icons Directory](https://icons.expo.fyi).
- * - see SF Symbols in the [SF Symbols](https://developer.apple.com/sf-symbols/) app.
- */
-const MAPPING = {
-  'house.fill': 'home',
-  'paperplane.fill': 'send',
-  'chevron.left.forwardslash.chevron.right': 'code',
-  'chevron.right': 'chevron-right',
-  'bell.fill': 'notifications',
-} as IconMapping;
-
-/**
- * An icon component that uses native SF Symbols on iOS, and Material Icons on Android and web.
- * This ensures a consistent look across platforms, and optimal resource usage.
- * Icon `name`s are based on SF Symbols and require manual mapping to Material Icons.
+ * An icon component that uses Phosphor Icons to ensure a premium, identical look 
+ * across both mobile (iOS/Android) and web, matching the web styling perfectly.
  */
 export function IconSymbol({
   name,
@@ -38,5 +36,7 @@ export function IconSymbol({
   style?: StyleProp<TextStyle>;
   weight?: SymbolWeight;
 }) {
-  return <MaterialIcons color={color} size={size} name={MAPPING[name]} style={style} />;
+  const IconComponent = MAPPING[name];
+  if (!IconComponent) return null;
+  return <IconComponent color={color as string} size={size} weight="regular" style={style as any} />;
 }

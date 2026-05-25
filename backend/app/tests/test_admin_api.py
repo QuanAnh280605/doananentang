@@ -16,6 +16,7 @@ from app.models.refresh_session import RefreshSession
 from app.models.like import Like
 from app.models.comment import Comment
 from app.models.post_media import PostMedia
+from app.models.post_tag import PostTag
 from app.models.db_enums import UserRole
 
 
@@ -28,6 +29,7 @@ def build_test_session() -> Session:
   )
   User.__table__.create(bind=engine)
   Post.__table__.create(bind=engine)
+  PostTag.__table__.create(bind=engine)
   PostReport.__table__.create(bind=engine)
   RefreshSession.__table__.create(bind=engine)
   Like.__table__.create(bind=engine)

@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '574b9cd25b5f'
-down_revision = '106e360d7499'
+down_revision = 'c2f944c0d241'
 branch_labels = None
 depends_on = None
 
@@ -28,7 +28,6 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('post_id', 'user_id', name='uq_post_tags_post_user')
     )
-    op.add_column('posts', sa.Column('feeling', sa.Text(), nullable=True))
     op.add_column('posts', sa.Column('gif_url', sa.Text(), nullable=True))
     op.add_column('posts', sa.Column('location_name', sa.Text(), nullable=True))
     op.add_column('posts', sa.Column('location_lat', sa.Float(), nullable=True))
@@ -42,6 +41,5 @@ def downgrade() -> None:
     op.drop_column('posts', 'location_lat')
     op.drop_column('posts', 'location_name')
     op.drop_column('posts', 'gif_url')
-    op.drop_column('posts', 'feeling')
     op.drop_table('post_tags')
     # ### end Alembic commands ###

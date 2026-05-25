@@ -21,6 +21,7 @@ from app.models.like import CommentLike, Like
 from app.models.notification import Notification
 from app.models.post import Post
 from app.models.post_media import PostMedia
+from app.models.post_tag import PostTag
 from app.models.user import User
 
 
@@ -33,6 +34,7 @@ def build_test_session() -> Session:
   )
   User.__table__.create(bind=engine)
   Post.__table__.create(bind=engine)
+  PostTag.__table__.create(bind=engine)
   PostMedia.__table__.create(bind=engine)
   Comment.__table__.create(bind=engine)
   Like.__table__.create(bind=engine)
