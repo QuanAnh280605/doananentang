@@ -78,8 +78,8 @@ export const API_URL_SOURCE = apiConfig.source;
  * New records store full URLs. This ensures we always return a usable URL.
  */
 export function resolveAvatarUrl(avatarUrl: string | null | undefined): string | null {
-  if (!avatarUrl) return null;
-  if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
+  if (!avatarUrl) return '/default.png';
+  if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://') || avatarUrl.startsWith('/')) {
     return avatarUrl;
   }
   // Relative path — prefix with backend base URL

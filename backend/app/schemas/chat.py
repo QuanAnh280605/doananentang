@@ -24,6 +24,7 @@ class MessageRead(BaseModel):
   content: str | None = None
   media_url: str | None = None
   media_type: str | None = None
+  is_read: bool = False
   created_at: datetime
 
   model_config = ConfigDict(from_attributes=True)

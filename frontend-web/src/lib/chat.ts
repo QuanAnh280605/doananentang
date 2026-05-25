@@ -72,6 +72,7 @@ function mapChatMessageResponse(message: ChatMessageResponse, participantUserId:
     createdAt: message.created_at,
     mediaUrl: message.media_url ?? null,
     mediaType: message.media_type ?? null,
+    isRead: message.is_read ?? false,
   };
 }
 

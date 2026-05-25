@@ -198,6 +198,21 @@ def has_unread_messages(db: Session, user_id: int) -> bool:
   return db.scalar(select(statement)) or False
 
 
+def get_read_message_ids_for_sender(db: Session, message_ids: list[int], sender_id: int) -> set[int]:
+  """Return set of message IDs (sent by sender_id) that have been read by the recipient."""
+  if not message_ids:
+    return set()
+  statement = (
+    select(MessageStatus.message_id)
+    .where(
+      MessageStatus.message_id.in_(message_ids),
+      MessageStatus.user_id != sender_id,
+      MessageStatus.status == MessageStatusType.READ,
+    )
+  )
+  return set(db.scalars(statement).all())
+
+
 def count_unread_chat_messages(db: Session, chat_id: int, user_id: int) -> int:
   read_status_exists = (
     select(MessageStatus.message_id)

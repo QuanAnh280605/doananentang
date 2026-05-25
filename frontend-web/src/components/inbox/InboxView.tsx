@@ -742,14 +742,71 @@ export function InboxView() {
                     {messageError}
                   </div>
                 ) : selectedConversation.messages.length ? (
-                  <div className="flex min-h-full flex-col gap-3">
+                  <div className="flex min-h-full flex-col">
                     {isLoadingMoreMessages ? (
                       <div className="rounded-[18px] bg-[#F8FAFC] px-4 py-3 text-center text-sm text-slate-500">
                         Đang tải thêm tin nhắn...
                       </div>
                     ) : null}
                     <div className="mt-auto" aria-hidden="true" />
-                    {selectedConversation.messages.map((item) => <MessageBubble key={item.id} item={item} />)}
+                    {(() => {
+                      const lastReadMessageId = [...selectedConversation.messages]
+                        .reverse()
+                        .find((msg) => !msg.incoming && msg.isRead)?.id;
+
+                      return selectedConversation.messages.map((item, index, allMessages) => {
+                      const TIME_GAP_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
+                      const currentDate = new Date(item.createdAt);
+                      const previousMessage = index > 0 ? allMessages[index - 1] : null;
+                      const previousDate = previousMessage ? new Date(previousMessage.createdAt) : null;
+
+                      const isFirstMessage = index === 0;
+                      const hasLargeGap = previousDate
+                        ? currentDate.getTime() - previousDate.getTime() >= TIME_GAP_THRESHOLD_MS
+                        : false;
+                      const showTimeSeparator = isFirstMessage || hasLargeGap;
+
+                      let timeSeparatorLabel = '';
+                      if (showTimeSeparator) {
+                        const now = new Date();
+                        const isToday = currentDate.toDateString() === now.toDateString();
+                        const yesterday = new Date(now);
+                        yesterday.setDate(yesterday.getDate() - 1);
+                        const isYesterday = currentDate.toDateString() === yesterday.toDateString();
+
+                        const timeStr = new Intl.DateTimeFormat('en-GB', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: false,
+                        }).format(currentDate);
+
+                        if (isToday) {
+                          timeSeparatorLabel = timeStr;
+                        } else if (isYesterday) {
+                          timeSeparatorLabel = `Hôm qua, ${timeStr}`;
+                        } else {
+                          const dateStr = new Intl.DateTimeFormat('vi-VN', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                          }).format(currentDate);
+                          timeSeparatorLabel = `${dateStr}, ${timeStr}`;
+                        }
+                      }
+
+                      return (
+                        <MessageBubble
+                          key={item.id}
+                          item={item}
+                          showTimeSeparator={showTimeSeparator}
+                          timeSeparatorLabel={timeSeparatorLabel}
+                          isLastRead={item.id === lastReadMessageId}
+                          recipientAvatarUrl={selectedConversation.user.avatar_url}
+                          recipientName={selectedConversation.user.full_name}
+                        />
+                      );
+                    });
+                    })()}
                   </div>
                 ) : (
                   <div className="flex min-h-full flex-1 items-center justify-center rounded-[22px] bg-[#F8FAFC] px-4 py-4 text-sm text-slate-500">
