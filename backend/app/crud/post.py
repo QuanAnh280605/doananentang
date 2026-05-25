@@ -10,11 +10,8 @@ from app.models.follow import Follow
 from app.models.like import Like
 from app.models.post import Post
 from app.models.post_media import PostMedia
-<<<<<<< HEAD
 from app.models.post_viewer import PostViewer
-=======
 from app.models.post_tag import PostTag
->>>>>>> 768c7e9 (update bai viet)
 from app.schemas.post import PostCreate, PostUpdate
 
 
@@ -24,14 +21,11 @@ def create_post(db: Session, post_in: PostCreate, author_id: int) -> Post:
     content=post_in.content,
     visibility=post_in.visibility,
     feeling=post_in.feeling,
-<<<<<<< HEAD
     tagged_users=post_in.tagged_users,
-=======
     gif_url=post_in.gif_url,
     location_name=post_in.location_name,
     location_lat=post_in.location_lat,
     location_lng=post_in.location_lng
->>>>>>> 768c7e9 (update bai viet)
   )
   db.add(db_post)
   db.flush()  # Lấy ID trước khi tạo media
@@ -120,7 +114,12 @@ def get_posts(
     search_query = q.strip()
     ts_vector = func.to_tsvector('simple', func.coalesce(Post.content, ''))
     ts_query = func.plainto_tsquery('simple', search_query)
-    query = query.filter(ts_vector.op('@@')(ts_query))
+    query = query.filter(
+        or_(
+            ts_vector.op('@@')(ts_query),
+            Post.content.ilike(f"%{search_query}%")
+        )
+    )
     rank_expr = func.ts_rank(ts_vector, ts_query)
 
   # Tính tổng số bài viết
@@ -129,11 +128,11 @@ def get_posts(
 
   # Xác định cột sắp xếp
   if sort_by == 'relevance' and rank_expr is not None:
-    order = rank_expr.desc()
+    order = (rank_expr.desc(), Post.created_at.desc())
   else:
     actual_sort_by = sort_by if sort_by != 'relevance' else 'created_at'
     sort_column = getattr(Post, actual_sort_by, Post.created_at)
-    order = sort_column.asc() if sort_order == 'asc' else sort_column.desc()
+    order = (sort_column.asc() if sort_order == 'asc' else sort_column.desc(),)
 
   # Query có eager load media + author
   items = (
@@ -143,7 +142,7 @@ def get_posts(
       joinedload(Post.author),
       joinedload(Post.tagged_users).joinedload(PostTag.user)
     )
-    .order_by(order)
+    .order_by(*order)
     .offset((page - 1) * page_size)
     .limit(page_size)
     .all()
@@ -220,19 +219,13 @@ def get_feed_posts(
   order = Post.created_at.desc()
 
   posts = (
-<<<<<<< HEAD
     query
-    .options(joinedload(Post.media), joinedload(Post.author))
-    .order_by(order)
-=======
-    base_query
     .options(
       joinedload(Post.media), 
       joinedload(Post.author),
       joinedload(Post.tagged_users).joinedload(PostTag.user)
     )
-    .order_by(Post.created_at.desc())
->>>>>>> 768c7e9 (update bai viet)
+    .order_by(order)
     .offset((page - 1) * page_size)
     .limit(page_size)
     .all()

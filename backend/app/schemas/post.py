@@ -18,12 +18,8 @@ class PostBase(BaseModel):
 class PostCreate(PostBase):
   # Field giúp nhận một mảng chuỗi (tối đa 4 phần tử) từ payload
   media_urls: list[str] | None = Field(default=None, max_length=4)
-<<<<<<< HEAD
-  feeling: str | None = None
   tagged_users: list[dict] | None = None
-=======
   tagged_user_ids: list[int] | None = None
->>>>>>> 768c7e9 (update bai viet)
 
 class PostMediaRead(BaseModel):
   id: int | UUID
@@ -68,8 +64,7 @@ class PostRead(PostBase):
   comment_count: int = 0
   is_liked: bool = False
   user_reaction: ReactionType | None = None
-  feeling: str | None = None
-  tagged_users: list[dict] | None = None
+
 
   model_config = ConfigDict(from_attributes=True)
 
