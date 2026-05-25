@@ -11,6 +11,7 @@ from app.models.db_types import UUID_TYPE, uuid_pk
 
 if TYPE_CHECKING:
   from app.models.post_media import PostMedia
+  from app.models.post_tag import PostTag
   from app.models.user import User
 
 
@@ -35,11 +36,21 @@ class Post(Base):
     server_default='public',
   )
   feeling: Mapped[str | None] = mapped_column(Text(), nullable=True)
-  tagged_users: Mapped[list | None] = mapped_column(JSON, nullable=True)
   reported_count: Mapped[int] = mapped_column(Integer(), nullable=False, default=0, server_default=text('0'))
   is_deleted: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False, server_default=text('false'))
+  gif_url: Mapped[str | None] = mapped_column(Text(), nullable=True)
+  location_name: Mapped[str | None] = mapped_column(Text(), nullable=True)
+  location_lat: Mapped[float | None] = mapped_column(nullable=True)
+  location_lng: Mapped[float | None] = mapped_column(nullable=True)
   created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
   updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+  # Quan hệ 1-N: Post -> PostTag
+  tagged_users: Mapped[list["PostTag"]] = relationship(
+      "PostTag",
+      back_populates="post",
+      cascade="all, delete-orphan",
+  )
 
   # Quan hệ 1-N: Post -> PostMedia
   media: Mapped[list["PostMedia"]] = relationship(

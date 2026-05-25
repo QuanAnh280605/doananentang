@@ -9,7 +9,8 @@ import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { API_URL, fetchPosts } from '@/lib/api';
-import { fetchCurrentUser, fetchFollowStatus, type AuthUser, type FollowStatus } from '@/lib/auth';
+import { fetchCurrentUser, fetchFollowStatus } from '@/lib/auth';
+import type { AuthUser, FollowStatus } from '@/lib/auth';
 import type { Post, VisibilityLevel } from '@/lib/types';
 
 type ProfileTab = 'posts' | 'about' | 'media';
@@ -207,20 +208,7 @@ function SidebarCard({ title, children, action }: { title: string; children: Rea
   );
 }
 
-// Banner thông báo thành công sau khi lưu inline intro
-function SuccessBanner({ message, onDismiss }: { message: string; onDismiss: () => void }) {
-  return (
-    <View className="flex-row items-center justify-between rounded-[14px] bg-[#DCFCE7] px-4 py-3">
-      <View className="flex-row items-center gap-2">
-        <MaterialIcons name="check-circle" size={18} color="#16A34A" />
-        <ThemedText className="text-sm font-medium text-[#15803D]">{message}</ThemedText>
-      </View>
-      <Pressable onPress={onDismiss} className="h-8 w-8 items-center justify-center" accessibilityLabel="Đóng">
-        <MaterialIcons name="close" size={16} color="#15803D" />
-      </Pressable>
-    </View>
-  );
-}
+
 
 function AboutPanel({ profile }: { profile: ProfileViewModel }) {
   return (
@@ -329,10 +317,10 @@ export default function ProfileScreen() {
   const [loadingPosts, setLoadingPosts] = useState(true);
 
   useEffect(() => {
+    if (!user) return;
     let isMounted = true;
     setLoadingPosts(true);
 
-    if (!user) return;
 
     fetchPosts(1, 10, user.id)
       .then((res) => {
@@ -431,14 +419,14 @@ export default function ProfileScreen() {
                     ) : null}
                     {followStatus ? (
                       <View className="mt-4 flex-row flex-wrap gap-5">
-                        <Pressable 
+                        <Pressable
                           className="flex-row items-center gap-1.5 active:opacity-70"
                           onPress={() => router.push({ pathname: '/profile/follows', params: { userId: user?.id, type: 'followers' } })}
                         >
                           <ThemedText className="text-[15px] font-bold text-slate-950">{followStatus.followers_count}</ThemedText>
                           <ThemedText className="text-[15px] text-slate-500">người theo dõi</ThemedText>
                         </Pressable>
-                        <Pressable 
+                        <Pressable
                           className="flex-row items-center gap-1.5 active:opacity-70"
                           onPress={() => router.push({ pathname: '/profile/follows', params: { userId: user?.id, type: 'following' } })}
                         >

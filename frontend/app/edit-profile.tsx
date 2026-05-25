@@ -16,7 +16,8 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Image } from 'expo-image';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { fetchCurrentUser, fetchFollowStatus, updateUserProfile, uploadUserAvatar, changePassword, type GenderValue } from '@/lib/auth';
+import { fetchCurrentUser, fetchFollowStatus, updateUserProfile, uploadUserAvatar, changePassword } from '@/lib/auth';
+import type { GenderValue } from '@/lib/auth';
 import { fetchPosts, API_URL } from '@/lib/api';
 import type { VisibilityLevel } from '@/lib/types';
 
@@ -184,9 +185,8 @@ function PrivacySelector({
           <Pressable
             key={opt.value}
             onPress={() => onChange(opt.value)}
-            className={`flex-row items-center gap-1.5 rounded-full border px-3 py-1.5 ${
-              isSelected ? 'border-[#4A9FD8] bg-[#EAF4FB]' : 'border-slate-200 bg-white'
-            }`}
+            className={`flex-row items-center gap-1.5 rounded-full border px-3 py-1.5 ${isSelected ? 'border-[#4A9FD8] bg-[#EAF4FB]' : 'border-slate-200 bg-white'
+              }`}
           >
             <MaterialIcons
               name={opt.icon}
@@ -194,9 +194,8 @@ function PrivacySelector({
               color={isSelected ? '#0284C7' : '#64748B'}
             />
             <ThemedText
-              className={`text-xs font-medium ${
-                isSelected ? 'text-[#0284C7]' : 'text-slate-600'
-              }`}
+              className={`text-xs font-medium ${isSelected ? 'text-[#0284C7]' : 'text-slate-600'
+                }`}
             >
               {opt.label}
             </ThemedText>
@@ -360,12 +359,12 @@ export default function EditProfileScreen() {
   const [city, setCity] = useState('');
   const [email, setEmail] = useState('');
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [hasNewAvatar, setHasNewAvatar] = useState(false);
 
   // Privacy fields
   const [contactPrivacy, setContactPrivacy] = useState<VisibilityLevel>('public');
   const [emailPrivacy, setEmailPrivacy] = useState<VisibilityLevel>('public');
   const [locationPrivacy, setLocationPrivacy] = useState<VisibilityLevel>('public');
-
   // Profile inline errors
   const [profileErrors, setProfileErrors] = useState<ProfileErrors>({});
 
@@ -385,7 +384,7 @@ export default function EditProfileScreen() {
   const [followerCount, setFollowerCount] = useState<number | string>(0);
   const [postCount, setPostCount] = useState<number | string>(0);
 
-  // Load user data
+  // Load real user
   useEffect(() => {
     let mounted = true;
     fetchCurrentUser()
@@ -428,6 +427,7 @@ export default function EditProfileScreen() {
     };
   }, []);
 
+
   // ── Avatar picker ──────────────────────────────────────────────────────────
 
   const pickImage = async () => {
@@ -441,6 +441,7 @@ export default function EditProfileScreen() {
 
       if (!result.canceled && result.assets[0]?.uri) {
         setAvatarUri(result.assets[0].uri);
+        setHasNewAvatar(true);
       }
     } catch {
       setProfileBanner({ type: 'error', message: 'Không thể mở thư viện ảnh' });
@@ -470,7 +471,7 @@ export default function EditProfileScreen() {
     setIsSavingProfile(true);
     setProfileBanner(null);
     try {
-      if (avatarUri && !avatarUri.startsWith('http')) {
+      if (avatarUri && hasNewAvatar) {
         await uploadUserAvatar(avatarUri);
       }
 

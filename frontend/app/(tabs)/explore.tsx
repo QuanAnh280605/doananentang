@@ -496,7 +496,14 @@ export default function ExploreScreen() {
     <View className="flex-1 bg-[#F8FAFC]">
       {/* Header Search Area */}
       <View className="bg-white px-4 pb-4 border-b border-[#E4E8EE] flex-row items-center gap-3" style={{ paddingTop: Platform.OS === 'ios' ? 60 : 48 }}>
-        <Pressable onPress={() => router.back()} className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 active:opacity-70">
+        <Pressable onPress={() => {
+          Keyboard.dismiss();
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.push('/(tabs)');
+          }
+        }} className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 active:opacity-70">
           <MaterialIcons name="arrow-back" size={24} color="#64748B" />
         </Pressable>
         <View className="flex-1">

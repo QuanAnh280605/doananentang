@@ -88,13 +88,27 @@ export function AppTopNav({
             </View>
           </View>
 
-          <SearchInput
-            className={isTablet ? 'ml-6 max-w-[560px] flex-1' : 'w-full'}
-            onChangeText={handleSearchChange}
-            onFocus={handleSearchFocus}
-            placeholder={searchPlaceholder}
-            value={resolvedSearchValue}
-          />
+          {isControlled ? (
+            <SearchInput
+              className={isTablet ? 'ml-6 max-w-[560px] flex-1' : 'w-full'}
+              onChangeText={handleSearchChange}
+              placeholder={searchPlaceholder}
+              value={resolvedSearchValue}
+            />
+          ) : (
+            <Pressable 
+              className={isTablet ? 'ml-6 max-w-[560px] flex-1' : 'w-full'}
+              onPress={handleSearchFocus}
+            >
+              <View pointerEvents="none">
+                <SearchInput
+                  onChangeText={() => {}}
+                  placeholder={searchPlaceholder}
+                  value={resolvedSearchValue}
+                />
+              </View>
+            </Pressable>
+          )}
         </View>
 
         <View className="flex-row items-center gap-3">

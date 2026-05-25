@@ -295,10 +295,21 @@ export default function PostDetailScreen() {
 
                                     {comments.length === 0 ? (
                                         <ThemedView className={`${surfaceClass} items-center p-8`}>
-                                            <MaterialIcons color="#94A3B8" name="chat-bubble-outline" size={28} />
-                                            <ThemedText className="mt-3 text-center text-sm text-slate-500">
-                                                Chưa có bình luận. Hãy là người đầu tiên!
-                                            </ThemedText>
+                                            {post.comment_count > 0 ? (
+                                                <>
+                                                    <MaterialIcons color="#94A3B8" name="visibility-off" size={28} />
+                                                    <ThemedText className="mt-3 text-center text-sm text-slate-500 leading-6">
+                                                        Một số bình luận đã bị ẩn do cài đặt quyền riêng tư hoặc đã bị xóa.
+                                                    </ThemedText>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <MaterialIcons color="#94A3B8" name="chat-bubble-outline" size={28} />
+                                                    <ThemedText className="mt-3 text-center text-sm text-slate-500">
+                                                        Chưa có bình luận. Hãy là người đầu tiên!
+                                                    </ThemedText>
+                                                </>
+                                            )}
                                         </ThemedView>
                                     ) : (
                                         <ThemedView className={`${surfaceClass} gap-6 p-5`}>
