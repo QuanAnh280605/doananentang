@@ -1,4 +1,4 @@
-import { Aperture, EnvelopeSimple, Bell, SquaresFour } from 'phosphor-react-native';
+import { Aperture, EnvelopeSimple, Bell, SquaresFour, IconWeight } from 'phosphor-react-native';
 import { Pressable, View , Image} from 'react-native';
 import { router } from 'expo-router';
 
@@ -38,7 +38,7 @@ function NavAvatar({ initials, avatarUrl }: { initials: string; avatarUrl?: stri
   );
 }
 
-type IconComponent = React.ComponentType<{ size?: number; color?: string; weight?: string }>;
+type IconComponent = React.ComponentType<{ size?: number; color?: string; weight?: IconWeight }>;
 
 function NavActionBubble({ icon: Icon }: { icon: IconComponent }) {
   return (
