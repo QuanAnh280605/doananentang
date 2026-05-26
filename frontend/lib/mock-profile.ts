@@ -21,6 +21,9 @@ let _mockUser: AuthUser = {
   bio: 'Sinh viên CNTT — thích xây dựng sản phẩm nhỏ gọn, giao diện rõ ràng và hệ thống đáng tin cậy.',
   city: 'Hà Nội, Việt Nam',
   avatar_url: null,
+  contact_privacy: 'public',
+  email_privacy: 'public',
+  location_privacy: 'public',
   created_at: '2024-01-15T08:00:00Z',
   updated_at: '2024-05-20T10:30:00Z',
 };
