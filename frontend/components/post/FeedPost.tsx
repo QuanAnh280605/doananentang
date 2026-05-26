@@ -1,4 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { X, DotsThree, ThumbsUp, ChatCircleDots, ShareNetwork, Trash, PencilSimple } from 'phosphor-react-native';
 import { Link, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Platform, Image, Modal, Pressable, ScrollView, View, Alert, Share, TextInput, ActivityIndicator, DeviceEventEmitter } from 'react-native';
@@ -292,7 +293,7 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
     if (isDeleted) return null;
 
     return (
-        <ThemedView className={`${surfaceClass} p-5`} style={{ zIndex: showMenu ? 10 : 1 }}>
+        <ThemedView className="bg-white mb-2 px-4 py-4" style={{ zIndex: showMenu ? 10 : 1 }}>
             {/* Header */}
             <View className="flex-row items-start justify-between gap-4 relative" style={{ zIndex: showMenu ? 50 : 1 }}>
                 <Link href="/(tabs)/profile" asChild>
@@ -357,7 +358,7 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                                 right: 0,
                                 top: 50,
                                 backgroundColor: 'white',
-                                borderRadius: 16,
+                                borderRadius: 24,
                                 shadowColor: '#000',
                                 shadowOffset: { width: 0, height: 4 },
                                 shadowOpacity: 0.1,
@@ -391,7 +392,7 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                 {isEditing ? (
                     <View className="mt-4">
                         <TextInput
-                            className="rounded-[20px] bg-[#F7F8FA] px-5 py-4 text-base text-slate-900"
+                            className="rounded-[24px] bg-[#F7F8FA] px-5 py-4 text-base text-slate-900"
                             multiline
                             value={editContent}
                             onChangeText={setEditContent}
@@ -420,14 +421,14 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                             <Pressable
                                 onPress={() => setIsEditing(false)}
                                 disabled={isSaving}
-                                className="rounded-[20px] bg-[#E4E8EE] px-4 py-2 active:opacity-80"
+                                className="rounded-full bg-[#E4E8EE] px-5 py-2 active:opacity-80"
                             >
                                 <ThemedText className="font-medium text-slate-900">Hủy</ThemedText>
                             </Pressable>
                             <Pressable
                                 onPress={handleSaveEdit}
                                 disabled={isSaving || !editContent.trim()}
-                                className={`flex-row items-center justify-center rounded-[20px] bg-[#0A0A0A] px-4 py-2 active:opacity-80 ${isSaving || !editContent.trim() ? 'opacity-70' : ''}`}
+                                className={`flex-row items-center justify-center rounded-full bg-[#0A0A0A] px-5 py-2 active:opacity-80 ${isSaving || !editContent.trim() ? 'opacity-70' : ''}`}
                             >
                                 {isSaving ? (
                                     <ActivityIndicator size="small" color="#FFFFFF" />
@@ -452,7 +453,7 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                 {mediaUrls.length > 0 && (
                     <View className="mt-4 flex-row flex-wrap justify-between gap-y-2">
                         {mediaUrls.map((url, index) => {
-                            let itemClass = "relative overflow-hidden rounded-[16px] ";
+                            let itemClass = "relative overflow-hidden rounded-[24px] ";
                             if (mediaUrls.length === 1) {
                                 itemClass += "w-full";
                             } else if (mediaUrls.length === 2 || mediaUrls.length === 4) {
@@ -473,7 +474,7 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                                 >
                                     <Image
                                         source={{ uri: url }}
-                                        className="h-full w-full rounded-[16px]"
+                                        className="h-full w-full rounded-[24px]"
                                         resizeMode="cover"
                                         onLoad={(event) => {
                                             if (mediaUrls.length === 1) {

@@ -179,38 +179,40 @@ export function ComposerCard({
   return (
     <>
       {/* ── Trigger card (luôn hiện) ── */}
-      <ThemedView className={`${surfaceClass} p-5`}>
+      <ThemedView className="bg-white mb-2 px-4 py-4 rounded-[32px]">
         <Pressable
           onPress={() => setIsOpen(true)}
-          className="flex-row items-center gap-4 active:opacity-90"
+          className="flex-row items-center gap-3 active:opacity-90"
         >
           <Avatar initials={initials} soft avatarUrl={currentUser?.avatar_url} />
           <View
             style={{
               flex: 1,
-              borderRadius: 18,
-              backgroundColor: '#F7F8FA',
-              paddingHorizontal: 18,
-              paddingVertical: 14,
+              borderRadius: 99,
+              backgroundColor: '#F1F5F9',
+              paddingHorizontal: 16,
+              paddingVertical: 10,
+              justifyContent: 'center',
             }}
           >
-            <ThemedText style={{ color: '#94A3B8', fontWeight: '500', fontSize: 15 }}>
-              Chia sẻ suy nghĩ của bạn!
+            <ThemedText style={{ color: '#64748B', fontWeight: '500', fontSize: 15 }}>
+              Chia sẻ suy nghĩ của bạn...
             </ThemedText>
           </View>
           {/* Quick photo button */}
           <Pressable
             onPress={handlePickPhoto}
+            className="active:opacity-70"
             style={{
               width: 44,
               height: 44,
-              borderRadius: 14,
-              backgroundColor: '#F7F8FA',
+              borderRadius: 22,
+              backgroundColor: '#F1F5F9',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <MaterialIcons name="image" size={22} color="#41A36D" />
+            <MaterialIcons name="image" size={26} color="#41A36D" />
           </Pressable>
         </Pressable>
       </ThemedView>
@@ -246,7 +248,7 @@ export function ComposerCard({
                 style={{
                   width: 40,
                   height: 40,
-                  borderRadius: 14,
+                  borderRadius: 20,
                   backgroundColor: '#F7F8FA',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -264,7 +266,7 @@ export function ComposerCard({
                 onPress={handlePost}
                 disabled={!canPost || isPosting}
                 style={{
-                  borderRadius: 18,
+                  borderRadius: 99,
                   backgroundColor: canPost && !isPosting ? '#0A0A0A' : '#E4E8EE',
                   paddingHorizontal: 20,
                   paddingVertical: 10,
@@ -421,11 +423,12 @@ export function ComposerCard({
               {/* "Thêm vào bài viết" label + icons */}
               <View
                 style={{
-                  borderRadius: 18,
+                  borderRadius: 99,
                   borderWidth: 1,
                   borderColor: '#E4E8EE',
                   backgroundColor: '#FDFDFF',
-                  padding: 12,
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
                 }}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -468,7 +471,7 @@ export function ComposerCard({
               style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
               onPress={() => setShowVisibilityPicker(false)}
             />
-            <View style={{ borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: '#FFFFFF', paddingBottom: 40 }}>
+            <View style={{ borderTopLeftRadius: 32, borderTopRightRadius: 32, backgroundColor: '#FFFFFF', paddingBottom: 40 }}>
               {/* Handle */}
               <View style={{ width: 40, height: 4, borderRadius: 99, backgroundColor: '#CBD5E1', alignSelf: 'center', marginTop: 12, marginBottom: 4 }} />
 
@@ -497,7 +500,7 @@ export function ComposerCard({
                         flexDirection: 'row',
                         alignItems: 'center',
                         gap: 16,
-                        borderRadius: 18,
+                        borderRadius: 24,
                         paddingHorizontal: 16,
                         paddingVertical: 14,
                         backgroundColor: isSelected ? `${option.color}14` : '#F7F8FA',
@@ -536,7 +539,7 @@ export function ComposerCard({
               style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
               onPress={() => setShowFeelingPicker(false)}
             />
-            <View style={{ borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: '#FFFFFF', paddingBottom: 40 }}>
+            <View style={{ borderTopLeftRadius: 32, borderTopRightRadius: 32, backgroundColor: '#FFFFFF', paddingBottom: 40 }}>
               <View style={{ width: 40, height: 4, borderRadius: 99, backgroundColor: '#CBD5E1', alignSelf: 'center', marginTop: 12, marginBottom: 4 }} />
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#E4E8EE' }}>
                 <ThemedText style={{ fontSize: 17, fontWeight: '700', color: '#0F172A' }}>
@@ -563,7 +566,7 @@ export function ComposerCard({
                       flexDirection: 'row',
                       alignItems: 'center',
                       gap: 10,
-                      borderRadius: 16,
+                      borderRadius: 24,
                       paddingHorizontal: 16,
                       paddingVertical: 14,
                       backgroundColor: feeling === f ? '#4A9FD814' : '#F7F8FA',
@@ -593,7 +596,7 @@ export function ComposerCard({
               style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
               onPress={() => setShowTagPicker(false)}
             />
-            <View style={{ borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: '#FFFFFF', paddingBottom: 40, maxHeight: '80%' }}>
+            <View style={{ borderTopLeftRadius: 32, borderTopRightRadius: 32, backgroundColor: '#FFFFFF', paddingBottom: 40, maxHeight: '80%' }}>
               <View style={{ width: 40, height: 4, borderRadius: 99, backgroundColor: '#CBD5E1', alignSelf: 'center', marginTop: 12, marginBottom: 4 }} />
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#E4E8EE' }}>
                 <ThemedText style={{ fontSize: 17, fontWeight: '700', color: '#0F172A' }}>
