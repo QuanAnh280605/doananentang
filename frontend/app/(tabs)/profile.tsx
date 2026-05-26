@@ -356,9 +356,23 @@ export default function ProfileScreen() {
   return (
     <>
       <StatusBar style="dark" />
-      <ThemedView className="flex-1 bg-[#F1F5F9]" style={{ minHeight: height, paddingTop: insets.top }}>
-        <ScrollView ref={scrollViewRef} bounces={false} className="flex-1" contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}>
-          <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 pb-6 md:px-6 md:pt-6">
+      <ThemedView className="flex-1 bg-[#F1F5F9]" style={{ minHeight: height }}>
+        <ScrollView bounces={false} className="flex-1" contentContainerClassName="pb-8">
+          <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-2 md:px-6">
+            {/* Back header */}
+            <View 
+              className="flex-row items-center gap-3 bg-white px-5 py-4 border border-app-border mx-0 rounded-3xl shadow-sm"
+              style={{ marginTop: Math.max(insets.top, 0) + 10 }}
+            >
+              <Pressable
+                onPress={() => router.push('/')}
+                className="h-11 w-11 items-center justify-center rounded-full bg-[#F1F5F9] active:opacity-80"
+              >
+                <ThemedText className="text-xl">←</ThemedText>
+              </Pressable>
+              <ThemedText className="text-[20px] font-bold text-slate-900">Hồ sơ</ThemedText>
+            </View>
+
             {/* Profile card */}
             <ThemedView className="bg-white shadow-sm overflow-hidden md:rounded-[32px] md:border md:border-[#E4E8EE]">
               <View className="h-[180px] bg-[#D9ECF8]" />

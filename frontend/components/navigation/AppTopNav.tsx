@@ -87,17 +87,29 @@ export function AppTopNav({
 
   return (
     <ThemedView 
-      className={`bg-white ${isTablet ? 'rounded-surface border border-app-border px-5 pb-4' : 'px-4 pb-3'}`}
       style={[
-        { paddingTop: Math.max(insets.top, 0) + (isTablet ? 16 : 10) },
-        !isTablet && {
-          borderBottomWidth: 1,
-          borderBottomColor: '#F1F5F9',
+        isTablet ? {
+          borderRadius: 24,
+          borderWidth: 1,
+          borderColor: '#E2E8F0',
+          paddingHorizontal: 20,
+          paddingBottom: 16,
+          paddingTop: Math.max(insets.top, 0) + 16,
+          backgroundColor: '#FFFFFF',
+        } : {
+          borderRadius: 20,
+          borderWidth: 1,
+          borderColor: '#E2E8F0',
+          marginHorizontal: 0,
+          marginTop: Math.max(insets.top, 0) + 10,
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          backgroundColor: '#FFFFFF',
           shadowColor: '#0F172A',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.03,
-          shadowRadius: 8,
-          elevation: 2,
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.08,
+          shadowRadius: 16,
+          elevation: 4,
         }
       ]}
     >
@@ -179,6 +191,21 @@ export function AppTopNav({
 
           {/* Right Action Icons & Avatar */}
           <View className="flex-row items-center gap-2.5">
+             <Pressable 
+               onPress={() => router.push('/(tabs)/explore')} 
+               className="h-10 w-10 items-center justify-center bg-white border border-[#E2E8F0] active:opacity-75"
+               style={{
+                 borderRadius: 12,
+                 shadowColor: '#0F172A',
+                 shadowOffset: { width: 0, height: 1 },
+                 shadowOpacity: 0.03,
+                 shadowRadius: 3,
+                 elevation: 1,
+               }}
+             >
+                <MagnifyingGlass color="#334155" size={21} weight="regular" />
+             </Pressable>
+
              <Pressable 
                onPress={() => router.push('/(tabs)/notifications')} 
                className="h-10 w-10 items-center justify-center bg-white border border-[#E2E8F0] active:opacity-75"

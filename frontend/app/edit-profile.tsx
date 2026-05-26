@@ -582,7 +582,10 @@ export default function EditProfileScreen() {
         <ScrollView bounces={false} className="flex-1" contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}>
           <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-4 md:px-6">
             {/* Back header */}
-            <View className="flex-row items-center gap-3 rounded-full border border-app-border bg-app-surface px-5 py-4 mx-4 md:mx-0">
+            <View 
+              className="flex-row items-center gap-3 rounded-3xl border border-app-border bg-app-surface px-5 py-4 mx-0 shadow-sm"
+              style={{ marginTop: Math.max(insets.top, 0) + 10 }}
+            >
               <Pressable
                 onPress={() => router.back()}
                 className="h-11 w-11 items-center justify-center rounded-full bg-[#F7F8FA] active:opacity-80"

@@ -14,4 +14,11 @@ config.resolver.nodeModulesPaths = [
   path.resolve(__dirname, '../node_modules'),
 ];
 
+// Fix EMFILE "too many open files" error on Windows
+config.maxWorkers = 2;
+config.server = {
+  ...config.server,
+  enhanceMiddleware: (middleware) => middleware,
+};
+
 module.exports = withNativeWind(config, { input: './global.css' });
