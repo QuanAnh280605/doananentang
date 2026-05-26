@@ -15,6 +15,50 @@ from app.models.post_tag import PostTag
 from app.schemas.post import PostCreate, PostUpdate
 
 
+def get_top_reactions_for_posts(db: Session, post_ids: list[int]) -> dict[int, list[str]]:
+  if not post_ids:
+    return {}
+    
+  reaction_counts = (
+    db.query(
+      Like.post_id,
+      Like.reaction_type,
+      func.count(Like.user_id).label('reaction_count')
+    )
+    .filter(Like.post_id.in_(post_ids))
+    .group_by(Like.post_id, Like.reaction_type)
+    .subquery()
+  )
+
+  ranked_reactions = (
+    db.query(
+      reaction_counts.c.post_id,
+      reaction_counts.c.reaction_type,
+      func.row_number().over(
+        partition_by=reaction_counts.c.post_id,
+        order_by=reaction_counts.c.reaction_count.desc()
+      ).label('rn')
+    )
+    .subquery()
+  )
+
+  top_reactions_query = (
+    db.query(ranked_reactions.c.post_id, ranked_reactions.c.reaction_type)
+    .filter(ranked_reactions.c.rn <= 3)
+    .order_by(ranked_reactions.c.post_id, ranked_reactions.c.rn)
+    .all()
+  )
+
+  top_reactions_map = {}
+  for post_id, reaction_type in top_reactions_query:
+    if post_id not in top_reactions_map:
+      top_reactions_map[post_id] = []
+    top_reactions_map[post_id].append(reaction_type)
+      
+  return top_reactions_map
+
+
+
 def create_post(db: Session, post_in: PostCreate, author_id: int) -> Post:
   db_post = Post(
     author_id=author_id,
@@ -72,6 +116,9 @@ def get_post(db: Session, post_id: int, current_user_id: int | None = None) -> P
     # Đếm likes và comments
     post.like_count = db.query(func.count(Like.user_id)).filter(Like.post_id == post.id).scalar() or 0
     post.comment_count = db.query(func.count(Comment.id)).filter(Comment.post_id == post.id, Comment.is_deleted == False).scalar() or 0
+    
+    top_reactions_map = get_top_reactions_for_posts(db, [post.id])
+    post.top_reactions = top_reactions_map.get(post.id, [])
     
     # Kiểm tra user hiện tại đã like chưa
     if current_user_id:
@@ -147,10 +194,14 @@ def get_posts(
     .all()
   )
 
-  # Gán stats cho từng bài viết
+  # Lấy stats cho từng bài viết
+  post_ids = [p.id for p in items]
+  top_reactions_map = get_top_reactions_for_posts(db, post_ids)
+  
   for post in items:
     post.like_count = db.query(func.count(Like.user_id)).filter(Like.post_id == post.id).scalar() or 0
     post.comment_count = db.query(func.count(Comment.id)).filter(Comment.post_id == post.id, Comment.is_deleted == False).scalar() or 0
+    post.top_reactions = top_reactions_map.get(post.id, [])
     
     if current_user_id:
       user_like = db.query(Like).filter(Like.post_id == post.id, Like.user_id == current_user_id).first()
@@ -264,12 +315,15 @@ def get_feed_posts(
     .all()
   }
 
+  top_reactions_map = get_top_reactions_for_posts(db, post_ids)
+
   # 8. Gán stats vào từng bài
   for post in posts:
     post.like_count = like_counts.get(post.id, 0)
     post.comment_count = comment_counts.get(post.id, 0)
     post.is_liked = post.id in liked_posts
     post.user_reaction = liked_posts.get(post.id)
+    post.top_reactions = top_reactions_map.get(post.id, [])
 
   return {
     'items': posts,

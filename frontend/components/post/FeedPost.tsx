@@ -22,7 +22,7 @@ import { Avatar, surfaceClass } from '@/components/ui/core';
 import { API_URL, likePost, unlikePost, deletePost, updatePost, fetchPostLikers } from '@/lib/api';
 import type { PostLiker } from '@/lib/api';
 import { fetchCurrentUser } from '@/lib/auth';
-import type { Post } from '@/lib/types';
+import type { Post, ReactionType } from '@/lib/types';
 
 type VisibilityOption = {
   value: string;
@@ -94,6 +94,10 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
     const [likers, setLikers] = useState<PostLiker[]>([]);
     const [loadingLikers, setLoadingLikers] = useState(false);
 
+    const [reactionType, setReactionType] = useState<ReactionType | null | undefined>(item.user_reaction);
+    const [topReactions, setTopReactions] = useState<ReactionType[]>(item.top_reactions && item.top_reactions.length > 0 ? item.top_reactions : (item.user_reaction ? [item.user_reaction] : (item.like_count > 0 ? ['like'] : [])));
+    const [showReactions, setShowReactions] = useState(false);
+
     useEffect(() => {
         setLiked(item.is_liked);
     }, [item.is_liked]);
@@ -101,6 +105,16 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
     useEffect(() => {
         setCount(item.like_count);
     }, [item.like_count]);
+
+    useEffect(() => {
+        setReactionType(item.user_reaction);
+    }, [item.user_reaction]);
+
+    useEffect(() => {
+        if (item.top_reactions && item.top_reactions.length > 0) {
+            setTopReactions(item.top_reactions);
+        }
+    }, [item.top_reactions]);
 
 
 
@@ -126,16 +140,33 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
         }
     }, [singleMediaUrl]);
 
-    const handleToggleLike = async () => {
+    const handleToggleLike = async (rType?: ReactionType) => {
         if (loading) return;
+        
+        const newReaction = rType || 'like';
+        const isUnliking = liked && (!rType || reactionType === newReaction);
+
         setLoading(true);
+        setShowReactions(false);
         try {
-            const isUnliking = liked;
             const result = isUnliking
                 ? await unlikePost(String(item.id))
-                : await likePost(String(item.id), 'like');
+                : await likePost(String(item.id), newReaction);
+            
             setLiked(result.liked);
             setCount(result.like_count);
+            setReactionType(result.reaction_type);
+
+            if (result.like_count === 0) {
+                setTopReactions([]);
+            } else if (result.like_count === 1 && result.reaction_type) {
+                setTopReactions([result.reaction_type]);
+            } else if (!isUnliking) {
+                setTopReactions(prev => {
+                    const newReactions = [newReaction, ...prev.filter(r => r !== newReaction)] as ReactionType[];
+                    return newReactions.slice(0, Math.min(3, result.like_count));
+                });
+            }
         } catch {
             // Revert on error
         } finally {
@@ -489,16 +520,27 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                     <Pressable onPress={handleOpenLikers} disabled={count === 0} className="active:opacity-70 flex-row items-center gap-1.5">
                         {count > 0 ? (
                             <>
-                                <View className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[#4A9FD8] border-2 border-white">
-                                    <ThumbsUp color="#FFFFFF" size={12} weight="fill" />
+                                <View className="flex-row items-center">
+                                    {topReactions.slice(0, 3).map((rType, index) => {
+                                        const icon = REACTIONS.find(r => r.type === rType)?.icon || '👍';
+                                        return (
+                                            <View 
+                                                key={rType} 
+                                                className={`flex h-[22px] w-[22px] items-center justify-center rounded-full bg-white border border-[#E4E8EE] ${index > 0 ? '-ml-2' : ''}`}
+                                                style={{ zIndex: 3 - index }}
+                                            >
+                                                <ThemedText style={{ fontSize: 13 }}>{icon}</ThemedText>
+                                            </View>
+                                        );
+                                    })}
                                 </View>
                                 <ThemedText className="text-sm font-semibold text-slate-700 ml-1">
-                                    {count} lượt thích
+                                    {count} cảm xúc
                                 </ThemedText>
                             </>
                         ) : (
                             <ThemedText className="text-sm font-medium text-slate-400">
-                                Chưa có lượt thích
+                                Chưa có cảm xúc
                             </ThemedText>
                         )}
                     </Pressable>
@@ -537,17 +579,35 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
 
             {/* Thanh hành động */}
             <View className="mt-4 flex-row flex-wrap gap-3 border-t border-[#E4E8EE] pt-4 relative">
+                {showReactions && (
+                    <View 
+                        className="absolute left-0 -top-14 flex-row items-center gap-2 rounded-full bg-white px-3 py-2 shadow-sm border border-[#E4E8EE]"
+                        style={{ elevation: 5, zIndex: 100 }}
+                    >
+                        {REACTIONS.map((r) => (
+                            <Pressable 
+                                key={r.type} 
+                                onPress={() => handleToggleLike(r.type as ReactionType)}
+                                className="active:scale-125 transition-transform p-1"
+                            >
+                                <ThemedText className="text-2xl">{r.icon}</ThemedText>
+                            </Pressable>
+                        ))}
+                    </View>
+                )}
+
                 {/* Like */}
                 <Pressable
                     onPress={() => handleToggleLike()}
+                    onLongPress={() => setShowReactions(true)}
                     disabled={loading}
                     className="min-w-[140px] flex-1 flex-row items-center justify-center gap-2 rounded-[20px] bg-[#F7F8FA] px-4 py-4 active:opacity-80"
                 >
                     {liked ? (
                         <>
-                            <ThumbsUp color="#4A9FD8" size={20} weight="fill" />
-                            <ThemedText style={{ color: '#4A9FD8' }} className="text-base font-semibold">
-                                Thích
+                            <ThemedText className="text-xl">{REACTIONS.find(r => r.type === reactionType)?.icon || '👍'}</ThemedText>
+                            <ThemedText style={{ color: REACTIONS.find(r => r.type === reactionType)?.color || '#4A9FD8' }} className="text-base font-semibold">
+                                {REACTIONS.find(r => r.type === reactionType)?.name || 'Like'}
                             </ThemedText>
                         </>
                     ) : (
@@ -589,7 +649,7 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                         {/* Header */}
                         <View className="flex-row items-center justify-between px-5 py-4 border-b border-[#E4E8EE]">
                             <ThemedText className="text-lg font-semibold text-slate-900">
-                                {count} lượt thích
+                                {count} cảm xúc
                             </ThemedText>
                             <Pressable
                                 onPress={() => setIsLikersVisible(false)}
@@ -608,7 +668,7 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                         ) : likers.length === 0 ? (
                             <View className="items-center py-10">
                                 <MaterialIcons name="thumb-up-off-alt" size={36} color="#CBD5E1" />
-                                <ThemedText className="mt-3 text-sm text-slate-500">Chưa có ai thích bài viết này</ThemedText>
+                                <ThemedText className="mt-3 text-sm text-slate-500">Chưa có ai tương tác với bài viết này</ThemedText>
                             </View>
                         ) : (
                             <View className="px-5 pt-2">

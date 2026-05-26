@@ -64,6 +64,7 @@ class PostRead(PostBase):
   comment_count: int = 0
   is_liked: bool = False
   user_reaction: ReactionType | None = None
+  top_reactions: list[ReactionType] = []
 
 
   model_config = ConfigDict(from_attributes=True)
