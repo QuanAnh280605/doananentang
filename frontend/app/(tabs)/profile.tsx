@@ -1,11 +1,11 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useMemo, useState, useRef, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -318,25 +318,26 @@ export default function ProfileScreen() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
 
-  useEffect(() => {
-    if (!user) return;
-    let isMounted = true;
-    setLoadingPosts(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (!user) return;
+      let isMounted = true;
+      setLoadingPosts(true);
 
+      fetchPosts(1, 10, user.id)
+        .then((res) => {
+          if (isMounted) setPosts(res.items);
+        })
+        .catch(() => { })
+        .finally(() => {
+          if (isMounted) setLoadingPosts(false);
+        });
 
-    fetchPosts(1, 10, user.id)
-      .then((res) => {
-        if (isMounted) setPosts(res.items);
-      })
-      .catch(() => { })
-      .finally(() => {
-        if (isMounted) setLoadingPosts(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [user]);
+      return () => {
+        isMounted = false;
+      };
+    }, [user])
+  );
 
   const handleDeletePost = (postId: string) => {
     setPosts((current) => current.filter((p) => p.id !== postId));
