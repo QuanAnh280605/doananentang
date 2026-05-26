@@ -11,6 +11,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Image } from 'expo-image';
@@ -184,9 +185,8 @@ function PrivacySelector({
           <Pressable
             key={opt.value}
             onPress={() => onChange(opt.value)}
-            className={`flex-row items-center gap-1.5 rounded-full border px-3 py-1.5 ${
-              isSelected ? 'border-[#4A9FD8] bg-[#EAF4FB]' : 'border-slate-200 bg-white'
-            }`}
+            className={`flex-row items-center gap-1.5 rounded-full border px-3 py-1.5 ${isSelected ? 'border-[#4A9FD8] bg-[#EAF4FB]' : 'border-slate-200 bg-white'
+              }`}
           >
             <MaterialIcons
               name={opt.icon}
@@ -194,9 +194,8 @@ function PrivacySelector({
               color={isSelected ? '#0284C7' : '#64748B'}
             />
             <ThemedText
-              className={`text-xs font-medium ${
-                isSelected ? 'text-[#0284C7]' : 'text-slate-600'
-              }`}
+              className={`text-xs font-medium ${isSelected ? 'text-[#0284C7]' : 'text-slate-600'
+                }`}
             >
               {opt.label}
             </ThemedText>
@@ -340,6 +339,7 @@ type PasswordErrors = {
 
 export default function EditProfileScreen() {
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const isWide = width >= 1024;
   const isTablet = width >= 768;
 
@@ -578,8 +578,8 @@ export default function EditProfileScreen() {
   return (
     <>
       <StatusBar style="dark" />
-      <ThemedView className="flex-1 bg-[#F8FAFC]">
-        <ScrollView bounces={false} className="flex-1" contentContainerClassName="pb-8">
+      <ThemedView className="flex-1 bg-[#F8FAFC]" style={{ paddingTop: insets.top }}>
+        <ScrollView bounces={false} className="flex-1" contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}>
           <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-4 md:px-6">
             {/* Back header */}
             <View className="flex-row items-center gap-3 rounded-full border border-app-border bg-app-surface px-5 py-4 mx-4 md:mx-0">
@@ -768,7 +768,7 @@ export default function EditProfileScreen() {
                 {/* ── Profile action bar ── */}
                 <View className={`items-center justify-between gap-4 rounded-[32px] border border-slate-200 bg-white p-4 ${isTablet ? 'flex-row' : 'flex-col-reverse'}`}>
                   <ThemedText className="text-sm text-slate-500 text-center md:text-left">
-                    Thay đổi chỉ lưu khi nhấn "Lưu hồ sơ".
+                    Thay đổi chỉ lưu khi nhấn &quot;Lưu hồ sơ&quot;.
                   </ThemedText>
                   <View className={`flex-row gap-3 ${isTablet ? '' : 'w-full'}`}>
                     <Pressable
