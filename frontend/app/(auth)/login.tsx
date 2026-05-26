@@ -129,53 +129,53 @@ function LoginCard({
 }: LoginCardProps) {
   return (
     <ThemedView
-      className={`w-full rounded-[32px] border border-slate-200 bg-white shadow-sm shadow-slate-200 ${isLargeScreen ? 'min-h-[736px] max-w-[420px] px-8 py-9' : 'p-5'}`}>
-      <ThemedText type="eyebrow">Welcome back</ThemedText>
-      <ThemedText className={`font-bold text-slate-900 ${isLargeScreen ? 'mt-3 text-[30px] leading-9' : 'mt-2 text-[28px] leading-8'}`}>
-        Log in to continue
+      className={`w-full ${isLargeScreen ? 'rounded-[32px] border border-slate-200 bg-white shadow-sm shadow-slate-200 min-h-[736px] max-w-[420px] px-8 py-9' : 'px-2 py-4'}`}>
+      <ThemedText type="eyebrow" style={{ color: '#4A9FD8' }}>Welcome back</ThemedText>
+      <ThemedText className={`font-bold text-slate-900 ${isLargeScreen ? 'mt-3 text-[30px] leading-9' : 'mt-2 text-[32px] leading-9 tracking-tight'}`}>
+        Đăng nhập
       </ThemedText>
-      <ThemedText className={`text-slate-600 ${isLargeScreen ? 'mt-3' : 'mt-2 text-sm leading-6'}`}>
-        Catch up with your community, messages, and recent activity.
+      <ThemedText className={`text-slate-500 ${isLargeScreen ? 'mt-3' : 'mt-2 text-base leading-6'}`}>
+        Kết nối và cập nhật thông tin cùng cộng đồng.
       </ThemedText>
 
-      <View className={`gap-4 ${isLargeScreen ? 'mt-6' : 'mt-5'}`}>
+      <View className={`gap-4 ${isLargeScreen ? 'mt-6' : 'mt-8'}`}>
         <TextInput
           autoCapitalize="none"
-          className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-base text-slate-900"
+          className="rounded-[20px] bg-[#F1F5F9] px-5 py-4 text-[17px] text-slate-900"
           onChangeText={setIdentifier}
-          placeholder="Email address or mobile number"
-          placeholderTextColor="#64748B"
+          placeholder="Email hoặc số điện thoại"
+          placeholderTextColor="#94A3B8"
           value={identifier}
         />
         <TextInput
           autoCapitalize="none"
-          className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-base text-slate-900"
+          className="rounded-[20px] bg-[#F1F5F9] px-5 py-4 text-[17px] text-slate-900"
           onChangeText={setPassword}
-          placeholder="Password"
-          placeholderTextColor="#64748B"
+          placeholder="Mật khẩu"
+          placeholderTextColor="#94A3B8"
           secureTextEntry
           value={password}
         />
       </View>
 
       <Pressable
-        className={`rounded-2xl bg-[#4A9FD8] px-4 py-4 active:opacity-90 ${isLargeScreen ? 'mt-5' : 'mt-4'} ${isSubmitting ? 'opacity-70' : ''}`}
+        className={`rounded-[20px] bg-[#4A9FD8] px-4 py-4 active:opacity-80 ${isLargeScreen ? 'mt-5' : 'mt-6'} ${isSubmitting ? 'opacity-70' : ''}`}
         disabled={isSubmitting}
         onPress={onSubmit}>
-        <ThemedText className="text-center text-base font-semibold text-white">
-          {isSubmitting ? 'Logging in...' : 'Log in'}
+        <ThemedText className="text-center text-[17px] font-bold text-white">
+          {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
         </ThemedText>
       </Pressable>
 
       {errorMessage ? (
-        <ThemedView className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
+        <ThemedView className="mt-4 rounded-[16px] bg-rose-50 px-4 py-3 border border-rose-100">
           <ThemedText className="text-sm font-semibold text-rose-700">{errorMessage}</ThemedText>
         </ThemedView>
       ) : null}
       {successUser ? (
-        <ThemedView className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+        <ThemedView className="mt-4 rounded-[16px] bg-emerald-50 px-4 py-3 border border-emerald-100">
           <ThemedText className="text-sm font-semibold text-emerald-700">
-            Signed in as {successUser.first_name} {successUser.last_name}
+            Đã đăng nhập với tư cách {successUser.first_name} {successUser.last_name}
           </ThemedText>
           <ThemedText className="mt-1 text-sm text-emerald-700">
             {successUser.email ?? successUser.phone}
@@ -184,25 +184,25 @@ function LoginCard({
       ) : null}
 
       <Link asChild href="/forgot-password">
-        <Pressable className="mt-4 self-center px-3 py-2">
-          <ThemedText className="text-sm font-semibold text-[#4A9FD8]">Forgotten password?</ThemedText>
+        <Pressable className="mt-5 self-center px-3 py-2">
+          <ThemedText className="text-[15px] font-semibold text-[#4A9FD8]">Quên mật khẩu?</ThemedText>
         </Pressable>
       </Link>
 
-      <View className={`border-t border-slate-200 ${isLargeScreen ? 'mt-5 pt-5' : 'mt-4 pt-4'}`}>
+      <View className={`border-t border-slate-200 ${isLargeScreen ? 'mt-5 pt-5' : 'mt-6 pt-6'}`}>
         <Link asChild href="/register">
-          <Pressable className="rounded-2xl border border-slate-300 px-4 py-4 active:bg-slate-50">
-            <ThemedText className="text-center text-base font-semibold text-slate-900">
-              Create new account
+          <Pressable className="rounded-[20px] border border-slate-300 px-4 py-4 active:bg-slate-50">
+            <ThemedText className="text-center text-[17px] font-bold text-slate-900">
+              Tạo tài khoản mới
             </ThemedText>
           </Pressable>
         </Link>
       </View>
 
-      <View className={`flex-row items-center justify-center gap-2 ${isLargeScreen ? 'mt-8' : 'mt-6'}`}>
+      <View className={`flex-row items-center justify-center gap-2 ${isLargeScreen ? 'mt-8' : 'mt-8'}`}>
         <View className="h-4 w-4 rounded-full border border-slate-400" />
         <View className="h-4 w-4 rounded-full border border-slate-400 -ml-1.5" />
-        <ThemedText className="text-xs font-semibold uppercase tracking-[1.8px] text-slate-500">Meta</ThemedText>
+        <ThemedText className="text-xs font-bold uppercase tracking-[1.8px] text-slate-400">Danentang</ThemedText>
       </View>
     </ThemedView>
   );

@@ -20,8 +20,7 @@ import { fetchCurrentUser, fetchFollowStatus, updateUserProfile, uploadUserAvata
 import type { GenderValue } from '@/lib/auth';
 import { fetchPosts, API_URL } from '@/lib/api';
 import type { VisibilityLevel } from '@/lib/types';
-
-const surfaceClass = 'rounded-surface border border-app-border bg-app-surface';
+const surfaceClass = 'rounded-[32px] border border-app-border bg-app-surface';
 
 // ─── Primitive components ────────────────────────────────────────────────────
 
@@ -83,8 +82,8 @@ function FieldInput({
       editable={editable}
       textAlignVertical={multiline ? 'top' : 'center'}
       className={[
-        'rounded-[18px] border bg-[#F7F8FA] px-4 py-3.5 text-base text-slate-900',
-        multiline ? 'min-h-[100px]' : '',
+        'rounded-full border bg-[#F7F8FA] px-4 py-3.5 text-base text-slate-900',
+        multiline ? 'min-h-[100px] rounded-[24px]' : '',
         !editable ? 'opacity-60' : '',
         hasError ? 'border-[#EF4444]' : 'border-slate-200',
       ]
@@ -222,7 +221,7 @@ function InlineBanner({
   const isSuccess = type === 'success';
   return (
     <View
-      className={`flex-row items-center justify-between rounded-[14px] px-4 py-3 ${isSuccess ? 'bg-[#DCFCE7]' : 'bg-[#FEE2E2]'
+      className={`flex-row items-center justify-between rounded-[24px] px-4 py-3 mx-4 md:mx-0 ${isSuccess ? 'bg-[#DCFCE7]' : 'bg-[#FEE2E2]'
         }`}
     >
       <View className="flex-1 flex-row items-center gap-2">
@@ -280,16 +279,16 @@ function LivePreviewCard({
         </View>
 
         {/* Cover */}
-        <View className="mb-4 h-[120px] rounded-[18px] bg-[#D9ECF8]" />
+        <View className="mb-4 h-[120px] rounded-[24px] bg-[#D9ECF8]" />
 
         {/* Avatar + name */}
         <View className="-mt-12 flex-row items-end gap-3 px-3">
           {avatarSource ? (
-            <View className="h-16 w-16 overflow-hidden rounded-[22px] border-[3px] border-white">
+            <View className="h-16 w-16 overflow-hidden rounded-full border-[3px] border-white">
               <Image source={avatarSource} style={{ width: '100%', height: '100%' }} contentFit="cover" />
             </View>
           ) : (
-            <View className="h-16 w-16 items-center justify-center rounded-[22px] border-[3px] border-white bg-[#EAF4FB]">
+            <View className="h-16 w-16 items-center justify-center rounded-full border-[3px] border-white bg-[#EAF4FB]">
               <ThemedText className="text-lg font-semibold text-slate-900">{initials}</ThemedText>
             </View>
           )}
@@ -583,10 +582,10 @@ export default function EditProfileScreen() {
         <ScrollView bounces={false} className="flex-1" contentContainerClassName="pb-8">
           <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-4 md:px-6">
             {/* Back header */}
-            <View className="flex-row items-center gap-3 rounded-surface border border-app-border bg-app-surface px-5 py-4">
+            <View className="flex-row items-center gap-3 rounded-full border border-app-border bg-app-surface px-5 py-4 mx-4 md:mx-0">
               <Pressable
                 onPress={() => router.back()}
-                className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA] active:opacity-80"
+                className="h-11 w-11 items-center justify-center rounded-full bg-[#F7F8FA] active:opacity-80"
               >
                 <ThemedText className="text-lg">←</ThemedText>
               </Pressable>
@@ -596,16 +595,18 @@ export default function EditProfileScreen() {
             {/* Main 2-col layout */}
             <View className={isWide ? 'flex-row items-start gap-6' : 'gap-6'}>
               {/* Left: Live preview */}
-              <View className={isWide ? 'w-[280px]' : 'w-full'}>
-                <LivePreviewCard
-                  firstName={firstName}
-                  lastName={lastName}
-                  bio={bio}
-                  avatarSource={currentAvatarSource}
-                  followerCount={followerCount}
-                  postCount={postCount}
-                />
-              </View>
+              {isTablet && (
+                <View className={isWide ? 'w-[280px]' : 'w-full'}>
+                  <LivePreviewCard
+                    firstName={firstName}
+                    lastName={lastName}
+                    bio={bio}
+                    avatarSource={currentAvatarSource}
+                    followerCount={followerCount}
+                    postCount={postCount}
+                  />
+                </View>
+              )}
 
               {/* Right: Form panels */}
               <View className="flex-1 gap-6">
@@ -648,14 +649,14 @@ export default function EditProfileScreen() {
 
                     <Pressable
                       onPress={pickImage}
-                      className="rounded-[18px] bg-[#4A9FD8] px-5 py-3 active:opacity-80"
+                      className="rounded-full bg-[#4A9FD8] px-5 py-3 active:opacity-80"
                     >
                       <ThemedText className="text-sm font-semibold text-white">Thay ảnh</ThemedText>
                     </Pressable>
 
                     <Pressable
                       onPress={removeAvatar}
-                      className="rounded-[18px] bg-[#F7F8FA] px-5 py-3 active:opacity-80"
+                      className="rounded-full bg-[#F7F8FA] px-5 py-3 active:opacity-80"
                     >
                       <ThemedText className="text-sm font-medium text-slate-700">Xoá</ThemedText>
                     </Pressable>
@@ -765,21 +766,21 @@ export default function EditProfileScreen() {
                 </SectionCard>
 
                 {/* ── Profile action bar ── */}
-                <View className="flex-row items-center justify-between rounded-[18px] border border-slate-200 bg-white px-6 py-4">
-                  <ThemedText className="text-sm text-slate-500">
-                    Thay đổi chỉ lưu khi nhấn &quot;Lưu hồ sơ&quot;.
+                <View className={`items-center justify-between gap-4 rounded-[32px] border border-slate-200 bg-white p-4 ${isTablet ? 'flex-row' : 'flex-col-reverse'}`}>
+                  <ThemedText className="text-sm text-slate-500 text-center md:text-left">
+                    Thay đổi chỉ lưu khi nhấn "Lưu hồ sơ".
                   </ThemedText>
-                  <View className="flex-row gap-3">
+                  <View className={`flex-row gap-3 ${isTablet ? '' : 'w-full'}`}>
                     <Pressable
                       onPress={handleCancel}
-                      className="rounded-[18px] bg-[#F7F8FA] px-6 py-3 active:opacity-80"
+                      className={`rounded-full bg-[#F7F8FA] px-6 py-3 active:opacity-80 ${isTablet ? '' : 'flex-1 items-center'}`}
                     >
                       <ThemedText className="text-sm font-medium text-slate-700">Huỷ</ThemedText>
                     </Pressable>
                     <Pressable
                       onPress={handleSaveProfile}
                       disabled={isSavingProfile}
-                      className="min-w-[140px] items-center rounded-[18px] bg-[#4A9FD8] px-6 py-3 active:opacity-80 disabled:opacity-50"
+                      className={`min-w-[140px] items-center rounded-full bg-[#4A9FD8] px-6 py-3 active:opacity-80 disabled:opacity-50 ${isTablet ? '' : 'flex-1'}`}
                     >
                       {isSavingProfile ? (
                         <ActivityIndicator size="small" color="#FFFFFF" />
@@ -865,7 +866,7 @@ export default function EditProfileScreen() {
                     <Pressable
                       onPress={handleSavePassword}
                       disabled={isSavingPassword}
-                      className="min-w-[160px] items-center rounded-[18px] bg-[#0F172A] px-6 py-3 active:opacity-80 disabled:opacity-50"
+                      className="min-w-[160px] items-center rounded-full bg-[#0F172A] px-6 py-3 active:opacity-80 disabled:opacity-50"
                     >
                       {isSavingPassword ? (
                         <ActivityIndicator size="small" color="#FFFFFF" />

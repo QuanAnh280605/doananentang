@@ -174,38 +174,38 @@ export default function RegisterScreen() {
           <PromoPanel isLargeScreen={isLargeScreen} />
 
           <ThemedView
-            className={`w-full rounded-[32px] border border-slate-200 bg-white shadow-sm shadow-slate-200 ${isLargeScreen ? 'min-h-[736px] max-w-[420px] px-8 py-9' : 'p-5'}`}>
-            <ThemedText type="eyebrow">Get started</ThemedText>
-            <ThemedText className={`font-bold text-slate-900 ${isLargeScreen ? 'mt-3 text-[30px] leading-9' : 'mt-2 text-[28px] leading-8'}`}>
-              Create your account
+            className={`w-full ${isLargeScreen ? 'rounded-[32px] border border-slate-200 bg-white shadow-sm shadow-slate-200 min-h-[736px] max-w-[420px] px-8 py-9' : 'px-2 py-4'}`}>
+            <ThemedText type="eyebrow" style={{ color: '#4A9FD8' }}>Get started</ThemedText>
+            <ThemedText className={`font-bold text-slate-900 ${isLargeScreen ? 'mt-3 text-[30px] leading-9' : 'mt-2 text-[32px] leading-9 tracking-tight'}`}>
+              Tạo tài khoản
             </ThemedText>
-            <ThemedText className={`text-slate-600 ${isLargeScreen ? 'mt-3' : 'mt-2 text-sm leading-6'}`}>
-              Start with the essentials and shape your profile as you go.
+            <ThemedText className={`text-slate-500 ${isLargeScreen ? 'mt-3' : 'mt-2 text-base leading-6'}`}>
+              Bắt đầu với các thông tin cơ bản và tuỳ chỉnh hồ sơ của bạn.
             </ThemedText>
 
-            <View className={`gap-4 ${isLargeScreen ? 'mt-6' : 'mt-5'}`}>
+            <View className={`gap-4 ${isLargeScreen ? 'mt-6' : 'mt-8'}`}>
               <View className={isLargeScreen ? 'flex-row gap-4' : 'gap-4'}>
                 <View className={isLargeScreen ? 'flex-1' : ''}>
                   <TextInput
-                    className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-base text-slate-900"
+                    className="rounded-[20px] bg-[#F1F5F9] px-5 py-4 text-[17px] text-slate-900"
                     onChangeText={(value) => {
                       setFirstName(value);
                       clearErrorOnChange();
                     }}
-                    placeholder="First name"
-                    placeholderTextColor="#64748B"
+                    placeholder="Tên"
+                    placeholderTextColor="#94A3B8"
                     value={firstName}
                   />
                 </View>
                 <View className={isLargeScreen ? 'flex-1' : ''}>
                   <TextInput
-                    className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-base text-slate-900"
+                    className="rounded-[20px] bg-[#F1F5F9] px-5 py-4 text-[17px] text-slate-900"
                     onChangeText={(value) => {
                       setLastName(value);
                       clearErrorOnChange();
                     }}
-                    placeholder="Last name"
-                    placeholderTextColor="#64748B"
+                    placeholder="Họ"
+                    placeholderTextColor="#94A3B8"
                     value={lastName}
                   />
                 </View>
@@ -213,50 +213,49 @@ export default function RegisterScreen() {
 
               <TextInput
                 autoCapitalize="none"
-                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-base text-slate-900"
+                className="rounded-[20px] bg-[#F1F5F9] px-5 py-4 text-[17px] text-slate-900"
                 onChangeText={(value) => {
                   setContact(value);
                   clearErrorOnChange();
                 }}
-                placeholder="Email or mobile number"
-                placeholderTextColor="#64748B"
+                placeholder="Email hoặc số điện thoại"
+                placeholderTextColor="#94A3B8"
                 value={contact}
               />
 
               <TextInput
                 autoCapitalize="none"
-                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-base text-slate-900"
+                className="rounded-[20px] bg-[#F1F5F9] px-5 py-4 text-[17px] text-slate-900"
                 onChangeText={(value) => {
                   setPassword(value);
                   clearErrorOnChange();
                 }}
-                placeholder="Password"
-                placeholderTextColor="#64748B"
+                placeholder="Mật khẩu"
+                placeholderTextColor="#94A3B8"
                 secureTextEntry
                 value={password}
               />
 
               <TextInput
-                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-base text-slate-900"
+                className="rounded-[20px] bg-[#F1F5F9] px-5 py-4 text-[17px] text-slate-900"
                 onChangeText={(value) => {
                   setBirthDate(value);
                   clearErrorOnChange();
                 }}
-                placeholder="Date of birth (DD/MM/YYYY or YYYY-MM-DD)"
-                placeholderTextColor="#64748B"
+                placeholder="Ngày sinh (DD/MM/YYYY)"
+                placeholderTextColor="#94A3B8"
                 value={birthDate}
               />
 
-              <View className="gap-3">
-                <ThemedText type="defaultSemiBold">Gender</ThemedText>
+              <View className="gap-3 mt-2">
+                <ThemedText type="defaultSemiBold">Giới tính</ThemedText>
                 <View className="flex-row flex-wrap gap-3">
                   {GENDER_OPTIONS.map((option) => {
                     const selected = gender === option;
-
                     return (
                       <Pressable
                         key={option}
-                        className={`rounded-2xl border px-4 py-3 ${selected ? 'border-[#4A9FD8] bg-[#EAF4FB]' : 'border-slate-200 bg-slate-50'}`}
+                        className={`rounded-2xl border px-5 py-3 ${selected ? 'border-[#4A9FD8] bg-[#EAF4FB]' : 'border-transparent bg-[#F1F5F9]'}`}
                         onPress={() => setGender(option)}>
                         <ThemedText className={`font-semibold ${selected ? 'text-[#4A9FD8]' : 'text-slate-700'}`}>
                           {option}
@@ -269,23 +268,23 @@ export default function RegisterScreen() {
             </View>
 
             <Pressable
-              className={`rounded-2xl bg-[#4A9FD8] px-4 py-4 active:opacity-90 ${isLargeScreen ? 'mt-5' : 'mt-4'} ${isSubmitting ? 'opacity-70' : ''}`}
+              className={`rounded-[20px] bg-[#4A9FD8] px-4 py-4 active:opacity-80 ${isLargeScreen ? 'mt-5' : 'mt-8'} ${isSubmitting ? 'opacity-70' : ''}`}
               disabled={isSubmitting}
               onPress={handleRegister}>
-              <ThemedText className="text-center text-base font-semibold text-white">
-                {isSubmitting ? 'Creating account...' : 'Create account'}
+              <ThemedText className="text-center text-[17px] font-bold text-white">
+                {isSubmitting ? 'Đang tạo...' : 'Tạo tài khoản'}
               </ThemedText>
             </Pressable>
 
             {errorMessage ? (
-              <ThemedView className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
+              <ThemedView className="mt-4 rounded-[16px] bg-rose-50 px-4 py-3 border border-rose-100">
                 <ThemedText className="text-sm font-semibold text-rose-700">{errorMessage}</ThemedText>
               </ThemedView>
             ) : null}
             {successUser ? (
-              <ThemedView className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+              <ThemedView className="mt-4 rounded-[16px] bg-emerald-50 px-4 py-3 border border-emerald-100">
                 <ThemedText className="text-sm font-semibold text-emerald-700">
-                  Account created for {successUser.first_name} {successUser.last_name}
+                  Tài khoản đã tạo cho {successUser.first_name} {successUser.last_name}
                 </ThemedText>
                 <ThemedText className="mt-1 text-sm text-emerald-700">
                   {successUser.email ?? successUser.phone}
@@ -293,11 +292,15 @@ export default function RegisterScreen() {
               </ThemedView>
             ) : null}
 
-            <Link asChild href="/login">
-              <Pressable className="mt-4 self-center px-3 py-2">
-                <ThemedText className="text-sm font-semibold text-[#4A9FD8]">Already have an account? Log in</ThemedText>
-              </Pressable>
-            </Link>
+            <View className={`border-t border-slate-200 ${isLargeScreen ? 'mt-5 pt-5' : 'mt-8 pt-6'}`}>
+              <Link asChild href="/login">
+                <Pressable className="rounded-[20px] border border-slate-300 px-4 py-4 active:bg-slate-50">
+                  <ThemedText className="text-center text-[17px] font-bold text-slate-900">
+                    Đã có tài khoản? Đăng nhập
+                  </ThemedText>
+                </Pressable>
+              </Link>
+            </View>
           </ThemedView>
         </ThemedView>
       </ThemedView>
