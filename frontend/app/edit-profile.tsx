@@ -16,10 +16,11 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Image } from 'expo-image';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { getMockUser, updateMockUser, uploadMockAvatar, changeMockPassword } from '@/lib/mock-profile';
+import { fetchCurrentUser, fetchFollowStatus, updateUserProfile, uploadUserAvatar, changePassword } from '@/lib/auth';
 import type { GenderValue } from '@/lib/auth';
-
-const surfaceClass = 'rounded-surface border border-app-border bg-app-surface';
+import { fetchPosts, API_URL } from '@/lib/api';
+import type { VisibilityLevel } from '@/lib/types';
+const surfaceClass = 'rounded-[32px] border border-app-border bg-app-surface';
 
 // ─── Primitive components ────────────────────────────────────────────────────
 
@@ -81,8 +82,8 @@ function FieldInput({
       editable={editable}
       textAlignVertical={multiline ? 'top' : 'center'}
       className={[
-        'rounded-[18px] border bg-[#F7F8FA] px-4 py-3.5 text-base text-slate-900',
-        multiline ? 'min-h-[100px]' : '',
+        'rounded-full border bg-[#F7F8FA] px-4 py-3.5 text-base text-slate-900',
+        multiline ? 'min-h-[100px] rounded-[24px]' : '',
         !editable ? 'opacity-60' : '',
         hasError ? 'border-[#EF4444]' : 'border-slate-200',
       ]
@@ -162,6 +163,50 @@ function PasswordStrengthBar({ strength }: { strength: number }) {
   );
 }
 
+function PrivacySelector({
+  value,
+  onChange
+}: {
+  value: VisibilityLevel;
+  onChange: (val: VisibilityLevel) => void
+}) {
+  const options: { label: string; value: VisibilityLevel; icon: keyof typeof MaterialIcons.glyphMap }[] = [
+    { label: 'Công khai', value: 'public', icon: 'public' },
+    { label: 'Người theo dõi', value: 'followersonly', icon: 'group' },
+    { label: 'Chỉ mình tôi', value: 'onlyme', icon: 'lock' },
+  ];
+
+  return (
+    <View className="mt-2 flex-row flex-wrap gap-2">
+      {options.map((opt) => {
+        const isSelected = value === opt.value;
+        return (
+          <Pressable
+            key={opt.value}
+            onPress={() => onChange(opt.value)}
+            className={`flex-row items-center gap-1.5 rounded-full border px-3 py-1.5 ${
+              isSelected ? 'border-[#4A9FD8] bg-[#EAF4FB]' : 'border-slate-200 bg-white'
+            }`}
+          >
+            <MaterialIcons
+              name={opt.icon}
+              size={14}
+              color={isSelected ? '#0284C7' : '#64748B'}
+            />
+            <ThemedText
+              className={`text-xs font-medium ${
+                isSelected ? 'text-[#0284C7]' : 'text-slate-600'
+              }`}
+            >
+              {opt.label}
+            </ThemedText>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 // ─── Success / error banner ───────────────────────────────────────────────────
 
 function InlineBanner({
@@ -176,9 +221,8 @@ function InlineBanner({
   const isSuccess = type === 'success';
   return (
     <View
-      className={`flex-row items-center justify-between rounded-[14px] px-4 py-3 ${
-        isSuccess ? 'bg-[#DCFCE7]' : 'bg-[#FEE2E2]'
-      }`}
+      className={`flex-row items-center justify-between rounded-[24px] px-4 py-3 mx-4 md:mx-0 ${isSuccess ? 'bg-[#DCFCE7]' : 'bg-[#FEE2E2]'
+        }`}
     >
       <View className="flex-1 flex-row items-center gap-2">
         <MaterialIcons
@@ -210,11 +254,15 @@ function LivePreviewCard({
   lastName,
   bio,
   avatarSource,
+  followerCount = 0,
+  postCount = 0,
 }: {
   firstName: string;
   lastName: string;
   bio: string;
   avatarSource: { uri: string } | null;
+  followerCount?: number | string;
+  postCount?: number | string;
 }) {
   const displayName = `${firstName} ${lastName}`.trim() || 'Tên của bạn';
   const initials = `${(firstName || 'N').charAt(0)}${(lastName || 'A').charAt(0)}`.toUpperCase();
@@ -231,16 +279,16 @@ function LivePreviewCard({
         </View>
 
         {/* Cover */}
-        <View className="mb-4 h-[120px] rounded-[18px] bg-[#D9ECF8]" />
+        <View className="mb-4 h-[120px] rounded-[24px] bg-[#D9ECF8]" />
 
         {/* Avatar + name */}
         <View className="-mt-12 flex-row items-end gap-3 px-3">
           {avatarSource ? (
-            <View className="h-16 w-16 overflow-hidden rounded-[22px] border-[3px] border-white">
+            <View className="h-16 w-16 overflow-hidden rounded-full border-[3px] border-white">
               <Image source={avatarSource} style={{ width: '100%', height: '100%' }} contentFit="cover" />
             </View>
           ) : (
-            <View className="h-16 w-16 items-center justify-center rounded-[22px] border-[3px] border-white bg-[#EAF4FB]">
+            <View className="h-16 w-16 items-center justify-center rounded-full border-[3px] border-white bg-[#EAF4FB]">
               <ThemedText className="text-lg font-semibold text-slate-900">{initials}</ThemedText>
             </View>
           )}
@@ -257,14 +305,18 @@ function LivePreviewCard({
           </ThemedText>
         ) : null}
 
-        {/* Stats mock */}
+        {/* Stats */}
         <View className="mt-4 flex-row gap-6 px-1">
           <View>
-            <ThemedText className="text-lg font-semibold text-slate-950">2.4k</ThemedText>
+            <ThemedText className="text-lg font-semibold text-slate-950">
+              {typeof followerCount === 'number' && followerCount >= 1000
+                ? (followerCount / 1000).toFixed(1) + 'k'
+                : followerCount}
+            </ThemedText>
             <ThemedText className="text-xs text-slate-500">Người theo dõi</ThemedText>
           </View>
           <View>
-            <ThemedText className="text-lg font-semibold text-slate-950">14</ThemedText>
+            <ThemedText className="text-lg font-semibold text-slate-950">{postCount}</ThemedText>
             <ThemedText className="text-xs text-slate-500">Bài viết</ThemedText>
           </View>
         </View>
@@ -308,7 +360,12 @@ export default function EditProfileScreen() {
   const [city, setCity] = useState('');
   const [email, setEmail] = useState('');
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [hasNewAvatar, setHasNewAvatar] = useState(false);
 
+  // Privacy fields
+  const [contactPrivacy, setContactPrivacy] = useState<VisibilityLevel>('public');
+  const [emailPrivacy, setEmailPrivacy] = useState<VisibilityLevel>('public');
+  const [locationPrivacy, setLocationPrivacy] = useState<VisibilityLevel>('public');
   // Profile inline errors
   const [profileErrors, setProfileErrors] = useState<ProfileErrors>({});
 
@@ -324,23 +381,44 @@ export default function EditProfileScreen() {
   // Password inline errors
   const [passwordErrors, setPasswordErrors] = useState<PasswordErrors>({});
 
-  // Load mock user
+  // Real stats
+  const [followerCount, setFollowerCount] = useState<number | string>(0);
+  const [postCount, setPostCount] = useState<number | string>(0);
+
+  // Load real user
   useEffect(() => {
     let mounted = true;
-    getMockUser()
-      .then((u) => {
-        if (mounted) {
-          setFirstName(u.first_name || '');
-          setLastName(u.last_name || '');
-          setBio(u.bio || '');
-          setPhone(u.phone || '');
-          setGender(u.gender || 'custom');
-          setCity(u.city || '');
-          setEmail(u.email || '');
+    fetchCurrentUser()
+      .then((user) => {
+        if (!user || !mounted) return;
+
+        setFirstName(user.first_name || '');
+        setLastName(user.last_name || '');
+        setBio(user.bio || '');
+        setPhone(user.phone || '');
+        setGender(user.gender || 'custom');
+        setCity(user.city || '');
+        setEmail(user.email || '');
+        if (user.avatar_url) {
+          setAvatarUri(user.avatar_url.startsWith('http') ? user.avatar_url : `${API_URL}${user.avatar_url}`);
         }
+        setContactPrivacy(user.contact_privacy || 'public');
+        setEmailPrivacy(user.email_privacy || 'public');
+        setLocationPrivacy(user.location_privacy || 'public');
+
+        fetchFollowStatus(user.id)
+          .then((status) => {
+            if (mounted) setFollowerCount(status.followers_count);
+          })
+          .catch(() => { });
+        fetchPosts(1, 1, user.id)
+          .then((res) => {
+            if (mounted) setPostCount(res.total);
+          })
+          .catch(() => { });
       })
       .catch(() => {
-        setProfileBanner({ type: 'error', message: 'Không thể tải thông tin cá nhân' });
+        if (mounted) setProfileBanner({ type: 'error', message: 'Không thể tải thông tin cá nhân' });
       })
       .finally(() => {
         if (mounted) setIsLoading(false);
@@ -349,6 +427,7 @@ export default function EditProfileScreen() {
       mounted = false;
     };
   }, []);
+
 
   // ── Avatar picker ──────────────────────────────────────────────────────────
 
@@ -363,6 +442,7 @@ export default function EditProfileScreen() {
 
       if (!result.canceled && result.assets[0]?.uri) {
         setAvatarUri(result.assets[0].uri);
+        setHasNewAvatar(true);
       }
     } catch {
       setProfileBanner({ type: 'error', message: 'Không thể mở thư viện ảnh' });
@@ -392,17 +472,20 @@ export default function EditProfileScreen() {
     setIsSavingProfile(true);
     setProfileBanner(null);
     try {
-      if (avatarUri) {
-        await uploadMockAvatar(avatarUri);
+      if (avatarUri && hasNewAvatar) {
+        await uploadUserAvatar(avatarUri);
       }
 
-      await updateMockUser({
+      await updateUserProfile({
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         bio: bio.trim() || null,
         phone: phone.trim() || null,
         city: city.trim() || null,
         gender,
+        contact_privacy: contactPrivacy,
+        email_privacy: emailPrivacy,
+        location_privacy: locationPrivacy,
       });
 
       setProfileBanner({ type: 'success', message: 'Cập nhật hồ sơ thành công!' });
@@ -452,7 +535,7 @@ export default function EditProfileScreen() {
     setIsSavingPassword(true);
     setPasswordBanner(null);
     try {
-      await changeMockPassword(currentPassword, newPassword);
+      await changePassword(currentPassword, newPassword);
       setPasswordBanner({ type: 'success', message: 'Đổi mật khẩu thành công!' });
       setCurrentPassword('');
       setNewPassword('');
@@ -499,31 +582,31 @@ export default function EditProfileScreen() {
         <ScrollView bounces={false} className="flex-1" contentContainerClassName="pb-8">
           <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-4 md:px-6">
             {/* Back header */}
-            <View className="flex-row items-center gap-3 rounded-surface border border-app-border bg-app-surface px-5 py-4">
+            <View className="flex-row items-center gap-3 rounded-full border border-app-border bg-app-surface px-5 py-4 mx-4 md:mx-0">
               <Pressable
                 onPress={() => router.back()}
-                className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA] active:opacity-80"
+                className="h-11 w-11 items-center justify-center rounded-full bg-[#F7F8FA] active:opacity-80"
               >
                 <ThemedText className="text-lg">←</ThemedText>
               </Pressable>
               <ThemedText className="text-lg font-semibold text-slate-900">Chỉnh sửa hồ sơ</ThemedText>
-              {/* Mock indicator */}
-              <View className="ml-auto rounded-full bg-[#FEF9C3] px-3 py-1">
-                <ThemedText className="text-xs font-semibold text-[#854D0E]">MOCK DATA</ThemedText>
-              </View>
             </View>
 
             {/* Main 2-col layout */}
             <View className={isWide ? 'flex-row items-start gap-6' : 'gap-6'}>
               {/* Left: Live preview */}
-              <View className={isWide ? 'w-[280px]' : 'w-full'}>
-                <LivePreviewCard
-                  firstName={firstName}
-                  lastName={lastName}
-                  bio={bio}
-                  avatarSource={currentAvatarSource}
-                />
-              </View>
+              {isTablet && (
+                <View className={isWide ? 'w-[280px]' : 'w-full'}>
+                  <LivePreviewCard
+                    firstName={firstName}
+                    lastName={lastName}
+                    bio={bio}
+                    avatarSource={currentAvatarSource}
+                    followerCount={followerCount}
+                    postCount={postCount}
+                  />
+                </View>
+              )}
 
               {/* Right: Form panels */}
               <View className="flex-1 gap-6">
@@ -566,14 +649,14 @@ export default function EditProfileScreen() {
 
                     <Pressable
                       onPress={pickImage}
-                      className="rounded-[18px] bg-[#4A9FD8] px-5 py-3 active:opacity-80"
+                      className="rounded-full bg-[#4A9FD8] px-5 py-3 active:opacity-80"
                     >
                       <ThemedText className="text-sm font-semibold text-white">Thay ảnh</ThemedText>
                     </Pressable>
 
                     <Pressable
                       onPress={removeAvatar}
-                      className="rounded-[18px] bg-[#F7F8FA] px-5 py-3 active:opacity-80"
+                      className="rounded-full bg-[#F7F8FA] px-5 py-3 active:opacity-80"
                     >
                       <ThemedText className="text-sm font-medium text-slate-700">Xoá</ThemedText>
                     </Pressable>
@@ -635,6 +718,7 @@ export default function EditProfileScreen() {
                         editable={false}
                         placeholder="email@example.com"
                       />
+                      <PrivacySelector value={emailPrivacy} onChange={setEmailPrivacy} />
                     </View>
                     <View className="flex-1">
                       <FieldLabel label="Thành phố" />
@@ -643,6 +727,7 @@ export default function EditProfileScreen() {
                         onChangeText={setCity}
                         placeholder="Hà Nội, VN"
                       />
+                      <PrivacySelector value={locationPrivacy} onChange={setLocationPrivacy} />
                     </View>
                   </View>
                   <View className={`mt-4 ${isTablet ? 'flex-row gap-4' : 'gap-4'}`}>
@@ -654,6 +739,7 @@ export default function EditProfileScreen() {
                         placeholder="0912 345 678"
                         keyboardType="phone-pad"
                       />
+                      <PrivacySelector value={contactPrivacy} onChange={setContactPrivacy} />
                     </View>
                     <View className="flex-1" />
                   </View>
@@ -680,21 +766,21 @@ export default function EditProfileScreen() {
                 </SectionCard>
 
                 {/* ── Profile action bar ── */}
-                <View className="flex-row items-center justify-between rounded-[18px] border border-slate-200 bg-white px-6 py-4">
-                  <ThemedText className="text-sm text-slate-500">
-                    Thay đổi chỉ lưu khi nhấn &quot;Lưu hồ sơ&quot;.
+                <View className={`items-center justify-between gap-4 rounded-[32px] border border-slate-200 bg-white p-4 ${isTablet ? 'flex-row' : 'flex-col-reverse'}`}>
+                  <ThemedText className="text-sm text-slate-500 text-center md:text-left">
+                    Thay đổi chỉ lưu khi nhấn "Lưu hồ sơ".
                   </ThemedText>
-                  <View className="flex-row gap-3">
+                  <View className={`flex-row gap-3 ${isTablet ? '' : 'w-full'}`}>
                     <Pressable
                       onPress={handleCancel}
-                      className="rounded-[18px] bg-[#F7F8FA] px-6 py-3 active:opacity-80"
+                      className={`rounded-full bg-[#F7F8FA] px-6 py-3 active:opacity-80 ${isTablet ? '' : 'flex-1 items-center'}`}
                     >
                       <ThemedText className="text-sm font-medium text-slate-700">Huỷ</ThemedText>
                     </Pressable>
                     <Pressable
                       onPress={handleSaveProfile}
                       disabled={isSavingProfile}
-                      className="min-w-[140px] items-center rounded-[18px] bg-[#4A9FD8] px-6 py-3 active:opacity-80 disabled:opacity-50"
+                      className={`min-w-[140px] items-center rounded-full bg-[#4A9FD8] px-6 py-3 active:opacity-80 disabled:opacity-50 ${isTablet ? '' : 'flex-1'}`}
                     >
                       {isSavingProfile ? (
                         <ActivityIndicator size="small" color="#FFFFFF" />
@@ -709,7 +795,7 @@ export default function EditProfileScreen() {
                 <SectionCard>
                   <SectionHeader
                     title="Đổi mật khẩu"
-                    subtitle="Giữ tài khoản an toàn bằng mật khẩu mạnh, không dùng ở nơi khác. (Mock: nhập 'mock123' cho mật khẩu hiện tại)"
+                    subtitle="Giữ tài khoản an toàn bằng mật khẩu mạnh, không dùng ở nơi khác."
                   />
 
                   {/* Password banner */}
@@ -780,7 +866,7 @@ export default function EditProfileScreen() {
                     <Pressable
                       onPress={handleSavePassword}
                       disabled={isSavingPassword}
-                      className="min-w-[160px] items-center rounded-[18px] bg-[#0F172A] px-6 py-3 active:opacity-80 disabled:opacity-50"
+                      className="min-w-[160px] items-center rounded-full bg-[#0F172A] px-6 py-3 active:opacity-80 disabled:opacity-50"
                     >
                       {isSavingPassword ? (
                         <ActivityIndicator size="small" color="#FFFFFF" />

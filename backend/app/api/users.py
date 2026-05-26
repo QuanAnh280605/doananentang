@@ -7,12 +7,13 @@ from sqlalchemy.orm import Session
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_current_user_optional
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.crud.follow import count_followers, count_following, create_follow, delete_follow, is_following, get_followers, get_following, search_following_users
 from app.crud.user import create_user, get_user_by_email, get_user_by_id, get_user_by_phone, list_users, search_users
 from app.models.user import User
+from app.models.db_enums import VisibilityLevel
 from app.schemas.user import FollowStatusRead, UserCreate, UserRead, UserSearchRead, FollowUserRead
 from app.schemas.user import UserUpdate, PaginatedUsersResponse, PaginatedFollowUsersResponse
 from app.services.notification import create_social_notification
@@ -20,7 +21,26 @@ from app.services.notification import create_social_notification
 router = APIRouter()
 AVATAR_UPLOAD_DIR = Path('uploads') / 'avatars'
 
+AVATAR_UPLOAD_DIR = Path('uploads') / 'avatars'
 
+def apply_privacy_filters(db: Session, target_user: User, current_user_id: int | None) -> UserRead:
+  is_self = current_user_id is not None and target_user.id == current_user_id
+  is_follower = current_user_id is not None and is_following(db, current_user_id, target_user.id)
+  
+  user_data = UserRead.model_validate(target_user)
+  
+  if not is_self:
+    if target_user.contact_privacy == VisibilityLevel.ONLY_ME or (target_user.contact_privacy == VisibilityLevel.FOLLOWERS_ONLY and not is_follower):
+      user_data.phone = None
+      
+    if target_user.email_privacy == VisibilityLevel.ONLY_ME or (target_user.email_privacy == VisibilityLevel.FOLLOWERS_ONLY and not is_follower):
+      user_data.email = None
+
+    if target_user.location_privacy == VisibilityLevel.ONLY_ME or (target_user.location_privacy == VisibilityLevel.FOLLOWERS_ONLY and not is_follower):
+      user_data.city = None
+      
+  return user_data
+      
 @router.post('', response_model=UserRead, status_code=status.HTTP_201_CREATED)
 def create_user_endpoint(payload: UserCreate, db: Session = Depends(get_db)) -> UserRead:
   if payload.email is not None and get_user_by_email(db, str(payload.email)) is not None:
@@ -40,9 +60,12 @@ def create_user_endpoint(payload: UserCreate, db: Session = Depends(get_db)) -> 
 
 
 @router.get('', response_model=list[UserRead])
-def list_users_endpoint(db: Session = Depends(get_db)) -> list[UserRead]:
+def list_users_endpoint(
+  db: Session = Depends(get_db),
+  current_user: User | None = Depends(get_current_user_optional)
+) -> list[UserRead]:
   users = list_users(db)
-  return [UserRead.model_validate(user) for user in users]
+  return [apply_privacy_filters(db, user, current_user.id if current_user else None) for user in users]
 
 
 @router.get('/search', response_model=PaginatedUsersResponse)
@@ -219,12 +242,16 @@ def unfollow_user_endpoint(
 
 
 @router.get('/{user_id}', response_model=UserRead)
-def get_user_endpoint(user_id: int, db: Session = Depends(get_db)) -> UserRead:
+def get_user_endpoint(
+  user_id: int, 
+  db: Session = Depends(get_db),
+  current_user: User | None = Depends(get_current_user_optional)
+) -> UserRead:
   user = get_user_by_id(db, user_id)
   if user is None:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found')
 
-  return UserRead.model_validate(user)
+  return apply_privacy_filters(db, user, current_user.id if current_user else None)
 
 @router.get('/me', response_model=UserRead)
 def get_current_user_profile(current_user: User = Depends(get_current_user)) -> UserRead:

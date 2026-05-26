@@ -11,7 +11,7 @@ import { Avatar, surfaceClass } from '@/components/ui/core';
 import { useToast } from '@/hooks/useToast';
 import { useNotifications } from '@/hooks/useNotifications';
 import { fetchNotifications, markNotificationRead, markAllNotificationsRead } from '@/lib/api';
-import type { NotificationRead } from '@/lib/api';
+import type { NotificationRead } from '@/lib/types';
 
 type FilterType = 'all' | 'unread';
 
@@ -187,13 +187,11 @@ export default function NotificationsScreen() {
               <Pressable
                 key={t}
                 onPress={() => setFilter(t)}
-                className={`rounded-[18px] px-5 py-3 ${
-                  filter === t ? 'bg-[#4A9FD8]' : 'bg-[#E2E8F0]'
-                } active:opacity-90`}>
+                className={`rounded-[18px] px-5 py-3 ${filter === t ? 'bg-[#4A9FD8]' : 'bg-[#E2E8F0]'
+                  } active:opacity-90`}>
                 <ThemedText
-                  className={`text-sm font-semibold ${
-                    filter === t ? 'text-white' : 'text-slate-700'
-                  }`}>
+                  className={`text-sm font-semibold ${filter === t ? 'text-white' : 'text-slate-700'
+                    }`}>
                   {t === 'all' ? 'Tất cả' : 'Chưa đọc'}
                 </ThemedText>
               </Pressable>
@@ -234,10 +232,9 @@ export default function NotificationsScreen() {
                     <Pressable
                       key={String(item.id)}
                       onPress={() => handleNotificationPress(item)}
-                      className={`flex-row items-center gap-4 rounded-[22px] p-4 ${
-                        item.is_read ? 'bg-[#F7F8FA]' : 'bg-[#EAF4FB]'
-                      } active:opacity-90`}>
-                      
+                      className={`flex-row items-center gap-4 rounded-[22px] p-4 ${item.is_read ? 'bg-[#F7F8FA]' : 'bg-[#EAF4FB]'
+                        } active:opacity-90`}>
+
                       {/* Avatar actor */}
                       <View className="relative">
                         <Avatar
@@ -256,9 +253,8 @@ export default function NotificationsScreen() {
                       {/* Chi tiết nội dung */}
                       <View className="flex-1 gap-1">
                         <ThemedText
-                          className={`text-base leading-6 text-slate-900 ${
-                            item.is_read ? 'font-normal' : 'font-semibold'
-                          }`}>
+                          className={`text-base leading-6 text-slate-900 ${item.is_read ? 'font-normal' : 'font-semibold'
+                            }`}>
                           {getNotificationText(item)}
                         </ThemedText>
                         <ThemedText className="text-xs text-slate-500">

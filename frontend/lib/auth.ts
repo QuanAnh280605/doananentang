@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 
 import { apiFetch } from '@/lib/api';
 import { clearAuthTokens, getAccessToken, getRefreshToken, setAuthTokens } from '@/lib/session';
+import type { VisibilityLevel } from '@/lib/types';
 
 export type GenderValue = 'female' | 'male' | 'custom';
 
@@ -16,6 +17,9 @@ export type AuthUser = {
   bio: string | null;
   city: string | null;
   avatar_url: string | null;
+  contact_privacy: VisibilityLevel;
+  email_privacy: VisibilityLevel;
+  location_privacy: VisibilityLevel;
   created_at: string;
   updated_at: string;
 };
@@ -34,6 +38,10 @@ export type SearchUser = {
   full_name: string;
   avatar_url: string | null;
   bio: string | null;
+};
+
+export type FollowUser = SearchUser & {
+  is_following: boolean;
 };
 
 export type FollowStatus = {
@@ -160,7 +168,19 @@ export async function fetchCurrentUser(): Promise<AuthUser> {
   return apiFetch<AuthUser>('/api/auth/me');
 }
 
+export async function fetchUserProfile(userId: number): Promise<AuthUser> {
+  return apiFetch<AuthUser>(`/api/users/${userId}`);
+}
+
 import type { PaginatedUsers } from './types';
+
+export type PaginatedFollowUsers = {
+  items: FollowUser[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+};
 
 export async function searchUsers(query: string, page = 1, pageSize = 20): Promise<PaginatedUsers<SearchUser>> {
   const params = new URLSearchParams({
@@ -169,6 +189,22 @@ export async function searchUsers(query: string, page = 1, pageSize = 20): Promi
     page_size: String(pageSize),
   });
   return apiFetch<PaginatedUsers<SearchUser>>(`/api/users/search?${params}`);
+}
+
+export async function fetchFollowers(userId: number, page = 1, pageSize = 20): Promise<PaginatedFollowUsers> {
+  const params = new URLSearchParams({
+    page: String(page),
+    page_size: String(pageSize),
+  });
+  return apiFetch<PaginatedFollowUsers>(`/api/users/${userId}/followers?${params}`);
+}
+
+export async function fetchFollowing(userId: number, page = 1, pageSize = 20): Promise<PaginatedFollowUsers> {
+  const params = new URLSearchParams({
+    page: String(page),
+    page_size: String(pageSize),
+  });
+  return apiFetch<PaginatedFollowUsers>(`/api/users/${userId}/following?${params}`);
 }
 
 export async function fetchFollowStatus(userId: number): Promise<FollowStatus> {
@@ -241,6 +277,9 @@ export type UserUpdatePayload = {
   gender?: GenderValue;
   birth_date?: string | null;
   city?: string | null;
+  contact_privacy?: VisibilityLevel;
+  email_privacy?: VisibilityLevel;
+  location_privacy?: VisibilityLevel;
 };
 
 export async function updateUserProfile(payload: UserUpdatePayload): Promise<AuthUser> {

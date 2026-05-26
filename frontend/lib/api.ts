@@ -430,21 +430,40 @@ export function fetchPostDetail(postId: string): Promise<Post> {
   return apiFetch<Post>(`/api/posts/${postId}`);
 }
 
-export function createPost(content: string, mediaUrls: string[] = [], visibility: VisibilityLevel = 'public'): Promise<Post> {
+export function createPost(
+  content: string, 
+  mediaUrls: string[] = [], 
+  visibility: VisibilityLevel = 'public',
+  feeling?: string,
+  gifUrl?: string,
+  locationName?: string,
+  locationLat?: number,
+  locationLng?: number,
+  taggedUserIds?: string[]
+): Promise<Post> {
   return apiFetch<Post>('/api/posts', {
     method: 'POST',
     body: JSON.stringify({
       content,
       media_urls: mediaUrls,
       visibility,
+      feeling,
+      gif_url: gifUrl,
+      location_name: locationName,
+      location_lat: locationLat,
+      location_lng: locationLng,
+      tagged_user_ids: taggedUserIds,
     }),
   });
 }
 
-export function updatePost(postId: string, content: string): Promise<Post> {
+export function updatePost(postId: string, content: string, visibility?: VisibilityLevel): Promise<Post> {
   return apiFetch<Post>(`/api/posts/${postId}`, {
     method: 'PATCH',
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({
+      content,
+      ...(visibility !== undefined ? { visibility } : {}),
+    }),
   });
 }
 
@@ -457,15 +476,32 @@ export async function uploadPostMedia(uris: string | string[]): Promise<{ data: 
   const uriArray = Array.isArray(uris) ? uris : [uris];
 
   for (const uri of uriArray) {
-    const filename = uri.split('/').pop() || 'image.jpg';
+    let filename = uri.split('/').pop() || 'media.bin';
+    // Remove query params or fragments if any
+    filename = filename.split('?')[0].split('#')[0];
+
+    let mimeType = 'application/octet-stream';
     const match = /\.(\w+)$/.exec(filename);
-    const ext = match ? match[1] : 'jpg';
-    const mimeType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+    if (match) {
+      const ext = match[1].toLowerCase();
+      if (ext === 'jpg' || ext === 'jpeg') mimeType = 'image/jpeg';
+      else if (ext === 'png') mimeType = 'image/png';
+      else if (ext === 'gif') mimeType = 'image/gif';
+      else if (ext === 'mp4') mimeType = 'video/mp4';
+      else if (ext === 'mov') mimeType = 'video/quicktime';
+      else mimeType = `image/${ext}`;
+    }
 
     if (Platform.OS === 'web') {
       const response = await fetch(uri);
       const blob = await response.blob();
-      formData.append('files', new File([blob], filename, { type: mimeType }));
+      const finalMime = blob.type || mimeType;
+      // If it's a blob URL, filename might just be a UUID, append extension based on mime
+      if (!match) {
+        if (finalMime.startsWith('video/')) filename += '.mp4';
+        else if (finalMime.startsWith('image/')) filename += '.jpg';
+      }
+      formData.append('files', new File([blob], filename, { type: finalMime }));
     } else {
       formData.append('files', {
         uri,

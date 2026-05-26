@@ -17,18 +17,16 @@ from app.models.db_enums import ReactionType
 
 
 def build_test_session() -> Session:
+  from app.models.base import Base
+  import app.models  # noqa: F401
+
   engine = create_engine(
     'sqlite+pysqlite:///:memory:',
     connect_args={'check_same_thread': False},
     poolclass=StaticPool,
     future=True,
   )
-  User.__table__.create(bind=engine)
-  Post.__table__.create(bind=engine)
-  PostMedia.__table__.create(bind=engine)
-  Comment.__table__.create(bind=engine)
-  Like.__table__.create(bind=engine)
-  Notification.__table__.create(bind=engine)
+  Base.metadata.create_all(bind=engine)
   return Session(bind=engine, expire_on_commit=False)
 
 

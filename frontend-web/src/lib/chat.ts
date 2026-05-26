@@ -72,6 +72,7 @@ function mapChatMessageResponse(message: ChatMessageResponse, participantUserId:
     createdAt: message.created_at,
     mediaUrl: message.media_url ?? null,
     mediaType: message.media_type ?? null,
+    isRead: message.is_read ?? false,
   };
 }
 
@@ -213,7 +214,7 @@ export function applyMessagePreviewToThreads<TThread extends {
   );
 
   const targetIndex = threads.findIndex((t) => t.chatId === message.chatId);
-  
+
   if (targetIndex === -1) {
     return [...threads];
   }

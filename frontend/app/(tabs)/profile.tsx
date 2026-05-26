@@ -1,17 +1,17 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, TextInput, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { getMockUser, getMockPosts, updateMockUser } from '@/lib/mock-profile';
-import { logoutUser } from '@/lib/auth';
-import type { AuthUser } from '@/lib/auth';
-import type { Post } from '@/lib/types';
+import { API_URL, fetchPosts } from '@/lib/api';
+import { fetchCurrentUser, fetchFollowStatus, logoutUser } from '@/lib/auth';
+import type { AuthUser, FollowStatus } from '@/lib/auth';
+import type { Post, VisibilityLevel } from '@/lib/types';
 
 type ProfileTab = 'posts' | 'about' | 'media';
 
@@ -27,12 +27,16 @@ type ProfileViewModel = {
   initials: string;
   intro: string;
   location: string;
+  locationPrivacy: VisibilityLevel;
   email: string;
+  emailPrivacy: VisibilityLevel;
+  phone: string;
+  contactPrivacy: VisibilityLevel;
   avatarUrl: string | null;
 };
 
-const surfaceClass = 'rounded-surface border border-app-border bg-app-surface';
-const mutedSurfaceClass = 'rounded-[24px] bg-[#F7F8FA]';
+const surfaceClass = 'rounded-[32px] border border-app-border bg-app-surface';
+const mutedSurfaceClass = 'rounded-[32px] bg-[#F7F8FA]';
 
 const tabs: { key: ProfileTab; label: string; icon: keyof typeof MaterialIcons.glyphMap }[] = [
   { key: 'posts', label: 'Posts', icon: 'grid-view' },
@@ -68,13 +72,25 @@ function buildProfileViewModel(user: AuthUser | null): ProfileViewModel {
   const intro = user?.bio || '';
   const location = user?.city || '';
   const email = user?.email || '';
-  const avatarUrl = user?.avatar_url ?? null;
+  const phone = user?.phone || '';
+
+  const locationPrivacy = user?.location_privacy || 'public';
+  const emailPrivacy = user?.email_privacy || 'public';
+  const contactPrivacy = user?.contact_privacy || 'public';
+
+  const avatarUrl = user?.avatar_url
+    ? (user.avatar_url.startsWith('http') ? user.avatar_url : `${API_URL}${user.avatar_url}`)
+    : null;
   return {
     displayName,
     initials: initials || 'NA',
     intro,
     location,
+    locationPrivacy,
     email,
+    emailPrivacy,
+    phone,
+    contactPrivacy,
     avatarUrl,
   };
 }
@@ -98,8 +114,8 @@ function AvatarBlock({
 }) {
   const containerClassName =
     size === 'large'
-      ? `h-[92px] w-[92px] rounded-[28px] overflow-hidden ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`
-      : `h-14 w-14 rounded-[22px] overflow-hidden ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`;
+      ? `h-[92px] w-[92px] rounded-full overflow-hidden ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`
+      : `h-14 w-14 rounded-full overflow-hidden ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`;
   const textClassName = size === 'large' ? 'text-[28px]' : 'text-base';
 
   return (
@@ -118,7 +134,7 @@ function AvatarBlock({
         )}
         {/* Camera overlay khi picker mode bật */}
         {showPickerHint && size === 'large' && (
-          <View className="absolute inset-0 items-center justify-center rounded-[28px] bg-black/40">
+          <View className="absolute inset-0 items-center justify-center rounded-full bg-black/40">
             <MaterialIcons name="camera-alt" size={28} color="#FFFFFF" />
           </View>
         )}
@@ -141,7 +157,7 @@ function ActionButton({
   return (
     <Pressable
       onPress={onPress}
-      className={`min-w-[150px] flex-1 flex-row items-center justify-center gap-2 rounded-[18px] px-4 py-[14px] active:opacity-90 ${filled ? 'bg-[#4A9FD8]' : 'bg-[#F7F8FA]'}`}
+      className={`min-w-[150px] flex-1 flex-row items-center justify-center gap-2 rounded-full px-4 py-[14px] active:opacity-90 ${filled ? 'bg-[#4A9FD8]' : 'bg-[#F7F8FA]'}`}
     >
       <MaterialIcons color={filled ? '#FFFFFF' : '#0F172A'} name={icon} size={20} />
       <ThemedText className={`text-base font-medium ${filled ? 'text-white' : 'text-slate-900'}`}>{label}</ThemedText>
@@ -162,7 +178,7 @@ function ProfileTabButton({
 }) {
   return (
     <Pressable
-      className={`min-w-[112px] flex-1 flex-row items-center justify-center gap-2 rounded-[18px] px-4 py-[14px] active:opacity-90 ${active ? 'bg-[#0A0A0A]' : 'bg-[#F7F8FA]'}`}
+      className={`min-w-[112px] flex-1 flex-row items-center justify-center gap-2 rounded-full px-4 py-[14px] active:opacity-90 ${active ? 'bg-[#0A0A0A]' : 'bg-[#F7F8FA]'}`}
       onPress={onPress}
     >
       <MaterialIcons color={active ? '#FFFFFF' : '#0F172A'} name={icon} size={18} />
@@ -185,7 +201,7 @@ function SectionTitle({ title, subtitle, action }: { title: string; subtitle?: s
 
 function SidebarCard({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   return (
-    <ThemedView className={`${surfaceClass} p-5`}>
+    <ThemedView className="bg-white p-5 mb-2 shadow-sm md:rounded-[32px] md:border md:border-[#E4E8EE]">
       <SectionTitle title={title} action={action} />
       <View className="mt-5 gap-4">{children}</View>
     </ThemedView>
@@ -193,9 +209,10 @@ function SidebarCard({ title, children, action }: { title: string; children: Rea
 }
 
 // Banner thông báo thành công sau khi lưu inline intro
+/*
 function SuccessBanner({ message, onDismiss }: { message: string; onDismiss: () => void }) {
   return (
-    <View className="flex-row items-center justify-between rounded-[14px] bg-[#DCFCE7] px-4 py-3">
+    <View className="flex-row items-center justify-between rounded-[24px] bg-[#DCFCE7] px-4 py-3 mx-4 md:mx-0">
       <View className="flex-row items-center gap-2">
         <MaterialIcons name="check-circle" size={18} color="#16A34A" />
         <ThemedText className="text-sm font-medium text-[#15803D]">{message}</ThemedText>
@@ -206,23 +223,24 @@ function SuccessBanner({ message, onDismiss }: { message: string; onDismiss: () 
     </View>
   );
 }
+*/
 
 function AboutPanel({ profile }: { profile: ProfileViewModel }) {
   return (
-    <ThemedView className={`${surfaceClass} p-5`}>
+    <ThemedView className="bg-white p-5 mb-2 shadow-sm md:rounded-[32px] md:border md:border-[#E4E8EE]">
       <SectionTitle title="About" subtitle="Thông tin cơ bản" />
       <View className="mt-5 gap-4">
         {profile.intro ? (
           <View className={`${mutedSurfaceClass} px-4 py-4`}>
-            <ThemedText className="text-base leading-7 text-slate-700">{profile.intro}</ThemedText>
+            <ThemedText className="text-[15px] leading-7 text-slate-700">{profile.intro}</ThemedText>
           </View>
         ) : (
           <ThemedText className="text-base italic text-slate-400">Chưa có giới thiệu.</ThemedText>
         )}
         <View className="flex-row flex-wrap gap-3">
           {[profile.location].filter(Boolean).map((item) => (
-            <View key={item} className="rounded-full bg-[#F7F8FA] px-4 py-3">
-              <ThemedText className="text-sm font-medium text-slate-700">{item}</ThemedText>
+            <View key={item} className="rounded-full bg-[#F1F5F9] px-4 py-3">
+              <ThemedText className="text-[15px] font-medium text-slate-700">{item}</ThemedText>
             </View>
           ))}
         </View>
@@ -233,14 +251,14 @@ function AboutPanel({ profile }: { profile: ProfileViewModel }) {
 
 function MediaPanel() {
   return (
-    <ThemedView className={`${surfaceClass} p-5`}>
+    <ThemedView className="bg-white p-5 mb-2 shadow-sm md:rounded-[32px] md:border md:border-[#E4E8EE]">
       <SectionTitle title="Media" subtitle="Ảnh và tài liệu đã chia sẻ" />
       <View className="mt-5 gap-4 lg:flex-row">
         {featuredMedia.map((item) => (
           <View key={item.id} className="flex-1 gap-3">
-            <View className={`h-[220px] rounded-[24px] bg-[#F7F8FA] ${item.fillClassName}`} />
-            <ThemedText className="text-lg font-semibold text-slate-950">{item.title}</ThemedText>
-            <ThemedText className="text-sm leading-6 text-slate-600">{item.subtitle}</ThemedText>
+            <View className={`h-[220px] rounded-[32px] bg-[#F7F8FA] ${item.fillClassName}`} />
+            <ThemedText className="text-[17px] font-bold text-slate-900">{item.title}</ThemedText>
+            <ThemedText className="text-[15px] leading-6 text-slate-500">{item.subtitle}</ThemedText>
           </View>
         ))}
       </View>
@@ -265,30 +283,20 @@ export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
-
-  // Avatar picker state
   const [avatarPickerActive, setAvatarPickerActive] = useState(false);
-
-  // Inline intro editing state
-  const [isEditingIntro, setIsEditingIntro] = useState(false);
-  const [tempIntro, setTempIntro] = useState('');
-  const [tempCity, setTempCity] = useState('');
-  const [isSavingIntro, setIsSavingIntro] = useState(false);
-  const [introSaved, setIntroSaved] = useState(false);
+  const [followStatus, setFollowStatus] = useState<FollowStatus | null>(null);
 
   const isWide = width >= 1180;
 
-  // Load mock user
+  // Load user
   useEffect(() => {
     let isMounted = true;
     setIsLoadingUser(true);
 
-    getMockUser()
+    fetchCurrentUser()
       .then((nextUser) => {
         if (isMounted) {
           setUser(nextUser);
-          setTempIntro(nextUser.bio || '');
-          setTempCity(nextUser.city || '');
         }
       })
       .catch(() => {
@@ -303,19 +311,47 @@ export default function ProfileScreen() {
     };
   }, []);
 
-  // Load mock posts
+  useEffect(() => {
+    if (!user) {
+      setFollowStatus(null);
+      return;
+    }
+
+    let isMounted = true;
+    fetchFollowStatus(user.id)
+      .then((status) => {
+        if (isMounted) {
+          setFollowStatus(status);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setFollowStatus(null);
+        }
+      })
+      .finally(() => {
+        // Có thể thêm xử lý khi followStatus tải xong
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
+
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
 
   useEffect(() => {
+    if (!user) return;
     let isMounted = true;
     setLoadingPosts(true);
 
-    getMockPosts()
+
+    fetchPosts(1, 10, user.id)
       .then((res) => {
         if (isMounted) setPosts(res.items);
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => {
         if (isMounted) setLoadingPosts(false);
       });
@@ -323,34 +359,10 @@ export default function ProfileScreen() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [user]);
 
   const handleDeletePost = (postId: string) => {
     setPosts((current) => current.filter((p) => p.id !== postId));
-  };
-
-  const handleSaveIntro = async () => {
-    setIsSavingIntro(true);
-    try {
-      const updatedUser = await updateMockUser({
-        bio: tempIntro.trim() || null,
-        city: tempCity.trim() || null,
-      });
-      setUser(updatedUser);
-      setIsEditingIntro(false);
-      setIntroSaved(true);
-      setTimeout(() => setIntroSaved(false), 3000);
-    } catch {
-      // lỗi mock không xảy ra, nhưng giữ catch an toàn
-    } finally {
-      setIsSavingIntro(false);
-    }
-  };
-
-  const handleCancelIntro = () => {
-    setTempIntro(user?.bio || '');
-    setTempCity(user?.city || '');
-    setIsEditingIntro(false);
   };
 
   const profile = useMemo(() => buildProfileViewModel(user), [user]);
@@ -366,27 +378,23 @@ export default function ProfileScreen() {
   return (
     <>
       <StatusBar style="dark" />
-      <ThemedView className="flex-1 bg-[#F8FAFC]" style={{ minHeight: height }}>
+      <ThemedView className="flex-1 bg-[#F1F5F9]" style={{ minHeight: height }}>
         <ScrollView bounces={false} className="flex-1" contentContainerClassName="pb-8">
-          <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-4 md:px-6">
+          <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 pb-6 pt-2 md:px-6">
             {/* Back header */}
-            <View className="flex-row items-center gap-3 rounded-surface border border-app-border bg-app-surface px-5 py-4">
+            <View className="flex-row items-center gap-3 bg-white px-4 py-3 border-b border-[#E4E8EE]">
               <Pressable
                 onPress={() => router.push('/')}
-                className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA] active:opacity-80"
+                className="h-10 w-10 items-center justify-center rounded-full bg-[#F1F5F9] active:opacity-80"
               >
-                <ThemedText className="text-lg">←</ThemedText>
+                <ThemedText className="text-xl">←</ThemedText>
               </Pressable>
-              <ThemedText className="text-lg font-semibold text-slate-900">Hồ sơ</ThemedText>
-              {/* Mock indicator badge */}
-              <View className="ml-auto rounded-full bg-[#FEF9C3] px-3 py-1">
-                <ThemedText className="text-xs font-semibold text-[#854D0E]">MOCK DATA</ThemedText>
-              </View>
+              <ThemedText className="text-[20px] font-bold text-slate-900">Hồ sơ</ThemedText>
             </View>
 
             {/* Profile card */}
-            <ThemedView className={`${surfaceClass} overflow-hidden`}>
-              <View className="h-[210px] bg-[#D9ECF8]" />
+            <ThemedView className="bg-white shadow-sm overflow-hidden rounded-b-[32px] md:rounded-[32px] md:border md:border-[#E4E8EE]">
+              <View className="h-[180px] bg-[#D9ECF8]" />
               <View className="px-5 pb-5">
                 <View className="-mt-12 flex-row items-end justify-between gap-4">
                   <View className="flex-row items-end gap-4">
@@ -404,7 +412,7 @@ export default function ProfileScreen() {
                   </View>
                 </View>
 
-                {/* Avatar picker action sheet (mock) */}
+                {/* Avatar picker action sheet */}
                 {avatarPickerActive && (
                   <View className="mt-4 rounded-[18px] border border-[#E4E8EE] bg-[#F8FAFC] p-4">
                     <ThemedText className="mb-3 text-sm font-semibold text-slate-700">Thay đổi ảnh đại diện</ThemedText>
@@ -412,7 +420,6 @@ export default function ProfileScreen() {
                       <Pressable
                         className="flex-1 items-center rounded-[14px] bg-[#4A9FD8] py-3 active:opacity-80"
                         onPress={() => {
-                          // Trong mock: chỉ toggle state, không mở picker thật
                           setAvatarPickerActive(false);
                         }}
                       >
@@ -429,7 +436,32 @@ export default function ProfileScreen() {
                 )}
 
                 <View className={`mt-5 gap-5 ${isWide ? 'flex-row items-start justify-between' : ''}`}>
-                  <View className={isWide ? 'max-w-[760px] flex-1' : ''} />
+                  <View className={isWide ? 'max-w-[760px] flex-1' : ''}>
+                    {profile.intro ? (
+                      <ThemedText className="mt-1 text-[16px] leading-7 text-slate-600">
+                        {profile.intro}
+                      </ThemedText>
+                    ) : null}
+                    {followStatus ? (
+                      <View className="mt-4 flex-row flex-wrap gap-5">
+                        <Pressable 
+                          className="flex-row items-center gap-1.5 active:opacity-70"
+                          onPress={() => router.push({ pathname: '/profile/follows', params: { userId: user?.id, type: 'followers' } })}
+                        >
+                          <ThemedText className="text-[15px] font-bold text-slate-950">{followStatus.followers_count}</ThemedText>
+                          <ThemedText className="text-[15px] text-slate-500">người theo dõi</ThemedText>
+                        </Pressable>
+                        <Pressable 
+                          className="flex-row items-center gap-1.5 active:opacity-70"
+                          onPress={() => router.push({ pathname: '/profile/follows', params: { userId: user?.id, type: 'following' } })}
+                        >
+                          <ThemedText className="text-[15px] font-bold text-slate-950">{followStatus.following_count}</ThemedText>
+                          <ThemedText className="text-[15px] text-slate-500">đang theo dõi</ThemedText>
+                        </Pressable>
+                      </View>
+                    ) : null}
+                  </View>
+
                   <View className={`${isWide ? 'w-[360px]' : ''} gap-3`}>
                     <View className="flex-row flex-wrap gap-3">
                       <ActionButton
@@ -465,106 +497,36 @@ export default function ProfileScreen() {
             <View className={isWide ? 'flex-row items-start gap-4' : 'gap-4'}>
               {/* Sidebar */}
               <View className={isWide ? 'w-[320px] gap-4' : 'gap-4'}>
-                {/* Success banner sau khi lưu intro */}
-                {introSaved && (
-                  <SuccessBanner
-                    message="Đã lưu thông tin giới thiệu"
-                    onDismiss={() => setIntroSaved(false)}
-                  />
-                )}
+                <SidebarCard title="Giới thiệu">
+                  <View className="gap-3">
+                    {[
+                      { icon: 'mail-outline' as const, value: profile.email, privacy: profile.emailPrivacy },
+                      { icon: 'phone' as const, value: profile.phone, privacy: profile.contactPrivacy },
+                      { icon: 'location-on' as const, value: profile.location, privacy: profile.locationPrivacy },
+                    ]
+                      .filter((item) => !!item.value)
+                      .map((item) => {
+                        let privacyIcon: keyof typeof MaterialIcons.glyphMap | null = null;
+                        if (item.privacy === 'onlyme') privacyIcon = 'lock';
+                        else if (item.privacy === 'followersonly') privacyIcon = 'group';
 
-                <SidebarCard
-                  title="Giới thiệu"
-                  action={
-                    !isEditingIntro ? (
-                      <Pressable
-                        onPress={() => setIsEditingIntro(true)}
-                        className="h-9 w-9 items-center justify-center active:opacity-60"
-                        accessibilityLabel="Chỉnh sửa giới thiệu"
-                      >
-                        <MaterialIcons name="edit" size={20} color="#64748B" />
-                      </Pressable>
-                    ) : null
-                  }
-                >
-                  {isEditingIntro ? (
-                    <View className="gap-4">
-                      <View>
-                        <ThemedText className="mb-2 text-xs font-semibold uppercase tracking-[1px] text-slate-500">
-                          Thành phố
-                        </ThemedText>
-                        <TextInput
-                          className="rounded-[18px] border border-slate-200 bg-[#F7F8FA] px-4 py-3 text-base text-slate-900"
-                          value={tempCity}
-                          onChangeText={setTempCity}
-                          placeholder="VD: Hà Nội, VN"
-                          placeholderTextColor="#94A3B8"
-                        />
-                      </View>
-
-                      <View>
-                        <ThemedText className="mb-2 text-xs font-semibold uppercase tracking-[1px] text-slate-500">
-                          Bio / Giới thiệu
-                        </ThemedText>
-                        <TextInput
-                          className="rounded-[18px] border border-slate-200 bg-[#F7F8FA] px-4 py-3 text-base text-slate-900"
-                          multiline
-                          numberOfLines={4}
-                          value={tempIntro}
-                          onChangeText={setTempIntro}
-                          placeholder="Giới thiệu về bạn..."
-                          placeholderTextColor="#94A3B8"
-                          textAlignVertical="top"
-                        />
-                      </View>
-
-                      <View className="flex-row gap-2">
-                        <Pressable
-                          onPress={handleSaveIntro}
-                          disabled={isSavingIntro}
-                          className="flex-1 items-center rounded-[18px] bg-[#4A9FD8] py-3 active:opacity-80 disabled:opacity-50"
-                        >
-                          {isSavingIntro ? (
-                            <ActivityIndicator size="small" color="#FFFFFF" />
-                          ) : (
-                            <ThemedText className="text-sm font-semibold text-white">Lưu</ThemedText>
-                          )}
-                        </Pressable>
-                        <Pressable
-                          onPress={handleCancelIntro}
-                          className="flex-1 items-center rounded-[18px] bg-[#F7F8FA] py-3 active:opacity-80"
-                        >
-                          <ThemedText className="text-sm font-semibold text-slate-700">Huỷ</ThemedText>
-                        </Pressable>
-                      </View>
-                    </View>
-                  ) : (
-                    <>
-                      {profile.intro ? (
-                        <ThemedText className="text-base leading-7 text-slate-700">{profile.intro}</ThemedText>
-                      ) : (
-                        <ThemedText className="text-base italic text-slate-400">Chưa có giới thiệu.</ThemedText>
-                      )}
-
-                      <View className="mt-4 gap-3">
-                        {[
-                          { icon: 'mail-outline' as const, value: profile.email },
-                          { icon: 'location-on' as const, value: profile.location },
-                        ]
-                          .filter((item) => !!item.value)
-                          .map((item) => (
-                            <View key={item.icon} className="flex-row items-center gap-3">
-                              <View className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA]">
-                                <MaterialIcons name={item.icon} size={20} color="#64748B" />
-                              </View>
-                              <ThemedText className="flex-1 text-base font-medium text-slate-800" numberOfLines={1}>
+                        return (
+                          <View key={item.icon} className="flex-row items-center gap-3">
+                            <View className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA]">
+                              <MaterialIcons name={item.icon} size={20} color="#64748B" />
+                            </View>
+                            <View className="flex-1 flex-row items-center gap-2">
+                              <ThemedText className="text-base font-medium text-slate-800" numberOfLines={1}>
                                 {item.value}
                               </ThemedText>
+                              {privacyIcon && (
+                                <MaterialIcons name={privacyIcon} size={14} color="#94A3B8" />
+                              )}
                             </View>
-                          ))}
-                      </View>
-                    </>
-                  )}
+                          </View>
+                        );
+                      })}
+                  </View>
                 </SidebarCard>
 
                 <SidebarCard title="Featured media">

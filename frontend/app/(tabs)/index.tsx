@@ -2,7 +2,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, DeviceEventEmitter, FlatList, Pressable, RefreshControl, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, View, useWindowDimensions, RefreshControl, DeviceEventEmitter } from 'react-native';
 
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ComposerCard } from '@/components/post/ComposerCard';
@@ -26,10 +26,7 @@ const IS_MOCK_MODE = false;
 
 const fetchFeedPosts = IS_MOCK_MODE ? getMockFeedPosts : realFetchFeedPosts;
 
-type Shortcut = {
-  icon: keyof typeof MaterialIcons.glyphMap;
-  label: string;
-};
+
 
 type Contact = {
   id: number;
@@ -50,11 +47,7 @@ type InboxItem = {
   avatarUrl: string | null;
 };
 
-const shortcuts: Shortcut[] = [
-  { icon: 'home-filled', label: 'Home' },
-  { icon: 'bookmark-border', label: 'Saved sets' },
-  { icon: 'autorenew', label: 'Circle updates' },
-];
+
 
 function buildInitials(firstName?: string | null, lastName?: string | null): string {
   return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase() || 'US';
@@ -94,16 +87,6 @@ function SectionCard({ title, rightLabel, children }: { title: string; rightLabe
   );
 }
 
-function ShortcutRow({ item }: { item: Shortcut }) {
-  return (
-    <View className="flex-row items-center gap-4 rounded-[22px] bg-[#F7F8FA] px-4 py-4">
-      <View className="h-12 w-12 items-center justify-center rounded-[18px] bg-[#D9ECF8]">
-        <MaterialIcons color="#4A9FD8" name={item.icon} size={22} />
-      </View>
-      <ThemedText className="text-lg font-medium text-slate-900">{item.label}</ThemedText>
-    </View>
-  );
-}
 
 
 
@@ -158,60 +141,6 @@ function MessengerRow({ item }: { item: InboxItem }) {
   );
 }
 
-function ProfileRail({ currentUser }: { currentUser: AuthUser | null }) {
-  const initials = currentUser
-    ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase()
-    : 'LE';
-  const fullName = currentUser
-    ? `${currentUser.first_name} ${currentUser.last_name}`
-    : 'Lena Evere';
-  const bio = currentUser?.bio || 'Leading product design at Northfeed, shaping calmer social tools for creative teams.';
-
-  return (
-    <View className="gap-4">
-      <ThemedText className="px-1 text-lg font-semibold text-slate-900">Shortcuts</ThemedText>
-      {shortcuts.map((item) => (
-        <ShortcutRow key={item.label} item={item} />
-      ))}
-
-      <ThemedView className={`${surfaceClass} overflow-hidden`}>
-        <View className="h-[180px] bg-[#EAF4FB]" />
-        <View className="px-5 pb-5">
-          <View className="-mt-8 flex-row justify-start">
-            <Avatar initials={initials} avatarUrl={currentUser?.avatar_url} />
-          </View>
-
-          <ThemedText className="mt-4 text-[28px] font-semibold text-slate-950">{fullName}</ThemedText>
-          <ThemedText className="mt-2 text-base leading-7 text-slate-600">
-            {bio}
-          </ThemedText>
-
-          <View className="mt-5 flex-row gap-3">
-            <View className="flex-1 rounded-[22px] bg-[#F7F8FA] px-4 py-4">
-              <ThemedText className="text-sm text-slate-500">Followers</ThemedText>
-              <ThemedText className="mt-1 text-xl font-semibold text-slate-950">2.4k</ThemedText>
-            </View>
-            <View className="flex-1 rounded-[22px] bg-[#F7F8FA] px-4 py-4">
-              <ThemedText className="text-sm text-slate-500">Projects</ThemedText>
-              <ThemedText className="mt-1 text-xl font-semibold text-slate-950">14 live</ThemedText>
-            </View>
-          </View>
-
-          <View className="mt-5 flex-row gap-3">
-            <Link href="/(tabs)/profile" asChild>
-              <Pressable className="flex-1 rounded-[22px] bg-[#0A0A0A] px-4 py-4 active:opacity-90">
-                <ThemedText className="text-center text-base font-medium text-white">View profile</ThemedText>
-              </Pressable>
-            </Link>
-            <Pressable className="flex-1 rounded-[22px] bg-[#F7F8FA] px-4 py-4 active:opacity-90">
-              <ThemedText className="text-center text-base font-medium text-slate-900">Edit intro</ThemedText>
-            </Pressable>
-          </View>
-        </View>
-      </ThemedView>
-    </View>
-  );
-}
 
 function RightRail({ currentUser }: { currentUser: AuthUser | null }) {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -361,12 +290,12 @@ export default function HomeScreen() {
         prev.map((p) =>
           String(p.id) === String(data.postId)
             ? {
-                ...p,
-                is_liked: data.is_liked,
-                like_count: data.like_count,
-                comment_count: data.comment_count,
-                user_reaction: data.reaction_type ?? p.user_reaction,
-              }
+              ...p,
+              is_liked: data.is_liked,
+              like_count: data.like_count,
+              comment_count: data.comment_count,
+              user_reaction: data.reaction_type ?? p.user_reaction,
+            }
             : p
         )
       );
@@ -460,11 +389,6 @@ export default function HomeScreen() {
             )}
 
             <View className={`mt-4 gap-4 ${isDesktop ? 'flex-row items-start' : ''}`}>
-              {isDesktop && (
-                <View className="w-[350px]">
-                  <ProfileRail currentUser={currentUser} />
-                </View>
-              )}
               <View className={`${isDesktop ? 'flex-1' : 'w-full'} gap-4`}>
                 <ComposerCard onPostCreated={() => loadPosts(1, false)} currentUser={currentUser} />
                 {/* Stories */}
@@ -538,6 +462,7 @@ export default function HomeScreen() {
                 </View>
               )}
             </View>
+
           </View>
         }
         renderItem={({ item }) => {

@@ -78,8 +78,8 @@ export const API_URL_SOURCE = apiConfig.source;
  * New records store full URLs. This ensures we always return a usable URL.
  */
 export function resolveAvatarUrl(avatarUrl: string | null | undefined): string | null {
-  if (!avatarUrl) return null;
-  if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
+  if (!avatarUrl) return '/default.png';
+  if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://') || avatarUrl === '/default.png') {
     return avatarUrl;
   }
   // Relative path — prefix with backend base URL
@@ -302,9 +302,9 @@ export function fetchPostLikers(postId: string): Promise<PostLikersResponse> {
 }
 
 export function createPost(
-  content: string, 
-  mediaUrls: string[] = [], 
-  feeling: string | null = null, 
+  content: string,
+  mediaUrls: string[] = [],
+  feeling: string | null = null,
   taggedUsers: TaggedUser[] | null = null
 ): Promise<Post> {
   return apiFetch<Post>('/api/posts', {
@@ -469,7 +469,7 @@ export async function adminFetchPostReports(
   }
 
   const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
-  
+
   type BackendReportItem = {
     post_id: number;
     user_id: number;

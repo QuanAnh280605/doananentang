@@ -4,7 +4,7 @@ from sqlalchemy import Boolean, Date, DateTime, String, Text, UniqueConstraint, 
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
-from app.models.db_enums import UserRole, user_role_enum
+from app.models.db_enums import UserRole, VisibilityLevel, user_role_enum, visibility_level_enum
 from app.models.db_types import uuid_pk
 
 
@@ -27,6 +27,9 @@ class User(Base):
   date_of_birth: Mapped[date | None] = mapped_column(Date(), nullable=True)
   phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
   role: Mapped[UserRole] = mapped_column(user_role_enum, nullable=False, default=UserRole.USER, server_default='user')
+  contact_privacy: Mapped[VisibilityLevel] = mapped_column(visibility_level_enum, nullable=False, default=VisibilityLevel.PUBLIC, server_default='public')
+  email_privacy: Mapped[VisibilityLevel] = mapped_column(visibility_level_enum, nullable=False, default=VisibilityLevel.PUBLIC, server_default='public')
+  location_privacy: Mapped[VisibilityLevel] = mapped_column(visibility_level_enum, nullable=False, default=VisibilityLevel.PUBLIC, server_default='public')
   is_active: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=True, server_default=text('true'))
   is_deleted: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False, server_default=text('false'))
   created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

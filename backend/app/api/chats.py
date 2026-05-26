@@ -16,6 +16,7 @@ from app.crud.chat import (
   get_chat_member_user_ids,
   get_chat_by_id,
   get_or_create_direct_chat,
+  get_read_message_ids_for_sender,
   has_unread_messages,
   is_chat_member,
   list_chat_messages,
@@ -52,8 +53,8 @@ def _get_message_media(db: Session, message_id: int) -> MessageMedia | None:
   return db.scalar(select(MessageMedia).where(MessageMedia.message_id == message_id))
 
 
-def _build_message_read(db: Session, message) -> MessageRead:
-  """Xây dựng MessageRead kèm media_url và media_type."""
+def _build_message_read(db: Session, message, *, is_read: bool = False) -> MessageRead:
+  """Xây dựng MessageRead kèm media_url, media_type và trạng thái đọc."""
   media = _get_message_media(db, message.id)
   return MessageRead(
     id=message.id,
@@ -62,6 +63,7 @@ def _build_message_read(db: Session, message) -> MessageRead:
     content=message.content,
     media_url=media.file_url if media else None,
     media_type=media.type.value if media else None,
+    is_read=is_read,
     created_at=message.created_at,
   )
 
@@ -69,7 +71,6 @@ def _build_message_read(db: Session, message) -> MessageRead:
 async def _emit_message_created_to_user_rooms(payload: dict[str, object], user_ids: list[int]) -> None:
   for user_id in user_ids:
     await socket_server.sio.emit(MESSAGE_CREATED_EVENT, payload, room=socket_server.get_user_room_name(user_id))
-
 
 @router.get('', response_model=PaginatedChatsResponse)
 def list_chats_endpoint(
@@ -82,11 +83,22 @@ def list_chats_endpoint(
   total_pages = (total + page_size - 1) // page_size if total > 0 else 0
   skip = (page - 1) * page_size
   threads = list_direct_chats_for_user(db, current_user.id, skip=skip, limit=page_size)
+  # Batch query read status cho latest_message của các thread
+  latest_msg_ids = [
+    thread.latest_message.id
+    for thread in threads
+    if thread.latest_message is not None and thread.latest_message.sender_id == current_user.id
+  ]
+  read_msg_ids = get_read_message_ids_for_sender(db, latest_msg_ids, current_user.id) if latest_msg_ids else set()
+
   items = [
     ChatListItemRead(
       chat_id=thread.chat.id,
       participant=UserSearchRead.model_validate(thread.participant),
-      latest_message=_build_message_read(db, thread.latest_message) if thread.latest_message is not None else None,
+      latest_message=_build_message_read(
+        db, thread.latest_message,
+        is_read=thread.latest_message.id in read_msg_ids,
+      ) if thread.latest_message is not None else None,
       updated_at=thread.updated_at,
       unread_count=thread.unread_count,
     )
@@ -153,7 +165,6 @@ def upload_chat_media(
     'media_type': content_type,
   }
 
-
 @router.post('/{chat_id}/read', response_model=ChatReadStatusRead)
 def mark_chat_read_endpoint(
   chat_id: int,
@@ -190,7 +201,15 @@ def list_chat_messages_endpoint(
   total_pages = (total + page_size - 1) // page_size if total > 0 else 0
   skip = (page - 1) * page_size
   messages = list_chat_messages(db, chat_id, skip=skip, limit=page_size)
-  items = [_build_message_read(db, message) for message in messages]
+
+  # Batch query read status cho tin nhắn do current_user gửi
+  sent_msg_ids = [m.id for m in messages if m.sender_id == current_user.id]
+  read_msg_ids = get_read_message_ids_for_sender(db, sent_msg_ids, current_user.id) if sent_msg_ids else set()
+
+  items = [
+    _build_message_read(db, message, is_read=message.id in read_msg_ids)
+    for message in messages
+  ]
 
   return PaginatedMessagesResponse(
     items=items,

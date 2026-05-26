@@ -11,6 +11,7 @@ from app.models.like import Like
 from app.models.post import Post
 from app.models.post_media import PostMedia
 from app.models.post_viewer import PostViewer
+from app.models.post_tag import PostTag
 from app.schemas.post import PostCreate, PostUpdate
 
 
@@ -20,10 +21,18 @@ def create_post(db: Session, post_in: PostCreate, author_id: int) -> Post:
     content=post_in.content,
     visibility=post_in.visibility,
     feeling=post_in.feeling,
-    tagged_users=post_in.tagged_users,
+    gif_url=post_in.gif_url,
+    location_name=post_in.location_name,
+    location_lat=post_in.location_lat,
+    location_lng=post_in.location_lng
   )
   db.add(db_post)
   db.flush()  # Lấy ID trước khi tạo media
+  
+  if post_in.tagged_user_ids:
+    for tagged_id in post_in.tagged_user_ids:
+      db_tag = PostTag(post_id=db_post.id, user_id=tagged_id)
+      db.add(db_tag)
 
   # Nếu có mảng ảnh hoặc video được truyền lên
   if post_in.media_urls:
@@ -50,7 +59,11 @@ def get_post(db: Session, post_id: int, current_user_id: int | None = None) -> P
   """Lấy chi tiết bài viết (kèm media + tác giả + stats)"""
   post = (
     db.query(Post)
-    .options(joinedload(Post.media), joinedload(Post.author))
+    .options(
+      joinedload(Post.media), 
+      joinedload(Post.author),
+      joinedload(Post.tagged_users).joinedload(PostTag.user)
+    )
     .filter(Post.id == post_id, Post.is_deleted == False)
     .first()
   )
@@ -100,7 +113,12 @@ def get_posts(
     search_query = q.strip()
     ts_vector = func.to_tsvector('simple', func.coalesce(Post.content, ''))
     ts_query = func.plainto_tsquery('simple', search_query)
-    query = query.filter(ts_vector.op('@@')(ts_query))
+    query = query.filter(
+        or_(
+            ts_vector.op('@@')(ts_query),
+            Post.content.ilike(f"%{search_query}%")
+        )
+    )
     rank_expr = func.ts_rank(ts_vector, ts_query)
 
   # Tính tổng số bài viết
@@ -109,7 +127,7 @@ def get_posts(
 
   # Xác định cột sắp xếp
   if sort_by == 'relevance' and rank_expr is not None:
-    order_by_args = (rank_expr.desc(),)
+    order_by_args = (rank_expr.desc(), Post.created_at.desc())
   else:
     actual_sort_by = sort_by if sort_by != 'relevance' else 'created_at'
     sort_column = getattr(Post, actual_sort_by, Post.created_at)
@@ -120,7 +138,11 @@ def get_posts(
   # Query có eager load media + author
   items = (
     query
-    .options(joinedload(Post.media), joinedload(Post.author))
+    .options(
+      joinedload(Post.media), 
+      joinedload(Post.author),
+      joinedload(Post.tagged_users).joinedload(PostTag.user)
+    )
     .order_by(*order_by_args)
     .offset((page - 1) * page_size)
     .limit(page_size)
@@ -199,7 +221,11 @@ def get_feed_posts(
 
   posts = (
     query
-    .options(joinedload(Post.media), joinedload(Post.author))
+    .options(
+      joinedload(Post.media), 
+      joinedload(Post.author),
+      joinedload(Post.tagged_users).joinedload(PostTag.user)
+    )
     .order_by(*order_by_args)
     .offset((page - 1) * page_size)
     .limit(page_size)
