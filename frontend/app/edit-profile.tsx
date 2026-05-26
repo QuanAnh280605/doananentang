@@ -16,7 +16,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Image } from 'expo-image';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { getMockUser, updateMockUser, uploadMockAvatar, changeMockPassword } from '@/lib/mock-profile';
+import { fetchCurrentUser, updateUserProfile, uploadUserAvatar, changePassword } from '@/lib/auth';
 import type { GenderValue } from '@/lib/auth';
 
 const surfaceClass = 'rounded-surface border border-app-border bg-app-surface';
@@ -324,10 +324,10 @@ export default function EditProfileScreen() {
   // Password inline errors
   const [passwordErrors, setPasswordErrors] = useState<PasswordErrors>({});
 
-  // Load mock user
+  // Load current user
   useEffect(() => {
     let mounted = true;
-    getMockUser()
+    fetchCurrentUser()
       .then((u) => {
         if (mounted) {
           setFirstName(u.first_name || '');
@@ -337,6 +337,7 @@ export default function EditProfileScreen() {
           setGender(u.gender || 'custom');
           setCity(u.city || '');
           setEmail(u.email || '');
+          setAvatarUri(u.avatar_url);
         }
       })
       .catch(() => {
@@ -392,11 +393,11 @@ export default function EditProfileScreen() {
     setIsSavingProfile(true);
     setProfileBanner(null);
     try {
-      if (avatarUri) {
-        await uploadMockAvatar(avatarUri);
+      if (avatarUri && (avatarUri.startsWith('file:') || avatarUri.startsWith('content:') || avatarUri.startsWith('ph:'))) {
+        await uploadUserAvatar(avatarUri);
       }
 
-      await updateMockUser({
+      await updateUserProfile({
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         bio: bio.trim() || null,
@@ -452,7 +453,7 @@ export default function EditProfileScreen() {
     setIsSavingPassword(true);
     setPasswordBanner(null);
     try {
-      await changeMockPassword(currentPassword, newPassword);
+      await changePassword(currentPassword, newPassword);
       setPasswordBanner({ type: 'success', message: 'Đổi mật khẩu thành công!' });
       setCurrentPassword('');
       setNewPassword('');
@@ -507,10 +508,7 @@ export default function EditProfileScreen() {
                 <ThemedText className="text-lg">←</ThemedText>
               </Pressable>
               <ThemedText className="text-lg font-semibold text-slate-900">Chỉnh sửa hồ sơ</ThemedText>
-              {/* Mock indicator */}
-              <View className="ml-auto rounded-full bg-[#FEF9C3] px-3 py-1">
-                <ThemedText className="text-xs font-semibold text-[#854D0E]">MOCK DATA</ThemedText>
-              </View>
+
             </View>
 
             {/* Main 2-col layout */}

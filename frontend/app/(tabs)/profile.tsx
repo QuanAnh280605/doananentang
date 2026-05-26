@@ -8,8 +8,8 @@ import { router } from 'expo-router';
 import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { getMockUser, getMockPosts, updateMockUser } from '@/lib/mock-profile';
-import { logoutUser } from '@/lib/auth';
+import { fetchCurrentUser, logoutUser, updateUserProfile } from '@/lib/auth';
+import { fetchPosts } from '@/lib/api';
 import type { AuthUser } from '@/lib/auth';
 import type { Post } from '@/lib/types';
 
@@ -278,12 +278,12 @@ export default function ProfileScreen() {
 
   const isWide = width >= 1180;
 
-  // Load mock user
+  // Load current user
   useEffect(() => {
     let isMounted = true;
     setIsLoadingUser(true);
 
-    getMockUser()
+    fetchCurrentUser()
       .then((nextUser) => {
         if (isMounted) {
           setUser(nextUser);
@@ -303,15 +303,17 @@ export default function ProfileScreen() {
     };
   }, []);
 
-  // Load mock posts
+  // Load posts of current user
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
 
   useEffect(() => {
+    if (!user) return;
+
     let isMounted = true;
     setLoadingPosts(true);
 
-    getMockPosts()
+    fetchPosts(1, 20, user.id)
       .then((res) => {
         if (isMounted) setPosts(res.items);
       })
@@ -323,7 +325,7 @@ export default function ProfileScreen() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [user]);
 
   const handleDeletePost = (postId: string) => {
     setPosts((current) => current.filter((p) => p.id !== postId));
@@ -332,7 +334,7 @@ export default function ProfileScreen() {
   const handleSaveIntro = async () => {
     setIsSavingIntro(true);
     try {
-      const updatedUser = await updateMockUser({
+      const updatedUser = await updateUserProfile({
         bio: tempIntro.trim() || null,
         city: tempCity.trim() || null,
       });
@@ -340,8 +342,8 @@ export default function ProfileScreen() {
       setIsEditingIntro(false);
       setIntroSaved(true);
       setTimeout(() => setIntroSaved(false), 3000);
-    } catch {
-      // lỗi mock không xảy ra, nhưng giữ catch an toàn
+    } catch (err) {
+      console.error('Lưu giới thiệu thất bại:', err);
     } finally {
       setIsSavingIntro(false);
     }
@@ -378,10 +380,7 @@ export default function ProfileScreen() {
                 <ThemedText className="text-lg">←</ThemedText>
               </Pressable>
               <ThemedText className="text-lg font-semibold text-slate-900">Hồ sơ</ThemedText>
-              {/* Mock indicator badge */}
-              <View className="ml-auto rounded-full bg-[#FEF9C3] px-3 py-1">
-                <ThemedText className="text-xs font-semibold text-[#854D0E]">MOCK DATA</ThemedText>
-              </View>
+
             </View>
 
             {/* Profile card */}
