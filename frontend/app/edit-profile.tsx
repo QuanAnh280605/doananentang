@@ -11,6 +11,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Image } from 'expo-image';
@@ -338,6 +339,7 @@ type PasswordErrors = {
 
 export default function EditProfileScreen() {
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const isWide = width >= 1024;
   const isTablet = width >= 768;
 
@@ -576,8 +578,8 @@ export default function EditProfileScreen() {
   return (
     <>
       <StatusBar style="dark" />
-      <ThemedView className="flex-1 bg-[#F8FAFC]">
-        <ScrollView bounces={false} className="flex-1" contentContainerClassName="pb-8">
+      <ThemedView className="flex-1 bg-[#F8FAFC]" style={{ paddingTop: insets.top }}>
+        <ScrollView bounces={false} className="flex-1" contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}>
           <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-4 md:px-6">
             {/* Back header */}
             <View className="flex-row items-center gap-3 rounded-full border border-app-border bg-app-surface px-5 py-4 mx-4 md:mx-0">
