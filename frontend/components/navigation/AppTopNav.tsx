@@ -46,7 +46,7 @@ function NavAvatar({ initials, avatarUrl, size = 'large' }: { initials: string; 
   );
 }
 
-type IconComponent = React.ComponentType<{ size?: number; color?: string; weight?: any }>;
+type IconComponent = React.ComponentType<{ size?: number; color?: string; weight?: IconWeight }>;
 
 function NavActionBubble({ icon: Icon }: { icon: IconComponent }) {
   return (

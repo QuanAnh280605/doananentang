@@ -344,6 +344,21 @@ export function fetchFollowingUsers(userId: number, page = 1, pageSize = 4): Pro
   return apiFetch<PaginatedFollowUsersResponse>(`/api/users/${userId}/following?page=${page}&page_size=${pageSize}`);
 }
 
+export type MentionUser = {
+  id: number;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  avatar_url: string | null;
+  bio: string | null;
+};
+
+export function searchUsersForMention(query: string, limit = 8): Promise<{ items: MentionUser[]; total: number }> {
+  return apiFetch<{ items: MentionUser[]; total: number }>(
+    `/api/users/search?q=${encodeURIComponent(query)}&page=1&page_size=${limit}`
+  );
+}
+
 // ─── Chats API ────────────────────────────────────────────────
 
 export type ChatParticipant = {
