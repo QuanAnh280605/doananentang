@@ -290,11 +290,7 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
               <div className="-mt-12 flex items-end justify-between gap-4">
                 <div className="flex items-end gap-4">
                   <div className="flex h-[92px] w-[92px] items-center justify-center rounded-[28px] border-4 border-white bg-[#EAF4FB] text-[28px] font-semibold tracking-[0.5px] text-slate-900 overflow-hidden">
-                    {profile.avatarUrl ? (
-                      <img src={profile.avatarUrl} alt={profile.displayName} className="h-full w-full object-cover" />
-                    ) : (
-                      profile.initials
-                    )}
+                    <img src={profile.avatarUrl || '/default.png'} alt={profile.displayName} className="h-full w-full object-cover" />
                   </div>
                   <div className="pb-1">
                     <ThemedText as="h1" className="text-[24px] font-bold text-slate-950">{profile.displayName}</ThemedText>

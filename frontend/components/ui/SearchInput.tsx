@@ -24,7 +24,7 @@ export function SearchInput({
 
   return (
     <View
-      className={`flex-row items-center gap-3 rounded-[24px] border border-[#D6DEE8] bg-[#F7FAFC] px-4 py-3 ${className}`}>
+      className={`flex-row items-center gap-3 rounded-full border border-[#D6DEE8] bg-[#F7FAFC] px-4 py-3 ${className}`}>
       <MaterialIcons color="#64748B" name="search" size={20} />
       <TextInput
         className="flex-1 text-base text-slate-900 outline-none"

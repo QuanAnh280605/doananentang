@@ -100,20 +100,13 @@ function StoryStrip({ currentUser }: { currentUser: AuthUser | null }) {
     : null;
 
   return (
-    <ThemedView className={`${surfaceClass} p-4 shadow-sm`}>
-      <View className="mb-4 flex-row items-center justify-between px-1">
-        <View>
-          <ThemedText className="text-[22px] font-bold text-slate-900 tracking-tight">
-            Tin
-          </ThemedText>
-          <ThemedText className="text-[13px] font-medium text-slate-500">
-            Xem nhanh khoảnh khắc từ bạn bè
-          </ThemedText>
-        </View>
-        <Pressable className="rounded-[18px] px-4 py-2 bg-[#EAF4FB] active:opacity-80">
-          <ThemedText className="text-[14px] font-bold text-[#4A9FD8]">
-            Tạo tin
-          </ThemedText>
+    <ThemedView className="bg-white mb-2 py-4">
+      <View className="mb-4 flex-row items-center justify-between px-4">
+        <ThemedText className="text-[18px] font-bold text-slate-900 tracking-tight">
+          Tin nổi bật
+        </ThemedText>
+        <Pressable className="active:opacity-70">
+          <MaterialIcons name="add-circle-outline" size={24} color="#0F172A" />
         </Pressable>
       </View>
 
@@ -122,21 +115,21 @@ function StoryStrip({ currentUser }: { currentUser: AuthUser | null }) {
         data={stories}
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingRight: 4 }}
+        contentContainerStyle={{ paddingLeft: 16, paddingRight: 16 }}
         ListHeaderComponent={
-          <Pressable className="mr-3 h-[216px] w-[124px] overflow-hidden rounded-[24px] border border-[#E4E8EE] bg-[#F7F8FA] active:opacity-90">
-            <View className="h-[142px] bg-[#EAF4FB] items-center justify-center">
+          <Pressable className="mr-3 h-[180px] w-[110px] overflow-hidden rounded-[16px] border border-[#E4E8EE] bg-white active:opacity-90">
+            <View className="h-[120px] bg-[#EAF4FB] items-center justify-center">
               {userAvatarUrl ? (
                 <Image source={{ uri: userAvatarUrl }} className="h-full w-full" resizeMode="cover" />
               ) : (
-                <ThemedText className="text-[28px] font-bold text-[#4A9FD8]">{initials}</ThemedText>
+                <ThemedText className="text-[24px] font-bold text-[#4A9FD8]">{initials}</ThemedText>
               )}
             </View>
-            <View className="absolute left-1/2 top-[120px] ml-[-22px] h-[44px] w-[44px] items-center justify-center rounded-full border-[4px] border-[#FFFFFF] bg-[#4A9FD8]">
-              <MaterialIcons name="add" size={24} color="#FFFFFF" />
+            <View className="absolute left-1/2 top-[102px] ml-[-18px] h-[36px] w-[36px] items-center justify-center rounded-full border-[3px] border-[#FFFFFF] bg-[#4A9FD8]">
+              <MaterialIcons name="add" size={20} color="#FFFFFF" />
             </View>
-            <View className="mt-8 items-center px-2">
-              <ThemedText className="text-[14px] font-bold text-slate-900 text-center">Tạo tin</ThemedText>
+            <View className="mt-6 items-center px-2">
+              <ThemedText className="text-[12px] font-semibold text-slate-900 text-center">Tạo tin</ThemedText>
             </View>
           </Pressable>
         }
@@ -147,25 +140,22 @@ function StoryStrip({ currentUser }: { currentUser: AuthUser | null }) {
               : `${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000'}${item.avatarUrl}`
             : null;
           return (
-            <Pressable className="mr-3 h-[216px] w-[124px] overflow-hidden rounded-[24px] bg-slate-900 active:opacity-90">
+            <Pressable className="mr-3 h-[180px] w-[110px] overflow-hidden rounded-[16px] bg-slate-900 active:opacity-90">
               <Image source={{ uri: item.mediaUrl }} className="absolute h-full w-full opacity-90" resizeMode="cover" />
-              {/* Overlay for text readability */}
-              <View className="absolute bottom-0 left-0 right-0 h-28" style={{ backgroundColor: 'rgba(0,0,0,0.3)' }} />
+              <View className="absolute bottom-0 left-0 right-0 h-24" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }} />
               
-              {/* Avatar */}
-              <View className="absolute left-3 top-3 h-11 w-11 items-center justify-center rounded-full bg-white border-2" style={{ borderColor: item.ringColor || '#E4E8EE' }}>
+              <View className="absolute left-2 top-2 h-10 w-10 items-center justify-center rounded-full bg-white border-2" style={{ borderColor: item.ringColor || '#4A9FD8' }}>
                 {avatarUri ? (
-                  <Image source={{ uri: avatarUri }} style={{ width: 36, height: 36, borderRadius: 18 }} resizeMode="cover" />
+                  <Image source={{ uri: avatarUri }} style={{ width: 34, height: 34, borderRadius: 17 }} resizeMode="cover" />
                 ) : (
-                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#EAF4FB', alignItems: 'center', justifyContent: 'center' }}>
-                    <ThemedText style={{ fontSize: 12, fontWeight: '700', color: item.ringColor || '#4A9FD8' }}>{item.initials}</ThemedText>
+                  <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: '#EAF4FB', alignItems: 'center', justifyContent: 'center' }}>
+                    <ThemedText style={{ fontSize: 11, fontWeight: '700', color: item.ringColor || '#4A9FD8' }}>{item.initials}</ThemedText>
                   </View>
                 )}
               </View>
               
-              {/* Name */}
-              <View className="absolute bottom-4 left-3 right-3">
-                <ThemedText className="text-[14px] font-bold text-white leading-tight" numberOfLines={2}>
+              <View className="absolute bottom-3 left-2 right-2">
+                <ThemedText className="text-[12px] font-bold text-white leading-tight" numberOfLines={2}>
                   {item.authorName}
                 </ThemedText>
               </View>
