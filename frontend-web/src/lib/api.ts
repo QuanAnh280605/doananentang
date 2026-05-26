@@ -79,7 +79,7 @@ export const API_URL_SOURCE = apiConfig.source;
  */
 export function resolveAvatarUrl(avatarUrl: string | null | undefined): string | null {
   if (!avatarUrl) return '/default.png';
-  if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://') || avatarUrl.startsWith('/')) {
+  if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://') || avatarUrl === '/default.png') {
     return avatarUrl;
   }
   // Relative path — prefix with backend base URL
