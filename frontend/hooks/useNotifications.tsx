@@ -26,14 +26,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     refreshUnreadCount();
   }, [refreshUnreadCount]);
 
-  // Thiết lập interval polling nhẹ mỗi 30 giây để cập nhật badge
-  useEffect(() => {
-    const timer = setInterval(() => {
-      refreshUnreadCount();
-    }, 30000);
 
-    return () => clearInterval(timer);
-  }, [refreshUnreadCount]);
 
   const value = useMemo(() => ({
     unreadCount,
