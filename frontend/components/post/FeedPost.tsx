@@ -3,6 +3,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Link, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Platform, Image, Modal, Pressable, ScrollView, View, Alert, Share, TextInput, ActivityIndicator, DeviceEventEmitter } from 'react-native';
+import { ThumbsUp, ChatCircleDots, ShareNetwork, CaretRight } from 'phosphor-react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -31,14 +32,7 @@ function getVisibilityConfig(visibility: string): VisibilityOption {
     return VISIBILITY_OPTIONS.find((o) => o.value === visibility) ?? { value: visibility, label: visibility, icon: 'public', color: '#64748B', description: '' };
 }
 
-const REACTIONS = [
-    { type: 'like', icon: '👍', color: '#4A9FD8', name: 'Like' },
-    { type: 'love', icon: '❤️', color: '#F43F5E', name: 'Love' },
-    { type: 'haha', icon: '😆', color: '#F59E0B', name: 'Haha' },
-    { type: 'wow', icon: '😲', color: '#F59E0B', name: 'Wow' },
-    { type: 'sad', icon: '😢', color: '#F59E0B', name: 'Sad' },
-    { type: 'angry', icon: '😡', color: '#EF4444', name: 'Angry' }
-] as const;
+// Removed REACTIONS
 
 /** Tính initials từ tên tác giả */
 function getInitials(author: Post['author']): string {
@@ -61,11 +55,8 @@ function formatTime(isoString: string): string {
 
 export function FeedPost({ item, onDeleteSuccess, isNested }: { item: Post; onDeleteSuccess?: () => void; isNested?: boolean }) {
     const [liked, setLiked] = useState(item.is_liked);
-    const [reactionType, setReactionType] = useState<ReactionType | null | undefined>(item.user_reaction);
     const [count, setCount] = useState(item.like_count);
-    const [topReactions, setTopReactions] = useState<ReactionType[]>(item.top_reactions || (item.like_count > 0 ? (item.user_reaction ? [item.user_reaction] : ['like']) : []));
     const [loading, setLoading] = useState(false);
-    const [showReactions, setShowReactions] = useState(false);
     const [isDeleted, setIsDeleted] = useState(false);
     const [isViewerVisible, setIsViewerVisible] = useState(false);
     const [viewerIndex, setViewerIndex] = useState(0);
@@ -123,9 +114,6 @@ export function FeedPost({ item, onDeleteSuccess, isNested }: { item: Post; onDe
         setCount(item.like_count);
     }, [item.like_count]);
 
-    useEffect(() => {
-        setReactionType(item.user_reaction);
-    }, [item.user_reaction]);
 
     useEffect(() => {
         setDisplayContent(item.content);
@@ -149,55 +137,16 @@ export function FeedPost({ item, onDeleteSuccess, isNested }: { item: Post; onDe
         }
     }, [singleMediaUrl]);
 
-    const updateTopReactionsAfterChange = (
-        newReactionType: ReactionType | null,
-        oldReactionType: ReactionType | null | undefined,
-        newLikeCount: number,
-        prevTop: ReactionType[]
-    ): ReactionType[] => {
-        if (newLikeCount === 0) return [];
-        if (newLikeCount === 1 && newReactionType) return [newReactionType];
-
-        let updated = [...prevTop];
-        // Xóa reaction cũ khỏi top nếu có
-        if (oldReactionType && oldReactionType !== newReactionType) {
-            updated = updated.filter(r => r !== oldReactionType);
-        }
-        // Thêm reaction mới lên đầu nếu chưa có
-        if (newReactionType && !updated.includes(newReactionType)) {
-            updated = [newReactionType, ...updated];
-        } else if (newReactionType) {
-            // Đưa reaction mới lên đầu
-            updated = [newReactionType, ...updated.filter(r => r !== newReactionType)];
-        }
-        return updated.slice(0, 3);
-    };
-
-    const handleToggleLike = async (rType?: ReactionType) => {
+    const handleToggleLike = async () => {
         if (loading) return;
-        setShowReactions(false);
-
-        const targetReaction: ReactionType = rType ?? 'like';
-        // Bấm nút Like chính (không từ bubble): nếu đang liked bất kỳ → unlike luôn
-        // Bấm từ bubble (rType có giá trị): chỉ unlike nếu đúng reaction đang có, khác thì cập nhật
-        const isUnliking = rType !== undefined
-            ? (liked && reactionType === targetReaction)
-            : liked;
-
         setLoading(true);
-        const prevReactionType = reactionType;
         try {
-            const result = isUnliking
+            const result = liked
                 ? await unlikePost(String(item.id))
-                : await likePost(String(item.id), targetReaction);
+                : await likePost(String(item.id), 'like');
 
             setLiked(result.liked);
             setCount(result.like_count);
-            const newReaction = result.reaction_type ?? null;
-            setReactionType(newReaction);
-            setTopReactions(prev =>
-                updateTopReactionsAfterChange(newReaction, prevReactionType, result.like_count, prev)
-            );
         } catch {
             // Revert on error — không làm gì, state giữ nguyên
         } finally {
@@ -576,162 +525,93 @@ export function FeedPost({ item, onDeleteSuccess, isNested }: { item: Post; onDe
 
             {!isNested && (
                 <>
-                    {/* Stats — bấm vào lượt thích mở modal */}
-                    <View className="mt-4 flex-row items-center justify-between gap-3">
+                    {/* Stats - Refined Interaction area */}
+                    <View className="mt-4 flex-row items-center justify-between">
                         <View className="flex-row items-center gap-3">
-                            <Pressable onPress={handleOpenLikers} disabled={count === 0} className="active:opacity-70 flex-row items-center gap-1.5">
-                                {count > 0 ? (
-                                    <>
-                                        <View className="flex-row items-center">
-                                            {topReactions.slice(0, 3).map((rType, index) => {
-                                                const icon = REACTIONS.find(r => r.type === rType)?.icon || '👍';
-                                                return (
-                                                    <View
-                                                        key={rType}
-                                                        className="h-[22px] w-[22px] items-center justify-center rounded-full bg-white border-2 border-white"
-                                                        style={{ marginLeft: index > 0 ? -6 : 0, zIndex: 3 - index }}
-                                                    >
-                                                        <ThemedText style={{ fontSize: 13, lineHeight: 14, marginTop: Platform.OS === 'android' ? -2 : 0 }}>{icon}</ThemedText>
-                                                    </View>
-                                                );
-                                            })}
+                            <Pressable onPress={handleOpenLikers} disabled={count === 0} className="active:opacity-70 flex-row items-center gap-2">
+                                <View className="flex-row -space-x-2">
+                                    {count > 0 && (
+                                        <View className="h-6 w-6 items-center justify-center rounded-full bg-[#4A9FD8] border-[2px] border-white z-10 shadow-sm">
+                                            <ThumbsUp size={12} weight="fill" color="white" />
                                         </View>
-                                        <ThemedText className="text-sm font-medium text-slate-700 ml-1">
-                                            {count} lượt tương tác
-                                        </ThemedText>
-                                    </>
-                                ) : (
-                                    <ThemedText className="text-sm font-medium text-slate-400">
-                                        Chưa có lượt tương tác
-                                    </ThemedText>
-                                )}
+                                    )}
+                                </View>
+                                <ThemedText className="text-[14px] font-bold text-slate-500">
+                                    {count > 0 ? `${count} lượt thích` : 'Hãy là người đầu tiên thích'}
+                                </ThemedText>
                             </Pressable>
+                        </View>
+                        
+                        <View className="flex-row items-center gap-2">
                             {item.comment_count > 0 && (
-                                <>
-                                    <View className="h-1 w-1 rounded-full bg-slate-300" />
-                                    <ThemedText className="text-sm text-slate-500">
+                                <Pressable className="flex-row items-center gap-1.5 active:opacity-70">
+                                    <ThemedText className="text-[14px] font-bold text-slate-500">
                                         {item.comment_count} bình luận
                                     </ThemedText>
-                                </>
+                                    <CaretRight size={16} weight="bold" color="#CBD5E1" />
+                                </Pressable>
                             )}
+                            
+                            {/* Visibility chip */}
+                            {(() => {
+                                const vc = getVisibilityConfig(displayVisibility);
+                                return (
+                                    <View
+                                        style={{
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            gap: 4,
+                                            borderRadius: 14,
+                                            paddingHorizontal: 8,
+                                            paddingVertical: 4,
+                                            backgroundColor: `${vc.color}14`,
+                                            marginLeft: item.comment_count > 0 ? 8 : 0,
+                                        }}
+                                    >
+                                        <MaterialIcons name={vc.icon} size={13} color={vc.color} />
+                                        <ThemedText style={{ fontSize: 12, fontWeight: '600', color: vc.color }}>
+                                            {vc.label}
+                                        </ThemedText>
+                                    </View>
+                                );
+                            })()}
                         </View>
-                        {/* Visibility chip */}
-                        {(() => {
-                            const vc = getVisibilityConfig(displayVisibility);
-                            return (
-                                <View
-                                    style={{
-                                        flexDirection: 'row',
-                                        alignItems: 'center',
-                                        gap: 4,
-                                        borderRadius: 14,
-                                        paddingHorizontal: 10,
-                                        paddingVertical: 4,
-                                        backgroundColor: `${vc.color}14`,
-                                    }}
-                                >
-                                    <MaterialIcons name={vc.icon} size={13} color={vc.color} />
-                                    <ThemedText style={{ fontSize: 12, fontWeight: '600', color: vc.color }}>
-                                        {vc.label}
-                                    </ThemedText>
-                                </View>
-                            );
-                        })()}
                     </View>
 
-                    {/* Thanh hành động */}
-                    <View className="mt-4 flex-row gap-2 border-t border-[#E4E8EE] pt-4 relative">
-                        {/* Overlay bắt tap ra ngoài để đóng bubble */}
-                {showReactions && (
-                    <Pressable
-                        style={{ position: 'absolute', top: -200, left: -200, right: -200, bottom: -200, zIndex: 50 }}
-                        onPress={() => setShowReactions(false)}
-                    />
-                )}
-
-                {/* Bubble chọn cảm xúc - hiện khi long press */}
-                {showReactions && (
-                    <View
-                        style={{
-                            position: 'absolute',
-                            left: 0,
-                            bottom: '100%',
-                            marginBottom: 8,
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            gap: 4,
-                            backgroundColor: 'white',
-                            borderRadius: 999,
-                            paddingHorizontal: 12,
-                            paddingVertical: 8,
-                            borderWidth: 1,
-                            borderColor: '#E4E8EE',
-                            shadowColor: '#000',
-                            shadowOffset: { width: 0, height: 4 },
-                            shadowOpacity: 0.12,
-                            shadowRadius: 12,
-                            elevation: 8,
-                            zIndex: 100,
-                        }}
-                    >
-                        {REACTIONS.map((r) => (
-                            <Pressable
-                                key={r.type}
-                                onPress={() => handleToggleLike(r.type as ReactionType)}
-                                style={[{
-                                    padding: 6,
-                                    borderRadius: 999,
-                                }, reactionType === r.type && liked ? {
-                                    backgroundColor: `${r.color}20`,
-                                    transform: [{ scale: 1.15 }],
-                                } : {}]}
+                    {/* Actions - Ultra Premium Action Bar */}
+                    <View className="mt-4 flex-row gap-3 border-t border-slate-100/80 pt-4 relative">
+                        {/* Like */}
+                        <Pressable
+                            onPress={handleToggleLike}
+                            disabled={loading}
+                            className={`flex-1 flex-row items-center justify-center gap-2.5 rounded-[22px] py-3.5 active:opacity-80 transition-all ${liked ? 'bg-[#EAF4FB]' : 'bg-[#F8FAFC]'}`}
+                        >
+                            <ThumbsUp 
+                                size={22} 
+                                weight={liked ? 'fill' : 'regular'} 
+                                color={liked ? '#4A9FD8' : '#94A3B8'} 
+                            />
+                            <ThemedText 
+                                className={`text-[15px] font-bold tracking-tight ${liked ? 'text-[#4A9FD8]' : 'text-slate-600'}`}
                             >
-                                <ThemedText style={{ fontSize: 26 }}>{r.icon}</ThemedText>
+                                Thích
+                            </ThemedText>
+                        </Pressable>
+
+                        {/* Comment */}
+                        <Link href={`/(post)/${item.id}`} asChild>
+                            <Pressable className="flex-1 flex-row items-center justify-center gap-2.5 rounded-[22px] bg-[#F8FAFC] py-3.5 active:opacity-80">
+                                <ChatCircleDots size={22} weight="regular" color="#94A3B8" />
+                                <ThemedText className="text-[15px] font-bold tracking-tight text-slate-600">Bình luận</ThemedText>
                             </Pressable>
-                        ))}
+                        </Link>
+
+                        {/* Share */}
+                        <Pressable onPress={handleShare} className="flex-1 flex-row items-center justify-center gap-2.5 rounded-[22px] bg-[#F8FAFC] py-3.5 active:opacity-80">
+                            <ShareNetwork size={22} weight="regular" color="#94A3B8" />
+                            <ThemedText className="text-[15px] font-bold tracking-tight text-slate-600">Chia sẻ</ThemedText>
+                        </Pressable>
                     </View>
-                )}
-
-                {/* Like */}
-                <Pressable
-                    onPress={() => handleToggleLike()}
-                    onLongPress={() => setShowReactions(true)}
-                    disabled={loading}
-                    className="flex-1 flex-row items-center justify-center gap-1.5 rounded-[20px] bg-[#F7F8FA] py-3 px-1 active:opacity-80"
-                    style={{ zIndex: 60 }}
-                >
-                    {liked ? (() => {
-                        const rx = REACTIONS.find(r => r.type === reactionType);
-                        return (
-                            <>
-                                <ThemedText style={{ fontSize: 20 }}>{rx?.icon ?? '👍'}</ThemedText>
-                                <ThemedText style={{ color: rx?.color ?? '#4A9FD8' }} className="text-base font-semibold">
-                                    {rx?.name ?? 'Like'}
-                                </ThemedText>
-                            </>
-                        );
-                    })() : (
-                        <>
-                            <MaterialIcons color="#666666" name="thumb-up-off-alt" size={20} />
-                            <ThemedText className="text-base font-medium text-slate-500">Like</ThemedText>
-                        </>
-                    )}
-                </Pressable>
-
-                {/* Comment */}
-                <Link href={`/(post)/${item.id}`} asChild>
-                    <Pressable className="flex-1 flex-row items-center justify-center gap-1.5 rounded-[20px] bg-[#F7F8FA] py-3 px-1 active:opacity-80">
-                        <MaterialIcons color="#666666" name="chat-bubble-outline" size={20} />
-                        <ThemedText className="text-base font-medium text-slate-500">Comment</ThemedText>
-                    </Pressable>
-                </Link>
-
-                {/* Share */}
-                <Pressable onPress={handleShare} className="flex-1 flex-row items-center justify-center gap-1.5 rounded-[20px] bg-[#F7F8FA] py-3 px-1 active:opacity-80">
-                    <MaterialIcons color="#666666" name="reply" size={20} />
-                    <ThemedText className="text-base font-medium text-slate-500">Share</ThemedText>
-                </Pressable>
-            </View>
             </>
             )}
 
@@ -797,9 +677,9 @@ export function FeedPost({ item, onDeleteSuccess, isNested }: { item: Post; onDe
                                                     {liker.first_name} {liker.last_name}
                                                 </ThemedText>
                                             </View>
-                                            <ThemedText className="text-xl">
-                                                {REACTIONS.find(r => r.type === liker.reaction_type)?.icon || '👍'}
-                                            </ThemedText>
+                                            <View className="h-8 w-8 items-center justify-center rounded-full bg-[#EAF4FB]">
+                                                <ThumbsUp size={16} weight="fill" color="#4A9FD8" />
+                                            </View>
                                         </Pressable>
                                     );
                                 })}
