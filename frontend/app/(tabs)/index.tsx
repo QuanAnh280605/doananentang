@@ -490,19 +490,6 @@ export default function HomeScreen() {
                 </View>
               )}
             </View>
-<<<<<<< HEAD
-
-=======
-<<<<<<< HEAD
-=======
-
-            {isDesktop && (
-              <View className="w-[360px]">
-                <RightRail currentUser={currentUser} />
-              </View>
-            )}
->>>>>>> 4df61f6 (update UI profile)
->>>>>>> 23654f5 (update UI profile)
           </View>
         }
         renderItem={({ item }) => {

@@ -17,31 +17,12 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Image } from 'expo-image';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-<<<<<<< HEAD
 import { fetchCurrentUser, fetchFollowStatus, updateUserProfile, uploadUserAvatar, changePassword } from '@/lib/auth';
 import type { GenderValue } from '@/lib/auth';
 import { fetchPosts, API_URL } from '@/lib/api';
 import type { VisibilityLevel } from '@/lib/types';
-const surfaceClass = 'rounded-[32px] border border-app-border bg-app-surface';
-=======
-<<<<<<< HEAD
-import { fetchCurrentUser, fetchFollowStatus, updateUserProfile, uploadUserAvatar, changePassword, type GenderValue } from '@/lib/auth';
-import { fetchPosts, API_URL } from '@/lib/api';
-=======
-import { API_URL, fetchPosts } from '@/lib/api';
-import {
-  fetchCurrentUser,
-  updateUserProfile,
-  uploadUserAvatar,
-  changePassword,
-  fetchFollowStatus,
-  type AuthUser,
-  type GenderValue,
-} from '@/lib/auth';
->>>>>>> 4df61f6 (update UI profile)
 
-const surfaceClass = 'rounded-surface border border-app-border bg-app-surface';
->>>>>>> 23654f5 (update UI profile)
+const surfaceClass = 'rounded-[32px] border border-app-border bg-app-surface';
 
 // ─── Primitive components ────────────────────────────────────────────────────
 
@@ -240,12 +221,7 @@ function InlineBanner({
   const isSuccess = type === 'success';
   return (
     <View
-<<<<<<< HEAD
-      className={`flex-row items-center justify-between rounded-[24px] px-4 py-3 mx-4 md:mx-0 ${isSuccess ? 'bg-[#DCFCE7]' : 'bg-[#FEE2E2]'
-=======
-      className={`flex-row items-center justify-between rounded-[14px] px-4 py-3 ${isSuccess ? 'bg-[#DCFCE7]' : 'bg-[#FEE2E2]'
->>>>>>> a2cdf5f (merge main into profile_app)
-        }`}
+      className={`flex-row items-center justify-between rounded-[24px] px-4 py-3 mx-4 md:mx-0 ${isSuccess ? 'bg-[#DCFCE7]' : 'bg-[#FEE2E2]'}`}
     >
       <View className="flex-1 flex-row items-center gap-2">
         <MaterialIcons
@@ -331,15 +307,9 @@ function LivePreviewCard({
         {/* Stats */}
         <View className="mt-4 flex-row gap-6 px-1">
           <View>
-<<<<<<< HEAD
             <ThemedText className="text-lg font-semibold text-slate-950">
-<<<<<<< HEAD
               {typeof followerCount === 'number' && followerCount >= 1000
                 ? (followerCount / 1000).toFixed(1) + 'k'
-=======
-              {typeof followerCount === 'number' && followerCount >= 1000 
-                ? (followerCount / 1000).toFixed(1) + 'k' 
->>>>>>> a2cdf5f (merge main into profile_app)
                 : followerCount}
             </ThemedText>
             <ThemedText className="text-xs text-slate-500">Người theo dõi</ThemedText>
@@ -347,14 +317,6 @@ function LivePreviewCard({
           <View>
             <ThemedText className="text-lg font-semibold text-slate-950">{postCount}</ThemedText>
             <ThemedText className="text-xs text-slate-500">Bài viết</ThemedText>
-=======
-            <ThemedText className="text-lg font-semibold text-slate-950">{followerCount}</ThemedText>
-            <ThemedText className="text-xs text-slate-500">Followers</ThemedText>
-          </View>
-          <View>
-            <ThemedText className="text-lg font-semibold text-slate-950">{postCount}</ThemedText>
-            <ThemedText className="text-xs text-slate-500">Posts</ThemedText>
->>>>>>> 4df61f6 (update UI profile)
           </View>
         </View>
       </SectionCard>
@@ -400,24 +362,13 @@ export default function EditProfileScreen() {
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [hasNewAvatar, setHasNewAvatar] = useState(false);
 
-<<<<<<< HEAD
   // Privacy fields
   const [contactPrivacy, setContactPrivacy] = useState<VisibilityLevel>('public');
   const [emailPrivacy, setEmailPrivacy] = useState<VisibilityLevel>('public');
   const [locationPrivacy, setLocationPrivacy] = useState<VisibilityLevel>('public');
-=======
-<<<<<<< HEAD
->>>>>>> 23654f5 (update UI profile)
+
   // Profile inline errors
   const [profileErrors, setProfileErrors] = useState<ProfileErrors>({});
-=======
-  // Stats
-  const [followerCount, setFollowerCount] = useState<number | string>('...');
-  const [postCount, setPostCount] = useState<number | string>('...');
-
-  // Contact fields (UI-only for now)
-  const [city, setCity] = useState('');
->>>>>>> 4df61f6 (update UI profile)
 
   // Visibility toggles
   const [showRole, setShowRole] = useState(true);
@@ -435,22 +386,13 @@ export default function EditProfileScreen() {
   const [followerCount, setFollowerCount] = useState<number | string>(0);
   const [postCount, setPostCount] = useState<number | string>(0);
 
-<<<<<<< HEAD
   // Load real user
-=======
-  // Load user data
->>>>>>> a2cdf5f (merge main into profile_app)
   useEffect(() => {
     let mounted = true;
-<<<<<<< HEAD
     fetchCurrentUser()
       .then((user) => {
         if (!user || !mounted) return;
-<<<<<<< HEAD
 
-=======
-        
->>>>>>> a2cdf5f (merge main into profile_app)
         setFirstName(user.first_name || '');
         setLastName(user.last_name || '');
         setBio(user.bio || '');
@@ -460,62 +402,21 @@ export default function EditProfileScreen() {
         setEmail(user.email || '');
         if (user.avatar_url) {
           setAvatarUri(user.avatar_url.startsWith('http') ? user.avatar_url : `${API_URL}${user.avatar_url}`);
-=======
-    async function loadData() {
-      try {
-        const u = await fetchCurrentUser();
-        if (mounted && u) {
-          setUser(u);
-          setFirstName(u.first_name || '');
-          setLastName(u.last_name || '');
-          setBio(u.bio || '');
-          setPhone(u.phone || '');
-          setGender(u.gender || 'custom');
-          setCity(u.city || '');
-
-          Promise.all([
-            fetchFollowStatus(u.id).catch(() => null),
-            fetchPosts(1, 1, u.id).catch(() => null),
-          ]).then(([followStatus, postsResponse]) => {
-            if (!mounted) return;
-            if (followStatus) {
-              setFollowerCount(followStatus.followers_count);
-            } else {
-              setFollowerCount(0);
-            }
-            if (postsResponse) {
-              setPostCount(postsResponse.total ?? 0);
-            } else {
-              setPostCount(0);
-            }
-          });
->>>>>>> 4df61f6 (update UI profile)
         }
-<<<<<<< HEAD
         setContactPrivacy(user.contact_privacy || 'public');
         setEmailPrivacy(user.email_privacy || 'public');
         setLocationPrivacy(user.location_privacy || 'public');
-=======
->>>>>>> a2cdf5f (merge main into profile_app)
 
         fetchFollowStatus(user.id)
           .then((status) => {
             if (mounted) setFollowerCount(status.followers_count);
           })
-<<<<<<< HEAD
-          .catch(() => { });
-=======
           .catch(() => {});
->>>>>>> a2cdf5f (merge main into profile_app)
         fetchPosts(1, 1, user.id)
           .then((res) => {
             if (mounted) setPostCount(res.total);
           })
-<<<<<<< HEAD
-          .catch(() => { });
-=======
           .catch(() => {});
->>>>>>> a2cdf5f (merge main into profile_app)
       })
       .catch(() => {
         if (mounted) setProfileBanner({ type: 'error', message: 'Không thể tải thông tin cá nhân' });
@@ -572,11 +473,7 @@ export default function EditProfileScreen() {
     setIsSavingProfile(true);
     setProfileBanner(null);
     try {
-<<<<<<< HEAD
       if (avatarUri && hasNewAvatar) {
-=======
-      if (avatarUri && !avatarUri.startsWith('http')) {
->>>>>>> a2cdf5f (merge main into profile_app)
         await uploadUserAvatar(avatarUri);
       }
 
@@ -702,7 +599,6 @@ export default function EditProfileScreen() {
             {/* Main 2-col layout */}
             <View className={isWide ? 'flex-row items-start gap-6' : 'gap-6'}>
               {/* Left: Live preview */}
-<<<<<<< HEAD
               {isTablet && (
                 <View className={isWide ? 'w-[280px]' : 'w-full'}>
                   <LivePreviewCard
@@ -715,18 +611,6 @@ export default function EditProfileScreen() {
                   />
                 </View>
               )}
-=======
-              <View className={isWide ? 'w-[280px]' : 'w-full'}>
-                <LivePreviewCard
-                  firstName={firstName}
-                  lastName={lastName}
-                  bio={bio}
-                  avatarSource={currentAvatarSource}
-                  followerCount={followerCount}
-                  postCount={postCount}
-                />
-              </View>
->>>>>>> a2cdf5f (merge main into profile_app)
 
               {/* Right: Form panels */}
               <View className="flex-1 gap-6">
