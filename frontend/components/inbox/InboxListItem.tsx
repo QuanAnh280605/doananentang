@@ -1,6 +1,7 @@
-import { Pressable, View } from 'react-native';
+import { Pressable, View, Image } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { API_URL } from '@/lib/api';
 
 export type InboxListItemData = {
   id: string;
@@ -8,12 +9,23 @@ export type InboxListItemData = {
   preview: string;
   time: string;
   initials: string;
+  avatarUrl?: string | null;
   bio?: string;
   active?: boolean;
   unread?: number;
 };
 
-function AvatarPill({ initials }: { initials: string }) {
+function AvatarPill({ initials, avatarUrl }: { initials: string; avatarUrl?: string | null }) {
+  if (avatarUrl) {
+    const uri = avatarUrl.startsWith('http') ? avatarUrl : `${API_URL}${avatarUrl}`;
+    return (
+      <Image
+        source={{ uri }}
+        className="h-12 w-12 rounded-[18px] bg-slate-200 border border-slate-200"
+        style={{ width: 48, height: 48 }}
+      />
+    );
+  }
   return (
     <View className="h-12 w-12 items-center justify-center rounded-[18px] bg-[#DBEAFE]">
       <ThemedText className="text-sm font-semibold tracking-[0.6px] text-slate-900">{initials}</ThemedText>
@@ -27,7 +39,7 @@ export function InboxListItem({ item, onPress }: { item: InboxListItemData; onPr
       className={`rounded-[24px] border px-4 py-4 active:opacity-90 ${item.active ? 'border-[#BFDBFE] bg-[#EFF6FF]' : 'border-transparent bg-[#F8FAFC]'}`}
       onPress={onPress}>
       <View className="flex-row items-start gap-3">
-        <AvatarPill initials={item.initials} />
+        <AvatarPill initials={item.initials} avatarUrl={item.avatarUrl} />
         <View className="flex-1 gap-1">
           <View className="flex-row items-center justify-between gap-3">
             <ThemedText className="text-base font-semibold text-slate-950">{item.name}</ThemedText>
