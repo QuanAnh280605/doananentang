@@ -6,6 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { uploadStoryMedia, createStory } from '@/lib/api';
+import { useToast } from '@/hooks/useToast';
 
 type CreateStoryModalProps = {
   visible: boolean;
@@ -16,6 +17,7 @@ type CreateStoryModalProps = {
 const { width, height } = Dimensions.get('window');
 
 export function CreateStoryModal({ visible, onClose, onSuccess }: CreateStoryModalProps) {
+  const toast = useToast();
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [caption, setCaption] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -24,7 +26,7 @@ export function CreateStoryModal({ visible, onClose, onSuccess }: CreateStoryMod
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     
     if (permissionResult.granted === false) {
-      Alert.alert('Cấp quyền', 'Bạn cần cho phép truy cập thư viện ảnh để đăng story.');
+      toast.error('Bạn cần cho phép truy cập thư viện ảnh để đăng story.');
       return;
     }
 
@@ -41,7 +43,7 @@ export function CreateStoryModal({ visible, onClose, onSuccess }: CreateStoryMod
 
   const handleSubmit = async () => {
     if (!imageUri) {
-      Alert.alert('Lỗi', 'Vui lòng chọn một ảnh cho story của bạn.');
+      toast.error('Vui lòng chọn một ảnh cho story của bạn.');
       return;
     }
 
@@ -62,7 +64,7 @@ export function CreateStoryModal({ visible, onClose, onSuccess }: CreateStoryMod
       onSuccess();
       handleClose();
     } catch (error: any) {
-      Alert.alert('Lỗi', error.message || 'Có lỗi xảy ra khi tạo story.');
+      toast.error(error.message || 'Có lỗi xảy ra khi tạo story.');
     } finally {
       setIsSubmitting(false);
     }

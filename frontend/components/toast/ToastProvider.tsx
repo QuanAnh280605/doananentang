@@ -57,7 +57,7 @@ function ToastCard({ toast, palette, isStacked }: ToastCardProps) {
         {
           backgroundColor: palette.background,
           borderColor: palette.border,
-          shadowColor: palette.shadow,
+          boxShadow: `0px 4px 8px ${palette.shadow}`,
           opacity,
           transform: [{ translateY }],
         },
@@ -81,13 +81,13 @@ export function ToastProvider({ children }: ToastProviderProps) {
       background: isDark ? '#166534' : '#16a34a',
       border: isDark ? '#22c55e' : '#4ade80',
       text: isDark ? '#dcfce7' : '#ffffff',
-      shadow: isDark ? '#020617' : '#0f172a',
+      shadow: isDark ? '#02061733' : '#0f172a33',
     },
     error: {
       background: isDark ? '#9f1239' : '#e11d48',
       border: isDark ? '#fb7185' : '#f43f5e',
       text: isDark ? '#ffe4e6' : '#ffffff',
-      shadow: isDark ? '#020617' : '#0f172a',
+      shadow: isDark ? '#02061733' : '#0f172a33',
     },
   }), [isDark]);
 
@@ -212,10 +212,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
   },
   toastSpacing: {
     marginBottom: 8,

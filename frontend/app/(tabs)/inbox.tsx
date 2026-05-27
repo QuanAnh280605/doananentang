@@ -1,9 +1,9 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter, useLocalSearchParams, useNavigation } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import type { ReactNode } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Pressable,
   ScrollView,
@@ -295,6 +295,11 @@ export default function InboxScreen() {
   useEffect(() => {
     if (!showNewChatModal) return;
 
+    if (!newChatSearchQuery.trim()) {
+      setNewChatSearchResults([]);
+      return;
+    }
+
     setIsSearchingUsers(true);
     const delayDebounceFn = setTimeout(() => {
       searchUsers(newChatSearchQuery, 1, 20)
@@ -562,11 +567,15 @@ export default function InboxScreen() {
         style={!useViewportLayout ? { paddingTop: Math.max(insets.top, 0) + 10 } : undefined}>
         {/* Header tinh gọn ở phía trên */}
         <View className="flex-row items-center gap-3 pb-3 mb-2 border-b border-slate-100">
-          {/* Nút Back - Chỉ hiển thị trên mobile/tablet */}
           {!useViewportLayout && (
             <Pressable
+              hitSlop={20}
+              style={{ zIndex: 50, elevation: 50 }}
               className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 active:opacity-80"
-              onPress={() => setActiveChatId(null)}>
+              onPress={() => {
+                setActiveChatId(null);
+                router.setParams({ openChatId: undefined });
+              }}>
               <MaterialIcons color="#475569" name="arrow-back" size={20} />
             </Pressable>
           )}
@@ -677,7 +686,10 @@ export default function InboxScreen() {
     <>
       <StatusBar style="dark" />
       <ThemedView className="flex-1 bg-[#F8FAFC]">
-        <ThemedView className={`mx-auto w-full max-w-[1720px] px-4 pb-6 md:px-6 flex-1 ${(!useViewportLayout && activeChatId !== null) ? 'pt-1.5' : 'pt-4'}`}>
+        <ThemedView 
+          className="mx-auto w-full max-w-[1720px] px-4 pb-6 md:px-6 flex-1"
+          style={{ paddingTop: (!useViewportLayout && activeChatId !== null) ? (Math.max(insets.top, 0) + 6) : 0 }}
+        >
           {!useViewportLayout && activeChatId !== null ? null : (
             <AppTopNav
               isTablet={isTablet}
@@ -699,9 +711,9 @@ export default function InboxScreen() {
             </View>
           ) : (
             // Mobile/Tablet Adaptive Layout: Single-view based on active conversation
-            <View className={(!useViewportLayout && activeChatId !== null) ? "w-full" : "mt-2 w-full"} style={{ height: activeChatId === null ? height - 150 : height - 35 }}>
+            <View className={(!useViewportLayout && activeChatId !== null) ? "w-full flex-1" : "mt-2 w-full flex-1"}>
               {activeChatId === null ? (
-                <View className="w-full h-full">{renderInboxList()}</View>
+                <View className="w-full flex-1">{renderInboxList()}</View>
               ) : (
                 <KeyboardAvoidingView
                   behavior={Platform.OS === 'ios' ? 'padding' : undefined}

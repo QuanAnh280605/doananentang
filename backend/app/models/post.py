@@ -67,6 +67,16 @@ class Post(Base):
       lazy="joined",
   )
 
+  shared_post_id: Mapped[int | None] = mapped_column(UUID_TYPE, ForeignKey('posts.id', ondelete='SET NULL'), nullable=True)
+
+  # Quan hệ N-1: Post -> Post (bài gốc được share)
+  shared_post: Mapped["Post"] = relationship(
+      "Post",
+      remote_side=[id],
+      foreign_keys=[shared_post_id],
+      lazy="joined",
+  )
+
   @property
   def post_id(self) -> int:
     return self.id

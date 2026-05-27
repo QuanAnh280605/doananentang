@@ -11,6 +11,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { API_URL, fetchPosts, createDirectChat } from '@/lib/api';
 import { fetchCurrentUser, fetchFollowStatus, followUser, fetchUserProfile, type FollowStatus, unfollowUser, type AuthUser } from '@/lib/auth';
+import { useToast } from '@/hooks/useToast';
 import type { Post } from '@/lib/types';
 
 type ProfileTab = 'posts' | 'media';
@@ -214,6 +215,7 @@ export default function UserProfileScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const postsSectionY = useRef<number>(0);
   const feedY = useRef<number>(0);
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const params = useLocalSearchParams<{ userId?: string; name?: string; initials?: string; preview?: string; bio?: string }>();
 
@@ -235,7 +237,7 @@ export default function UserProfileScreen() {
             router.replace('/(tabs)/profile');
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [numericUserId]);
 
@@ -373,7 +375,7 @@ export default function UserProfileScreen() {
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Không thể bắt đầu cuộc hội thoại.';
-      Alert.alert('Lỗi', message);
+      toast.error(message);
     } finally {
       setIsCreatingChat(false);
     }
@@ -393,7 +395,7 @@ export default function UserProfileScreen() {
       <ThemedView className="flex-1 bg-[#F1F5F9]" style={{ minHeight: height, paddingTop: insets.top }}>
         <ScrollView ref={scrollViewRef} bounces={false} className="flex-1" contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}>
           <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 pb-6 md:px-6 md:pt-6">
-            
+
             {/* Header / Back */}
             <View className="mx-4 md:mx-0 flex-row items-center gap-3 bg-white shadow-sm rounded-full md:rounded-[32px] md:border md:border-[#E4E8EE] px-2 py-2 mt-4 md:mt-0">
               <Pressable
@@ -528,9 +530,9 @@ export default function UserProfileScreen() {
                           </View>
                         ))}
                       {!profile.email && !profile.location && (
-                         <ThemedText className="text-base italic text-slate-400">
-                           Chưa có thông tin.
-                         </ThemedText>
+                        <ThemedText className="text-base italic text-slate-400">
+                          Chưa có thông tin.
+                        </ThemedText>
                       )}
                     </View>
                   </SidebarCard>

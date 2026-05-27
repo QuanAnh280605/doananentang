@@ -1,4 +1,4 @@
-import { Aperture, EnvelopeSimple, Bell, SquaresFour, MagnifyingGlass, IconWeight } from 'phosphor-react-native';
+import { Aperture, EnvelopeSimple, Bell, SquaresFour, IconWeight } from 'phosphor-react-native';
 import { Pressable, View, Image } from 'react-native';
 import { router } from 'expo-router';
 
@@ -46,7 +46,7 @@ function NavAvatar({ initials, avatarUrl, size = 'large' }: { initials: string; 
   );
 }
 
-type IconComponent = React.ComponentType<{ size?: number; color?: string; weight?: IconWeight }>;
+type IconComponent = React.ComponentType<{ size?: number; color?: string; weight?: any }>;
 
 function NavActionBubble({ icon: Icon }: { icon: IconComponent }) {
   return (
@@ -65,7 +65,7 @@ export function AppTopNav({
   onSearchChange,
 }: AppTopNavProps) {
   const globalSearch = useGlobalSearch();
-  const { unreadCount, unreadChatCount } = useNotifications();
+  const { unreadCount } = useNotifications();
   const insets = useSafeAreaInsets();
   const isControlled = typeof onSearchChange === 'function';
   const resolvedSearchValue = isControlled ? (searchValue ?? '') : globalSearch.query;
@@ -87,29 +87,17 @@ export function AppTopNav({
 
   return (
     <ThemedView
+      className={`bg-white ${isTablet ? 'rounded-surface border border-app-border px-5 pb-4' : 'px-4 pb-3'}`}
       style={[
-        isTablet ? {
-          borderRadius: 24,
-          borderWidth: 1,
-          borderColor: '#E2E8F0',
-          paddingHorizontal: 20,
-          paddingBottom: 16,
-          paddingTop: Math.max(insets.top, 0) + 16,
-          backgroundColor: '#FFFFFF',
-        } : {
-          borderRadius: 20,
-          borderWidth: 1,
-          borderColor: '#E2E8F0',
-          marginHorizontal: 0,
-          marginTop: Math.max(insets.top, 0) + 10,
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          backgroundColor: '#FFFFFF',
+        { paddingTop: Math.max(insets.top, 0) + (isTablet ? 16 : 10) },
+        !isTablet && {
+          borderBottomWidth: 1,
+          borderBottomColor: '#F1F5F9',
           shadowColor: '#0F172A',
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.08,
-          shadowRadius: 16,
-          elevation: 4,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.03,
+          shadowRadius: 8,
+          elevation: 2,
         }
       ]}
     >
@@ -150,14 +138,7 @@ export function AppTopNav({
           </View>
 
           <View className="flex-row items-center gap-3">
-            <Pressable onPress={() => router.push('/(tabs)/inbox')} className="active:opacity-75">
-              <View className="relative">
-                <NavActionBubble icon={EnvelopeSimple} />
-                {unreadChatCount > 0 && (
-                  <View className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-[#EF4444] border-2 border-white" />
-                )}
-              </View>
-            </Pressable>
+            <NavActionBubble icon={EnvelopeSimple} />
             <Pressable onPress={() => router.push('/(tabs)/notifications')}>
               <View className="relative">
                 <NavActionBubble icon={Bell} />
@@ -199,21 +180,6 @@ export function AppTopNav({
           {/* Right Action Icons & Avatar */}
           <View className="flex-row items-center gap-2.5">
             <Pressable
-              onPress={() => router.push('/(tabs)/explore')}
-              className="h-10 w-10 items-center justify-center bg-white border border-[#E2E8F0] active:opacity-75"
-              style={{
-                borderRadius: 12,
-                shadowColor: '#0F172A',
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.03,
-                shadowRadius: 3,
-                elevation: 1,
-              }}
-            >
-              <MagnifyingGlass color="#334155" size={21} weight="regular" />
-            </Pressable>
-
-            <Pressable
               onPress={() => router.push('/(tabs)/notifications')}
               className="h-10 w-10 items-center justify-center bg-white border border-[#E2E8F0] active:opacity-75"
               style={{
@@ -247,12 +213,6 @@ export function AppTopNav({
               }}
             >
               <EnvelopeSimple color="#334155" size={21} weight="regular" />
-              {unreadChatCount > 0 && (
-                <View
-                  className="absolute h-2.5 w-2.5 rounded-full bg-[#EF4444] border-2 border-white"
-                  style={{ top: -1, right: -1 }}
-                />
-              )}
             </Pressable>
 
             <Pressable

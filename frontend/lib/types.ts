@@ -48,6 +48,8 @@ export type Post = {
   location_lat?: number | null;
   location_lng?: number | null;
   tagged_users?: PostTag[];
+  shared_post_id?: string | null;
+  shared_post?: Post | null;
 };
 
 /** Response phân trang từ GET /api/posts */
