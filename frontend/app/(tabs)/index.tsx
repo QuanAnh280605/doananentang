@@ -15,10 +15,10 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Avatar, surfaceClass } from '@/components/ui/core';
 import { fetchFollowingUsers, fetchFeedPosts, listDirectChats, fetchStories } from '@/lib/api';
-import type { ChatListItem, FollowUser } from '@/lib/api';
+import type { FollowUser } from '@/lib/api';
 import { fetchCurrentUser } from '@/lib/auth';
 import type { AuthUser } from '@/lib/auth';
-import type { Post } from '@/lib/types';
+import type { Post, ChatListItemRead } from '@/lib/types';
 
 
 type Contact = {
@@ -56,7 +56,7 @@ function mapFollowUserToContact(user: FollowUser): Contact {
   };
 }
 
-function mapChatToInboxItem(thread: ChatListItem): InboxItem {
+function mapChatToInboxItem(thread: ChatListItemRead): InboxItem {
   return {
     id: thread.chat_id,
     participantId: thread.participant.id,
@@ -160,7 +160,7 @@ function RightRail({ currentUser }: { currentUser: AuthUser | null }) {
       .then(([followingResponse, chatThreads]) => {
         if (!isMounted) return;
         setContacts(followingResponse.items.map(mapFollowUserToContact));
-        setInboxItems(chatThreads.slice(0, 3).map(mapChatToInboxItem));
+        setInboxItems(chatThreads.items.slice(0, 3).map(mapChatToInboxItem));
       })
       .catch((err: unknown) => {
         if (!isMounted) return;
