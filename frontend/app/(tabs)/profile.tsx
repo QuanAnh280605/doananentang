@@ -229,9 +229,9 @@ function MediaPanel({ posts, hideHeader }: { posts: Post[]; hideHeader?: boolean
           {mediaItems.map(({ media, post }) => {
             const fileUrl = media.file_url.startsWith('http') ? media.file_url : `${API_URL}${media.file_url}`;
             return (
-              <Pressable 
-                key={media.id} 
-                className="w-1/3 p-1 active:opacity-80" 
+              <Pressable
+                key={media.id}
+                className="w-1/3 p-1 active:opacity-80"
                 style={{ aspectRatio: 1 }}
                 onPress={() => router.push(`/(post)/${post.id}`)}
               >
@@ -428,7 +428,7 @@ export default function ProfileScreen() {
                           </Pressable>
                         </>
                       ) : null}
-                      <Pressable 
+                      <Pressable
                         className="flex-row items-center gap-1.5 active:opacity-70"
                         onPress={() => {
                           if (activeTab !== 'posts') {
@@ -474,47 +474,47 @@ export default function ProfileScreen() {
             </ThemedView>
 
             {/* Body: sidebar + main */}
-            <View 
+            <View
               className={isWide ? 'flex-row items-start gap-4' : 'gap-4'}
               onLayout={(e) => postsSectionY.current = e.nativeEvent.layout.y}
             >
               {/* Sidebar */}
               {activeTab !== 'media' && (
                 <View className={isWide ? 'w-[320px] gap-4' : 'gap-4'}>
-                <SidebarCard title="Giới thiệu">
-                  <View className="gap-3">
-                    {[
-                      { icon: 'mail-outline' as const, value: profile.email, privacy: profile.emailPrivacy },
-                      { icon: 'phone' as const, value: profile.phone, privacy: profile.contactPrivacy },
-                      { icon: 'location-on' as const, value: profile.location, privacy: profile.locationPrivacy },
-                    ]
-                      .filter((item) => !!item.value)
-                      .map((item) => {
-                        let privacyIcon: keyof typeof MaterialIcons.glyphMap | null = null;
-                        if (item.privacy === 'onlyme') privacyIcon = 'lock';
-                        else if (item.privacy === 'followersonly') privacyIcon = 'group';
+                  <SidebarCard title="Giới thiệu">
+                    <View className="gap-3">
+                      {[
+                        { icon: 'mail-outline' as const, value: profile.email, privacy: profile.emailPrivacy },
+                        { icon: 'phone' as const, value: profile.phone, privacy: profile.contactPrivacy },
+                        { icon: 'location-on' as const, value: profile.location, privacy: profile.locationPrivacy },
+                      ]
+                        .filter((item) => !!item.value)
+                        .map((item) => {
+                          let privacyIcon: keyof typeof MaterialIcons.glyphMap | null = null;
+                          if (item.privacy === 'onlyme') privacyIcon = 'lock';
+                          else if (item.privacy === 'followersonly') privacyIcon = 'group';
 
-                        return (
-                          <View key={item.icon} className="flex-row items-center gap-3">
-                            <View className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA]">
-                              <MaterialIcons name={item.icon} size={20} color="#64748B" />
+                          return (
+                            <View key={item.icon} className="flex-row items-center gap-3">
+                              <View className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA]">
+                                <MaterialIcons name={item.icon} size={20} color="#64748B" />
+                              </View>
+                              <View className="flex-1 flex-row items-center gap-2">
+                                <ThemedText className="text-base font-medium text-slate-800" numberOfLines={1}>
+                                  {item.value}
+                                </ThemedText>
+                                {privacyIcon && (
+                                  <MaterialIcons name={privacyIcon} size={14} color="#94A3B8" />
+                                )}
+                              </View>
                             </View>
-                            <View className="flex-1 flex-row items-center gap-2">
-                              <ThemedText className="text-base font-medium text-slate-800" numberOfLines={1}>
-                                {item.value}
-                              </ThemedText>
-                              {privacyIcon && (
-                                <MaterialIcons name={privacyIcon} size={14} color="#94A3B8" />
-                              )}
-                            </View>
-                          </View>
-                        );
-                      })}
-                  </View>
-                </SidebarCard>
+                          );
+                        })}
+                    </View>
+                  </SidebarCard>
 
 
-              </View>
+                </View>
               )}
 
               {/* Main content area */}
@@ -522,7 +522,7 @@ export default function ProfileScreen() {
                 {activeTab === 'posts' ? (
                   <View className="gap-4">
                     <MediaPanel posts={posts} />
-                    <ThemedText 
+                    <ThemedText
                       onLayout={(e) => feedY.current = e.nativeEvent.layout.y}
                       className="px-1 text-[26px] font-semibold text-slate-950"
                     >
