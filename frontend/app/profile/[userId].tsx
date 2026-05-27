@@ -15,13 +15,6 @@ import type { Post } from '@/lib/types';
 
 type ProfileTab = 'posts' | 'about' | 'media';
 
-type MediaSpotlight = {
-  id: string;
-  title: string;
-  subtitle: string;
-  fillClassName: string;
-};
-
 const surfaceClass = 'rounded-surface border border-app-border bg-app-surface';
 const mutedSurfaceClass = 'rounded-[24px] bg-[#F7F8FA]';
 
@@ -29,21 +22,6 @@ const tabs: { key: ProfileTab; label: string; icon: keyof typeof MaterialIcons.g
   { key: 'posts', label: 'Posts', icon: 'grid-view' },
   { key: 'about', label: 'About', icon: 'person-outline' },
   { key: 'media', label: 'Media', icon: 'photo-library' },
-];
-
-const featuredMedia: MediaSpotlight[] = [
-  {
-    id: '1',
-    title: 'Review systems playbook',
-    subtitle: 'A tighter artifact for faster approvals and clearer motion notes.',
-    fillClassName: 'bg-[#D9ECF8]',
-  },
-  {
-    id: '2',
-    title: 'Northfeed launch board',
-    subtitle: 'Signals, rituals, and release checkpoints shaped for distributed teams.',
-    fillClassName: 'bg-[#EEE8FF]',
-  },
 ];
 
 function getSingleParam(value: string | string[] | undefined, fallback: string): string {
@@ -172,19 +150,41 @@ function AboutPanel({ profile }: { profile: { displayName: string; initials: str
   );
 }
 
-function MediaPanel() {
+function MediaPanel({ posts, hideHeader }: { posts: Post[]; hideHeader?: boolean }) {
+  const mediaItems = (posts || []).flatMap((p) =>
+    (p.media || []).map((m) => ({ media: m, post: p }))
+  );
+
   return (
-    <ThemedView className={`${surfaceClass} p-5`}>
-      <SectionTitle title="Media" subtitle="Featured references and shareable artifacts" />
-      <View className="mt-5 gap-4 lg:flex-row">
-        {featuredMedia.map((item) => (
-          <View key={item.id} className="flex-1 gap-3">
-            <View className={`h-[220px] rounded-[28px] bg-[#F7F8FA] ${item.fillClassName}`} />
-            <ThemedText className="text-lg font-semibold text-slate-950">{item.title}</ThemedText>
-            <ThemedText className="text-sm leading-6 text-slate-600">{item.subtitle}</ThemedText>
-          </View>
-        ))}
-      </View>
+    <ThemedView className={`${surfaceClass} ${hideHeader ? 'p-2 pt-4' : 'p-5'}`}>
+      {!hideHeader && <SectionTitle title="Featured media" subtitle="Ảnh đã chia sẻ từ các bài viết" />}
+      {mediaItems.length === 0 ? (
+        <View className="mt-5 items-center py-8">
+          <MaterialIcons name="photo-library" size={40} color="#CBD5E1" />
+          <ThemedText className="mt-3 text-base font-medium text-slate-700">Chưa có ảnh nào</ThemedText>
+          <ThemedText className="mt-1 text-sm text-slate-400">Ảnh chia sẻ sẽ xuất hiện ở đây.</ThemedText>
+        </View>
+      ) : (
+        <View className="mt-5 flex-row flex-wrap -mx-1">
+          {mediaItems.map(({ media, post }) => {
+            const fileUrl = media.file_url.startsWith('http') ? media.file_url : `${API_URL}${media.file_url}`;
+            return (
+              <Pressable 
+                key={media.id} 
+                className="w-1/3 p-1 active:opacity-80" 
+                style={{ aspectRatio: 1 }}
+                onPress={() => router.push(`/(post)/${post.id}`)}
+              >
+                <Image
+                  source={{ uri: fileUrl }}
+                  style={{ width: '100%', height: '100%', borderRadius: 12 }}
+                  contentFit="cover"
+                />
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
     </ThemedView>
   );
 }
@@ -495,17 +495,7 @@ export default function UserProfileScreen() {
                 </SidebarCard>
 
                 {/* Featured media */}
-                <SidebarCard title="Featured media">
-                  {featuredMedia.map((item) => (
-                    <View key={item.id} className="gap-3">
-                      <View className={`h-[150px] rounded-[24px] bg-[#F7F8FA] ${item.fillClassName}`} />
-                      <View>
-                        <ThemedText className="text-lg font-semibold text-slate-950">{item.title}</ThemedText>
-                        <ThemedText className="mt-1 text-sm leading-6 text-slate-600">{item.subtitle}</ThemedText>
-                      </View>
-                    </View>
-                  ))}
-                </SidebarCard>
+                <MediaPanel posts={posts} />
               </View>
 
               {/* Central panels content */}
@@ -527,7 +517,7 @@ export default function UserProfileScreen() {
 
                 {activeTab === 'about' ? <AboutPanel profile={profile} /> : null}
 
-                {activeTab === 'media' ? <MediaPanel /> : null}
+                {activeTab === 'media' ? <MediaPanel posts={posts} hideHeader /> : null}
               </View>
             </View>
           </ThemedView>

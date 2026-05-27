@@ -329,7 +329,7 @@ export default function ProfileScreen() {
       let isMounted = true;
       setLoadingPosts(true);
 
-      fetchPosts(1, 10, user.id)
+      fetchPosts(1, 30, user.id)
         .then((res) => {
           if (isMounted) setPosts(res.items);
         })
