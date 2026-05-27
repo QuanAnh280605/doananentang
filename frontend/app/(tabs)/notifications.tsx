@@ -80,7 +80,7 @@ export default function NotificationsScreen() {
 
     // Điều hướng dựa trên loại thông báo
     if (item.type === 'message') {
-      router.push('/(tabs)/inbox');
+      router.push('/inbox');
     } else if (item.type === 'follow') {
       router.push({
         pathname: '/profile/[userId]',
@@ -90,7 +90,7 @@ export default function NotificationsScreen() {
       const targetPostId = item.post_id || item.target_post_id;
       if (targetPostId) {
         router.push({
-          pathname: '/(post)/[id]',
+          pathname: '/[id]',
           params: { id: targetPostId },
         });
       }

@@ -2,13 +2,13 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useLocalSearchParams, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View, Alert, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 
 import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { API_URL, fetchPosts } from '@/lib/api';
+import { API_URL, fetchPosts, createDirectChat } from '@/lib/api';
 import { fetchFollowStatus, followUser, fetchUserProfile, type FollowStatus, unfollowUser, type AuthUser } from '@/lib/auth';
 import type { Post } from '@/lib/types';
 
@@ -117,16 +117,7 @@ function AvatarBlock({ initials, soft = false, size = 'large', avatarUrl }: { in
   );
 }
 
-function ActionButton({ icon, label, filled = false, onPress }: { icon: keyof typeof MaterialIcons.glyphMap; label: string; filled?: boolean; onPress?: () => void }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      className={`min-w-[150px] flex-1 flex-row items-center justify-center gap-2 rounded-[20px] px-4 py-4 active:opacity-90 ${filled ? 'bg-[#0A0A0A]' : 'bg-[#F7F8FA]'}`}>
-      <MaterialIcons color={filled ? '#FFFFFF' : '#0F172A'} name={icon} size={20} />
-      <ThemedText className={`text-base font-medium ${filled ? 'text-white' : 'text-slate-900'}`}>{label}</ThemedText>
-    </Pressable>
-  );
-}
+
 
 function ProfileTabButton({ active, icon, label, onPress }: { active: boolean; icon: keyof typeof MaterialIcons.glyphMap; label: string; onPress: () => void }) {
   return (
@@ -218,6 +209,7 @@ export default function UserProfileScreen() {
   const [isLoadingFollowStatus, setIsLoadingFollowStatus] = useState(false);
   const [isSubmittingFollow, setIsSubmittingFollow] = useState(false);
   const [followErrorMessage, setFollowErrorMessage] = useState<string | null>(null);
+  const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
 
@@ -331,6 +323,26 @@ export default function UserProfileScreen() {
       });
   };
 
+  const handleStartChat = async () => {
+    if (numericUserId === null || isCreatingChat) {
+      return;
+    }
+
+    setIsCreatingChat(true);
+    try {
+      const chat = await createDirectChat(numericUserId);
+      router.push({
+        pathname: '/inbox',
+        params: { openChatId: chat.chat_id.toString() },
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Không thể bắt đầu cuộc hội thoại.';
+      Alert.alert('Lỗi', message);
+    } finally {
+      setIsCreatingChat(false);
+    }
+  };
+
   const handleDeletePost = (postId: string) => {
     setPosts(current => current.filter(p => p.id !== postId));
   };
@@ -414,7 +426,18 @@ export default function UserProfileScreen() {
                               : 'Follow'}
                         </ThemedText>
                       </Pressable>
-                      <ActionButton icon="chat-bubble-outline" label="Message" />
+                      <Pressable
+                        className="min-w-[150px] flex-1 flex-row items-center justify-center gap-2 rounded-[20px] px-4 py-4 active:opacity-90 bg-[#F7F8FA]"
+                        disabled={numericUserId === null || isCreatingChat}
+                        onPress={handleStartChat}
+                      >
+                        {isCreatingChat ? (
+                          <ActivityIndicator color="#0F172A" size="small" style={{ marginRight: 6 }} />
+                        ) : (
+                          <MaterialIcons color="#0F172A" name="chat-bubble-outline" size={20} style={{ marginRight: 6 }} />
+                        )}
+                        <ThemedText className="text-base font-medium text-slate-900">Message</ThemedText>
+                      </Pressable>
                     </View>
                   </View>
                 </View>
