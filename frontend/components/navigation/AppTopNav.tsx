@@ -87,6 +87,10 @@ export function AppTopNav({
 
   return (
     <ThemedView 
+<<<<<<< HEAD
+=======
+      className="bg-white"
+>>>>>>> f08258d (UI)
       style={[
         isTablet ? {
           borderRadius: 24,
@@ -94,6 +98,7 @@ export function AppTopNav({
           borderColor: '#E2E8F0',
           paddingHorizontal: 20,
           paddingBottom: 16,
+<<<<<<< HEAD
           paddingTop: Math.max(insets.top, 0) + 16,
           backgroundColor: '#FFFFFF',
         } : {
@@ -110,6 +115,23 @@ export function AppTopNav({
           shadowOpacity: 0.08,
           shadowRadius: 16,
           elevation: 4,
+=======
+          paddingTop: 16,
+          marginTop: Math.max(insets.top, 0) + 16,
+        } : {
+          borderRadius: 24,
+          borderWidth: 1,
+          borderColor: '#E4E8EE',
+          marginHorizontal: 0,
+          marginTop: Platform.OS === 'ios' ? Math.max(insets.top, 44) + 8 : Math.max(insets.top, 24) + 12,
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          shadowColor: '#0F172A',
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.05,
+          shadowRadius: 12,
+          elevation: 3,
+>>>>>>> f08258d (UI)
         }
       ]}
     >
@@ -171,26 +193,33 @@ export function AppTopNav({
         </View>
       ) : (
         /* Mobile Header */
-        <View className="flex-row items-center justify-between h-12 pb-0.5">
-          {/* Left Brand Logo Squircle */}
-          <View className="flex-row items-center">
-            <View 
-              className="h-10 w-10 items-center justify-center bg-[#4A9FD8]"
-              style={{
-                borderRadius: 12,
-                shadowColor: '#4A9FD8',
-                shadowOffset: { width: 0, height: 3 },
-                shadowOpacity: 0.25,
-                shadowRadius: 5,
-                elevation: 3,
-              }}
+        <View className="flex-row items-center justify-between h-10 gap-3">
+          {/* Left: Search Input */}
+          {isControlled ? (
+            <SearchInput
+              className="h-10 py-0 flex-1"
+              onChangeText={handleSearchChange}
+              placeholder={searchPlaceholder}
+              value={resolvedSearchValue}
+            />
+          ) : (
+            <Pressable 
+              className="flex-1"
+              onPress={handleSearchFocus}
             >
-              <Aperture color="#FFFFFF" size={21} weight="bold" />
-            </View>
-          </View>
+              <View pointerEvents="none">
+                <SearchInput
+                  className="h-10 py-0"
+                  onChangeText={() => {}}
+                  placeholder={searchPlaceholder}
+                  value={resolvedSearchValue}
+                />
+              </View>
+            </Pressable>
+          )}
 
           {/* Right Action Icons & Avatar */}
-          <View className="flex-row items-center gap-2.5">
+          <View className="flex-row items-center gap-2">
              <Pressable 
                onPress={() => router.push('/(tabs)/explore')} 
                className="h-10 w-10 items-center justify-center bg-white border border-[#E2E8F0] active:opacity-75"
@@ -244,7 +273,7 @@ export function AppTopNav({
 
              <Pressable 
                onPress={() => router.push('/profile')} 
-               className="active:opacity-75 ml-1"
+               className="active:opacity-75"
              >
                 <NavAvatar initials={avatarInitials} avatarUrl={avatarUrl} size="small" />
              </Pressable>
