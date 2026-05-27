@@ -1,12 +1,12 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { X, DotsThree, ThumbsUp, ChatCircleDots, ShareNetwork, Trash, PencilSimple } from 'phosphor-react-native';
+
 import { Link, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Platform, Image, Modal, Pressable, ScrollView, View, Alert, Share, TextInput, ActivityIndicator, DeviceEventEmitter } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { ActionBubble, Avatar, surfaceClass } from '@/components/ui/core';
+import { ActionBubble, Avatar } from '@/components/ui/core';
 import { API_URL, likePost, unlikePost, deletePost, updatePost, fetchPostLikers } from '@/lib/api';
 import type { PostLiker } from '@/lib/api';
 import { fetchCurrentUser } from '@/lib/auth';
@@ -85,6 +85,7 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
     const [likers, setLikers] = useState<PostLiker[]>([]);
     const [loadingLikers, setLoadingLikers] = useState(false);
 
+
     useEffect(() => {
         setLiked(item.is_liked);
     }, [item.is_liked]);
@@ -119,67 +120,59 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
         }
     }, [singleMediaUrl]);
 
+    const updateTopReactionsAfterChange = (
+        newReactionType: ReactionType | null,
+        oldReactionType: ReactionType | null | undefined,
+        newLikeCount: number,
+        prevTop: ReactionType[]
+    ): ReactionType[] => {
+        if (newLikeCount === 0) return [];
+        if (newLikeCount === 1 && newReactionType) return [newReactionType];
+
+        let updated = [...prevTop];
+        // Xóa reaction cũ khỏi top nếu có
+        if (oldReactionType && oldReactionType !== newReactionType) {
+            updated = updated.filter(r => r !== oldReactionType);
+        }
+        // Thêm reaction mới lên đầu nếu chưa có
+        if (newReactionType && !updated.includes(newReactionType)) {
+            updated = [newReactionType, ...updated];
+        } else if (newReactionType) {
+            // Đưa reaction mới lên đầu
+            updated = [newReactionType, ...updated.filter(r => r !== newReactionType)];
+        }
+        return updated.slice(0, 3);
+    };
+
     const handleToggleLike = async (rType?: ReactionType) => {
         if (loading) return;
-        const fromBubble = rType !== undefined;
+        setShowReactions(false);
 
-        if (fromBubble) {
-            // Bấm từ bubble: nếu cùng reaction đang có → unlike, khác → cập nhật reaction
-            const isSameReaction = liked && reactionType === rType;
-            setLoading(true);
-            setShowReactions(false);
-            try {
-                const result = isSameReaction
-                    ? await unlikePost(String(item.id))
-                    : await likePost(String(item.id), rType);
-                setLiked(result.liked);
-                setCount(result.like_count);
-                setReactionType(result.reaction_type ?? null);
+        const targetReaction: ReactionType = rType ?? 'like';
+        // Bấm nút Like chính (không từ bubble): nếu đang liked bất kỳ → unlike luôn
+        // Bấm từ bubble (rType có giá trị): chỉ unlike nếu đúng reaction đang có, khác thì cập nhật
+        const isUnliking = rType !== undefined
+            ? (liked && reactionType === targetReaction)
+            : liked;
 
-                // Cập nhật topReactions local
-                if (result.like_count === 0) {
-                    setTopReactions([]);
-                } else if (result.like_count === 1 && result.reaction_type) {
-                    setTopReactions([result.reaction_type]);
-                } else if (!isSameReaction && rType) {
-                    setTopReactions(prev => {
-                        const newReactions = [rType, ...prev.filter(r => r !== rType)];
-                        return newReactions.slice(0, Math.min(3, result.like_count));
-                    });
-                }
-            } catch {
-                // Revert on error
-            } finally {
-                setLoading(false);
-            }
-        } else {
-            // Bấm nút Like thẳng: toggle like/unlike với 'like'
-            const isUnliking = liked;
-            setLoading(true);
-            setShowReactions(false);
-            try {
-                const result = isUnliking
-                    ? await unlikePost(String(item.id))
-                    : await likePost(String(item.id), 'like');
-                setLiked(result.liked);
-                setCount(result.like_count);
-                setReactionType(result.reaction_type ?? null);
+        setLoading(true);
+        const prevReactionType = reactionType;
+        try {
+            const result = isUnliking
+                ? await unlikePost(String(item.id))
+                : await likePost(String(item.id), targetReaction);
 
-                if (result.like_count === 0) {
-                    setTopReactions([]);
-                } else if (result.like_count === 1 && result.reaction_type) {
-                    setTopReactions([result.reaction_type]);
-                } else if (!isUnliking) {
-                    setTopReactions(prev => {
-                        const newReactions = ['like', ...prev.filter(r => r !== 'like')] as ReactionType[];
-                        return newReactions.slice(0, Math.min(3, result.like_count));
-                    });
-                }
-            } catch {
-                // Revert on error
-            } finally {
-                setLoading(false);
-            }
+            setLiked(result.liked);
+            setCount(result.like_count);
+            const newReaction = result.reaction_type ?? null;
+            setReactionType(newReaction);
+            setTopReactions(prev =>
+                updateTopReactionsAfterChange(newReaction, prevReactionType, result.like_count, prev)
+            );
+        } catch {
+            // Revert on error — không làm gì, state giữ nguyên
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -586,40 +579,79 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
 
             {/* Thanh hành động */}
             <View className="mt-4 flex-row flex-wrap gap-3 border-t border-[#E4E8EE] pt-4 relative">
+                {/* Overlay bắt tap ra ngoài để đóng bubble */}
+                {showReactions && (
+                    <Pressable
+                        style={{ position: 'absolute', top: -200, left: -200, right: -200, bottom: -200, zIndex: 50 }}
+                        onPress={() => setShowReactions(false)}
+                    />
+                )}
+
+                {/* Bubble chọn cảm xúc - hiện khi long press */}
                 {showReactions && (
                     <View
-                        className="absolute left-0 -top-14 flex-row items-center gap-2 rounded-full bg-white px-3 py-2 shadow-sm border border-[#E4E8EE]"
-                        style={{ elevation: 5, zIndex: 100 }}
+                        style={{
+                            position: 'absolute',
+                            left: 0,
+                            bottom: '100%',
+                            marginBottom: 8,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 4,
+                            backgroundColor: 'white',
+                            borderRadius: 999,
+                            paddingHorizontal: 12,
+                            paddingVertical: 8,
+                            borderWidth: 1,
+                            borderColor: '#E4E8EE',
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 4 },
+                            shadowOpacity: 0.12,
+                            shadowRadius: 12,
+                            elevation: 8,
+                            zIndex: 100,
+                        }}
                     >
                         {REACTIONS.map((r) => (
                             <Pressable
                                 key={r.type}
                                 onPress={() => handleToggleLike(r.type as ReactionType)}
-                                className="active:scale-125 transition-transform p-1"
+                                style={[{
+                                    padding: 6,
+                                    borderRadius: 999,
+                                }, reactionType === r.type && liked ? {
+                                    backgroundColor: `${r.color}20`,
+                                    transform: [{ scale: 1.15 }],
+                                } : {}]}
                             >
-                                <ThemedText className="text-2xl">{r.icon}</ThemedText>
+                                <ThemedText style={{ fontSize: 26 }}>{r.icon}</ThemedText>
                             </Pressable>
                         ))}
                     </View>
                 )}
+
                 {/* Like */}
                 <Pressable
                     onPress={() => handleToggleLike()}
                     onLongPress={() => setShowReactions(true)}
                     disabled={loading}
                     className="min-w-[140px] flex-1 flex-row items-center justify-center gap-2 rounded-[20px] bg-[#F7F8FA] px-4 py-4 active:opacity-80"
+                    style={{ zIndex: 60 }}
                 >
-                    {liked ? (
-                        <>
-                            <ThemedText className="text-xl">{REACTIONS.find(r => r.type === reactionType)?.icon || '👍'}</ThemedText>
-                            <ThemedText style={{ color: REACTIONS.find(r => r.type === reactionType)?.color || '#4A9FD8' }} className="text-base font-medium">
-                                {REACTIONS.find(r => r.type === reactionType)?.name || 'Like'}
-                            </ThemedText>
-                        </>
-                    ) : (
+                    {liked ? (() => {
+                        const rx = REACTIONS.find(r => r.type === reactionType);
+                        return (
+                            <>
+                                <ThemedText style={{ fontSize: 20 }}>{rx?.icon ?? '👍'}</ThemedText>
+                                <ThemedText style={{ color: rx?.color ?? '#4A9FD8' }} className="text-base font-semibold">
+                                    {rx?.name ?? 'Like'}
+                                </ThemedText>
+                            </>
+                        );
+                    })() : (
                         <>
                             <MaterialIcons color="#666666" name="thumb-up-off-alt" size={20} />
-                            <ThemedText className="text-base font-medium text-slate-900">Like</ThemedText>
+                            <ThemedText className="text-base font-medium text-slate-500">Like</ThemedText>
                         </>
                     )}
                 </Pressable>
@@ -628,14 +660,14 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                 <Link href={`/(post)/${item.id}`} asChild>
                     <Pressable className="min-w-[140px] flex-1 flex-row items-center justify-center gap-2 rounded-[20px] bg-[#F7F8FA] px-4 py-4 active:opacity-80">
                         <MaterialIcons color="#666666" name="chat-bubble-outline" size={20} />
-                        <ThemedText className="text-base font-medium text-slate-900">Comment</ThemedText>
+                        <ThemedText className="text-base font-medium text-slate-500">Comment</ThemedText>
                     </Pressable>
                 </Link>
 
                 {/* Share */}
                 <Pressable onPress={handleShare} className="min-w-[140px] flex-1 flex-row items-center justify-center gap-2 rounded-[20px] bg-[#F7F8FA] px-4 py-4 active:opacity-80">
                     <MaterialIcons color="#666666" name="reply" size={20} />
-                    <ThemedText className="text-base font-medium text-slate-900">Share</ThemedText>
+                    <ThemedText className="text-base font-medium text-slate-500">Share</ThemedText>
                 </Pressable>
             </View>
 
@@ -655,7 +687,7 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                         {/* Header */}
                         <View className="flex-row items-center justify-between px-5 py-4 border-b border-[#E4E8EE]">
                             <ThemedText className="text-lg font-semibold text-slate-900">
-                                {count} lượt thích
+                                {count} cảm xúc
                             </ThemedText>
                             <Pressable
                                 onPress={() => setIsLikersVisible(false)}
@@ -674,7 +706,7 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                         ) : likers.length === 0 ? (
                             <View className="items-center py-10">
                                 <MaterialIcons name="thumb-up-off-alt" size={36} color="#CBD5E1" />
-                                <ThemedText className="mt-3 text-sm text-slate-500">Chưa có ai thích bài viết này</ThemedText>
+                                <ThemedText className="mt-3 text-sm text-slate-500">Chưa có ai tương tác với bài viết này</ThemedText>
                             </View>
                         ) : (
                             <View className="px-5 pt-2">
@@ -684,7 +716,17 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                                         ? (liker.avatar_url.startsWith('http') ? liker.avatar_url : `${API_URL}${liker.avatar_url}`)
                                         : null;
                                     return (
-                                        <View key={liker.id} className="flex-row items-center gap-4 py-3 border-b border-[#F1F5F9]">
+                                        <Pressable 
+                                            key={liker.id} 
+                                            className="flex-row items-center gap-4 py-3 border-b border-[#F1F5F9] active:opacity-70"
+                                            onPress={() => {
+                                                setIsLikersVisible(false);
+                                                router.push({
+                                                    pathname: '/profile/[userId]',
+                                                    params: { userId: liker.id, name: `${liker.first_name} ${liker.last_name}`.trim() }
+                                                });
+                                            }}
+                                        >
                                             <Avatar initials={likerInitials} soft avatarUrl={likerAvatarUrl} />
                                             <View className="flex-1">
                                                 <ThemedText className="font-semibold text-slate-900">
@@ -694,7 +736,7 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                                             <ThemedText className="text-xl">
                                                 {REACTIONS.find(r => r.type === liker.reaction_type)?.icon || '👍'}
                                             </ThemedText>
-                                        </View>
+                                        </Pressable>
                                     );
                                 })}
                             </View>

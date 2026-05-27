@@ -1,6 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     DeviceEventEmitter,
@@ -9,6 +9,7 @@ import {
     Pressable,
     RefreshControl,
     ScrollView,
+    Text,
     TextInput,
     View,
 } from 'react-native';
@@ -18,7 +19,17 @@ import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Avatar, surfaceClass } from '@/components/ui/core';
-import { createComment, deleteComment, fetchComments, fetchPostDetail, likeComment, unlikeComment } from '@/lib/api';
+import {
+    createComment,
+    deleteComment,
+    fetchComments,
+    fetchPostDetail,
+    likeComment,
+    unlikeComment,
+    searchUsersForMention,
+    fetchFollowingUsers,
+} from '@/lib/api';
+import type { MentionUser } from '@/lib/api';
 import { fetchCurrentUser } from '@/lib/auth';
 import type { AuthUser } from '@/lib/auth';
 import type { Comment, Post } from '@/lib/types';
@@ -42,13 +53,46 @@ function formatTime(isoString: string): string {
     return `${days} ngày trước`;
 }
 
-function CommentItem({ 
-    comment, 
-    onReply, 
-    onDelete, 
-    canDelete 
-}: { 
-    comment: Comment; 
+/** Render nội dung bình luận, parse @[Tên Đầy Đủ](userId) thành link clickable */
+function CommentContent({ content }: { content: string }) {
+    // Định dạng mention: @[Tên Đầy Đủ](userId)
+    const parts = content.split(/(@\[[^\]]+\]\(\d+\))/g);
+
+    return (
+        <ThemedText className="leading-6 text-slate-700">
+            {parts.map((part, i) => {
+                const match = part.match(/^@\[([^\]]+)\]\((\d+)\)$/);
+                if (match) {
+                    const displayName = match[1];
+                    const userId = match[2];
+                    return (
+                        <Text
+                            key={i}
+                            style={{ color: '#4A9FD8', fontWeight: '600' }}
+                            onPress={() =>
+                                router.push({
+                                    pathname: '/profile/[userId]',
+                                    params: { userId, name: displayName },
+                                })
+                            }
+                        >
+                            {`@${displayName}`}
+                        </Text>
+                    );
+                }
+                return part;
+            })}
+        </ThemedText>
+    );
+}
+
+function CommentItem({
+    comment,
+    onReply,
+    onDelete,
+    canDelete,
+}: {
+    comment: Comment;
     onReply?: (comment: Comment) => void;
     onDelete?: (commentId: string) => void;
     canDelete?: boolean;
@@ -103,25 +147,23 @@ function CommentItem({
                             {formatTime(comment.created_at)}
                         </ThemedText>
                     </View>
-                    <ThemedText className="leading-6 text-slate-700">
-                        {comment.content}
-                    </ThemedText>
+                    <CommentContent content={comment.content} />
 
                     <View className="mt-3 flex-row items-center gap-4">
-                        <Pressable 
+                        <Pressable
                             onPress={handleLike}
                             className="flex-row items-center gap-1 active:opacity-60"
                         >
-                            <MaterialIcons 
-                                color={liked ? '#4A9FD8' : '#94A3B8'} 
-                                name={liked ? 'thumb-up' : 'thumb-up-off-alt'} 
-                                size={14} 
+                            <MaterialIcons
+                                color={liked ? '#4A9FD8' : '#94A3B8'}
+                                name={liked ? 'thumb-up' : 'thumb-up-off-alt'}
+                                size={14}
                             />
                             <ThemedText className={`text-xs font-medium ${liked ? 'text-[#4A9FD8]' : 'text-slate-500'}`}>
                                 {likeCount > 0 ? `${likeCount} Thích` : 'Thích'}
                             </ThemedText>
                         </Pressable>
-                        <Pressable 
+                        <Pressable
                             onPress={() => onReply?.(comment)}
                             className="flex-row items-center gap-1 active:opacity-60"
                         >
@@ -129,7 +171,7 @@ function CommentItem({
                             <ThemedText className="text-xs font-medium text-slate-500">Trả lời</ThemedText>
                         </Pressable>
                         {canDelete && (
-                            <Pressable 
+                            <Pressable
                                 onPress={handleDelete}
                                 className="flex-row items-center gap-1 active:opacity-60"
                             >
@@ -145,10 +187,10 @@ function CommentItem({
             {comment.replies && comment.replies.length > 0 && (
                 <View className="ml-12 gap-3 border-l-2 border-[#E4E8EE] pl-4">
                     {comment.replies.map(reply => (
-                        <CommentItem 
-                            key={String(reply.id)} 
-                            comment={reply} 
-                            canDelete={canDelete} // Giả định tác giả post xóa được cả reply
+                        <CommentItem
+                            key={String(reply.id)}
+                            comment={reply}
+                            canDelete={canDelete}
                             onDelete={onDelete}
                         />
                     ))}
@@ -173,6 +215,16 @@ export default function PostDetailScreen() {
     const [currentUserId, setCurrentUserId] = useState<number | null>(null);
     const [refreshing, setRefreshing] = useState(false);
 
+    // ─── @mention state ─────────────────────────
+    const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+    const [mentionSuggestions, setMentionSuggestions] = useState<MentionUser[]>([]);
+    const [loadingMentions, setLoadingMentions] = useState(false);
+    const mentionDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // Vị trí ký tự '@' trong chuỗi để thay thế khi chọn
+    const mentionAtIndexRef = useRef<number>(-1);
+    // Map tên hiển thị → userId để embed khi gửi
+    const pendingMentionsRef = useRef<Map<string, number>>(new Map());
+
     const loadData = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -186,8 +238,8 @@ export default function PostDetailScreen() {
             setComments(commentsData);
             setCurrentUser(me);
             setCurrentUserId(me.id);
-        } catch (err: any) {
-            setError(err.message ?? 'Không thể tải bài viết');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Không thể tải bài viết');
         } finally {
             setLoading(false);
         }
@@ -225,14 +277,90 @@ export default function PostDetailScreen() {
         }
     }, [post, comments.length]);
 
+    // ─── Xử lý thay đổi text input ─────────────────────────
+    const handleCommentChange = (text: string) => {
+        setNewComment(text);
+
+        // Tìm vị trí '@' gần nhất chưa có khoảng trắng phía sau
+        const atIndex = text.lastIndexOf('@');
+        if (atIndex !== -1) {
+            const afterAt = text.slice(atIndex + 1);
+            // Trigger khi không có khoảng trắng sau @ và không quá dài
+            if (!afterAt.includes(' ') && afterAt.length <= 30) {
+                mentionAtIndexRef.current = atIndex;
+                setMentionQuery(afterAt);
+
+                if (mentionDebounceRef.current) clearTimeout(mentionDebounceRef.current);
+                
+                mentionDebounceRef.current = setTimeout(async () => {
+                    setLoadingMentions(true);
+                    try {
+                        if (afterAt.length > 0) {
+                            const res = await searchUsersForMention(afterAt, 8);
+                            setMentionSuggestions(res.items);
+                        } else if (currentUserId) {
+                            const res = await fetchFollowingUsers(currentUserId, 1, 8);
+                            // FollowUser và MentionUser có cấu trúc tương đồng
+                            setMentionSuggestions(res.items as MentionUser[]);
+                        } else {
+                            setMentionSuggestions([]);
+                        }
+                    } catch {
+                        setMentionSuggestions([]);
+                    } finally {
+                        setLoadingMentions(false);
+                    }
+                }, afterAt.length > 0 ? 250 : 0); // Không delay khi mới gõ @
+                return;
+            }
+        }
+
+        // Không có @ hợp lệ → đóng dropdown
+        setMentionQuery(null);
+        setMentionSuggestions([]);
+        mentionAtIndexRef.current = -1;
+    };
+
+    // ─── Chọn người dùng từ dropdown ─────────────────────────
+    const handleSelectMention = (user: MentionUser) => {
+        const atIndex = mentionAtIndexRef.current;
+        if (atIndex === -1) return;
+
+        const displayName = (user.full_name || `${user.first_name} ${user.last_name}`).trim();
+        // Chỉ chèn @Tên sạch trong TextInput (không có brackets/id)
+        const mentionText = `@${displayName} `;
+        const before = newComment.slice(0, atIndex);
+        const after = newComment.slice(atIndex + 1 + (mentionQuery?.length ?? 0));
+        setNewComment(before + mentionText + after);
+
+        // Lưu map name → userId để dùng khi gửi
+        pendingMentionsRef.current.set(displayName, user.id);
+
+        setMentionQuery(null);
+        setMentionSuggestions([]);
+        mentionAtIndexRef.current = -1;
+    };
+
     const handleSendComment = async () => {
         if (!newComment.trim() || sending) return;
         setSending(true);
+        setMentionQuery(null);
+        setMentionSuggestions([]);
         try {
-            await createComment(postId, newComment.trim(), replyTo?.id);
+            // Transform @Tên thành @[Tên](userId) trước khi gửi
+            let contentToSend = newComment.trim();
+            pendingMentionsRef.current.forEach((userId, name) => {
+                contentToSend = contentToSend.replace(
+                    new RegExp(`@${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g'),
+                    `@[${name}](${userId})`
+                );
+            });
+
+            await createComment(postId, contentToSend, replyTo?.id);
             setNewComment('');
             setReplyTo(null);
-            loadData(); // Refresh to show new comment/reply correctly
+            pendingMentionsRef.current.clear();
+            loadData();
         } catch (err) {
             console.error('Send comment error:', err);
         } finally {
@@ -243,6 +371,8 @@ export default function PostDetailScreen() {
     const headerTitle = post
         ? `${post.author.first_name} ${post.author.last_name}`
         : 'Bài viết';
+
+    const showMentionDropdown = mentionQuery !== null && (loadingMentions || mentionSuggestions.length > 0);
 
     return (
         <ThemedView className="flex-1 bg-[#EDF1F5]">
@@ -271,13 +401,14 @@ export default function PostDetailScreen() {
                     </View>
                 ) : (
                     <>
-                        <ScrollView 
-                            className="flex-1" 
+                        <ScrollView
+                            className="flex-1"
                             showsVerticalScrollIndicator={false}
+                            keyboardShouldPersistTaps="handled"
                             refreshControl={
-                                <RefreshControl 
-                                    refreshing={refreshing} 
-                                    onRefresh={handleRefresh} 
+                                <RefreshControl
+                                    refreshing={refreshing}
+                                    onRefresh={handleRefresh}
                                     tintColor="#4A9FD8"
                                     colors={['#4A9FD8']}
                                 />
@@ -314,16 +445,14 @@ export default function PostDetailScreen() {
                                     ) : (
                                         <ThemedView className={`${surfaceClass} gap-6 p-5`}>
                                             {comments.map((comment) => (
-                                                <CommentItem 
-                                                    key={String(comment.id)} 
-                                                    comment={comment} 
+                                                <CommentItem
+                                                    key={String(comment.id)}
+                                                    comment={comment}
                                                     onReply={(c) => setReplyTo(c)}
                                                     onDelete={() => loadData()}
                                                     canDelete={
                                                         currentUserId !== null && (
-                                                            // Tác giả của comment
                                                             String(comment.author_id) === String(currentUserId) ||
-                                                            // Tác giả của bài viết (chủ post xóa được comment trên post của mình)
                                                             String(post?.author_id) === String(currentUserId)
                                                         )
                                                     }
@@ -337,6 +466,7 @@ export default function PostDetailScreen() {
 
                         {/* Thanh nhập bình luận cố định ở cuối */}
                         <View className="border-t border-[#E4E8EE] bg-white px-4 py-3">
+                            {/* Banner trả lời */}
                             {replyTo && (
                                 <View className="mx-auto mb-2 w-full max-w-[800px] flex-row items-center justify-between rounded-xl bg-[#F7F8FA] px-4 py-2">
                                     <ThemedText className="text-sm text-slate-500">
@@ -347,24 +477,91 @@ export default function PostDetailScreen() {
                                     </Pressable>
                                 </View>
                             )}
+
+                            {/* Dropdown gợi ý @mention */}
+                            {showMentionDropdown && (
+                                <View
+                                    className="mx-auto w-full max-w-[800px] mb-2 rounded-2xl bg-white border border-[#E4E8EE] overflow-hidden"
+                                    style={{
+                                        shadowColor: '#000',
+                                        shadowOffset: { width: 0, height: -4 },
+                                        shadowOpacity: 0.08,
+                                        shadowRadius: 12,
+                                        elevation: 8,
+                                        maxHeight: 240,
+                                    }}
+                                >
+                                    {/* Header gợi ý */}
+                                    <View className="flex-row items-center gap-2 px-4 py-2 border-b border-[#F1F5F9]">
+                                        <MaterialIcons color="#4A9FD8" name="alternate-email" size={14} />
+                                        <ThemedText className="text-xs font-medium text-slate-500">
+                                            Gắn thẻ người dùng
+                                        </ThemedText>
+                                    </View>
+
+                                    {loadingMentions ? (
+                                        <View className="items-center py-4">
+                                            <ActivityIndicator size="small" color="#4A9FD8" />
+                                        </View>
+                                    ) : mentionSuggestions.length === 0 ? (
+                                        <View className="items-center py-4">
+                                            <ThemedText className="text-sm text-slate-400">Không tìm thấy người dùng</ThemedText>
+                                        </View>
+                                    ) : (
+                                        <ScrollView
+                                            keyboardShouldPersistTaps="always"
+                                            style={{ maxHeight: 200 }}
+                                            showsVerticalScrollIndicator={false}
+                                        >
+                                            {mentionSuggestions.map((user) => {
+                                                const initials = `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase();
+                                                const displayName = user.full_name || `${user.first_name} ${user.last_name}`;
+                                                return (
+                                                    <Pressable
+                                                        key={user.id}
+                                                        onPress={() => handleSelectMention(user)}
+                                                        className="flex-row items-center gap-3 px-4 py-3 active:bg-[#F7F8FA] border-b border-[#F8FAFC]"
+                                                    >
+                                                        <Avatar initials={initials} soft avatarUrl={user.avatar_url} />
+                                                        <View className="flex-1">
+                                                            <ThemedText className="text-sm font-semibold text-slate-900">
+                                                                {displayName}
+                                                            </ThemedText>
+                                                            {user.bio ? (
+                                                                <ThemedText className="text-xs text-slate-500" numberOfLines={1}>
+                                                                    {user.bio}
+                                                                </ThemedText>
+                                                            ) : null}
+                                                        </View>
+                                                        <MaterialIcons color="#CBD5E1" name="add" size={16} />
+                                                    </Pressable>
+                                                );
+                                            })}
+                                        </ScrollView>
+                                    )}
+                                </View>
+                            )}
+
+                            {/* Row nhập & gửi */}
                             <View className="mx-auto w-full max-w-[800px] flex-row items-center gap-3">
-                                <Avatar 
-                                    initials={currentUser ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase() : 'ME'} 
-                                    soft 
-                                    avatarUrl={currentUser?.avatar_url} 
+                                <Avatar
+                                    initials={currentUser ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase() : 'ME'}
+                                    soft
+                                    avatarUrl={currentUser?.avatar_url}
                                 />
                                 <TextInput
                                     className="flex-1 rounded-[22px] bg-[#F7F8FA] px-5 py-3 text-base text-slate-900"
                                     cursorColor="#0F172A"
-                                    placeholder="Viết bình luận..."
+                                placeholder={replyTo ? `Trả lời ${replyTo.author.first_name}...` : 'Viết bình luận...'}
                                     placeholderTextColor="#94A3B8"
                                     selectionColor="rgba(15, 23, 42, 0.24)"
                                     value={newComment}
-                                    onChangeText={setNewComment}
+                                    onChangeText={handleCommentChange}
                                     onSubmitEditing={handleSendComment}
                                     returnKeyType="send"
                                     underlineColorAndroid="transparent"
                                     editable={!sending}
+                                    blurOnSubmit={false}
                                 />
                                 <Pressable
                                     onPress={handleSendComment}
