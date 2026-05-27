@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { Platform, Image, Modal, Pressable, ScrollView, View, Alert, Share, TextInput, ActivityIndicator, DeviceEventEmitter } from 'react-native';
 import { ThumbsUp, ChatCircleDots, ShareNetwork, CaretRight } from 'phosphor-react-native';
 
+import { useToast } from '@/hooks/useToast';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ActionBubble, Avatar } from '@/components/ui/core';
@@ -54,6 +55,7 @@ function formatTime(isoString: string): string {
 }
 
 export function FeedPost({ item, onDeleteSuccess, onDelete, isNested }: { item: Post; onDeleteSuccess?: () => void; onDelete?: (postId: string) => void; isNested?: boolean }) {
+    const toast = useToast();
     const [liked, setLiked] = useState(item.is_liked);
     const [count, setCount] = useState(item.like_count);
     const [loading, setLoading] = useState(false);
@@ -87,11 +89,7 @@ export function FeedPost({ item, onDeleteSuccess, onDelete, isNested }: { item: 
         setIsReposting(true);
         try {
             await createPost('', [], 'public', undefined, undefined, undefined, undefined, undefined, undefined, String(item.id));
-            if (Platform.OS === 'web') {
-                window.alert('Đã chia sẻ lên bảng tin!');
-            } else {
-                Alert.alert('Thành công', 'Đã chia sẻ bài viết lên bảng tin của bạn!');
-            }
+            toast.success('Đã chia sẻ bài viết lên bảng tin của bạn!');
             setIsShareModalVisible(false);
             DeviceEventEmitter.emit('postCreated'); // Giả sử có event này để báo reload feed
         } catch (error) {
@@ -260,11 +258,7 @@ export function FeedPost({ item, onDeleteSuccess, onDelete, isNested }: { item: 
         try {
             const shareText = `[Bài viết] Xem bài viết của ${authorName} tại đây: doananentang://post/${item.id}`;
             await sendChatMessage(chatId, shareText);
-            if (Platform.OS === 'web') {
-                window.alert("Đã gửi tin nhắn!");
-            } else {
-                Alert.alert("Thành công", "Đã gửi bài viết qua tin nhắn!");
-            }
+            toast.success("Đã gửi bài viết qua tin nhắn!");
         } catch (error) {
             if (Platform.OS === 'web') {
                 window.alert("Lỗi khi gửi tin nhắn.");
