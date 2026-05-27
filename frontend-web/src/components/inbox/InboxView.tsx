@@ -17,7 +17,7 @@ import { useRealtimePresence } from '@/components/providers/RealtimeProvider';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { ThemedText } from '@/components/ui/ThemedText';
 import { surfaceClass } from '@/components/ui/design-system';
-import { resolveAvatarUrl, uploadChatMedia } from '@/lib/api';
+import { API_URL, resolveAvatarUrl, uploadChatMedia } from '@/lib/api';
 import { fetchCurrentUser, searchFollowingUsers, type AuthUser, type SearchUser } from '@/lib/auth';
 import {
   appendMessageById,
@@ -62,6 +62,23 @@ function buildProfileHref(user: SearchUser, preview: string): string {
     preview,
     bio: user.bio?.trim() || preview,
   });
+}
+
+function resolveMediaSrc(url: string): string {
+  if (!url) return url;
+  return url.startsWith('http') ? url : `${API_URL}${url}`;
+}
+
+function isVideoMedia(mediaUrl: string | null | undefined, mediaType: string | null | undefined): boolean {
+  if (!mediaUrl) return false;
+  const typeLower = mediaType?.toLowerCase() || '';
+  if (typeLower.includes('video')) return true;
+  const urlLower = mediaUrl.toLowerCase();
+  return urlLower.endsWith('.mp4') || 
+         urlLower.endsWith('.webm') || 
+         urlLower.endsWith('.mov') || 
+         urlLower.endsWith('.avi') || 
+         urlLower.endsWith('.mkv');
 }
 
 function buildOptimisticMessage(chatId: string, body: string): ChatMessage {
@@ -119,6 +136,7 @@ export function InboxView() {
   const [messageError, setMessageError] = useState<string | null>(null);
   const [draftMessage, setDraftMessage] = useState('');
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [lightboxMessage, setLightboxMessage] = useState<ChatMessage | null>(null);
 
   // Media upload state
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
@@ -933,10 +951,134 @@ export function InboxView() {
                     <ThemedText as="p" className="mt-2 text-sm leading-6 text-slate-600">{selectedConversation ? selectedConversation.bio : 'Chọn một cuộc trò chuyện để xem thêm ngữ cảnh người nhận.'}</ThemedText>
                   </div>
                 </div>
+
+                {/* Media đã gửi (Shared Media) */}
+                {selectedConversation && (
+                  <div className="mt-6 border-t border-slate-100 pt-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <ThemedText as="h4" className="text-base font-semibold text-slate-900">
+                        Media đã gửi
+                      </ThemedText>
+                      <span className="text-xs font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                        {selectedConversation.messages.filter((msg) => msg.mediaUrl).length}
+                      </span>
+                    </div>
+
+                    {selectedConversation.messages.filter((msg) => msg.mediaUrl).length > 0 ? (
+                      <div className="grid grid-cols-3 gap-2">
+                        {selectedConversation.messages
+                          .filter((msg) => msg.mediaUrl)
+                          .map((msg) => {
+                            const isVideo = isVideoMedia(msg.mediaUrl, msg.mediaType);
+                            return (
+                              <div
+                                key={msg.id}
+                                className="group relative aspect-square overflow-hidden rounded-[14px] bg-slate-100 border border-slate-100 cursor-pointer transition-all hover:scale-[1.03] hover:shadow-md"
+                                onClick={() => {
+                                  if (msg.mediaUrl) {
+                                    setLightboxMessage(msg);
+                                  }
+                                }}
+                              >
+                                {isVideo ? (
+                                  <>
+                                    <video
+                                      src={resolveMediaSrc(msg.mediaUrl!)}
+                                      className="h-full w-full object-cover"
+                                    />
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/35 transition-colors">
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" fill="#FFFFFF">
+                                        <path d="M240,128a15.89,15.89,0,0,1-8,13.86l-144,83.07A16.14,16.14,0,0,1,80,227a15.86,15.86,0,0,1-8-2.14A15.8,15.8,0,0,1,64,211V45a15.8,15.8,0,0,1,8-13.86,15.89,15.89,0,0,1,16,0l144,83.07A15.89,15.89,0,0,1,240,128Z" />
+                                      </svg>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <img
+                                    src={resolveMediaSrc(msg.mediaUrl!)}
+                                    alt="Shared media"
+                                    className="h-full w-full object-cover group-hover:brightness-90 transition-all"
+                                  />
+                                )}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    ) : (
+                      <div className="rounded-[18px] bg-slate-50 border border-slate-100 p-4 text-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-8 w-8 text-slate-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <ThemedText as="p" className="text-xs text-slate-400">
+                          Chưa chia sẻ phương tiện nào
+                        </ThemedText>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </section>
           </div>
         </div>
+        {/* Lightbox Modal để xem ảnh/video phóng to trực tiếp */}
+        {lightboxMessage && (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-sm transition-all duration-300 animate-fadeIn"
+            onClick={() => setLightboxMessage(null)}
+          >
+            <div className="absolute top-4 right-4 flex gap-3 z-50">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (lightboxMessage.mediaUrl) {
+                    window.open(resolveMediaSrc(lightboxMessage.mediaUrl), '_blank');
+                  }
+                }}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                title="Mở trong tab mới"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" fill="currentColor">
+                  <path d="M224,104a8,8,0,0,1-16,0V59.31l-68.69,68.69a8,8,0,0,1-11.31-11.31L196.69,48H152a8,8,0,0,1,0-16h72a8,8,0,0,1,8,8ZM112,40a8,8,0,0,0-8,8H48V208H208V152a8,8,0,0,0-16,0v40H64V64h40A8,8,0,0,0,112,40Z"/>
+                </svg>
+              </button>
+              <button
+                onClick={() => setLightboxMessage(null)}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 hover:scale-105 active:scale-95 transition-all text-lg font-semibold cursor-pointer"
+                title="Đóng"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div
+              className="relative max-h-[85vh] max-w-[90vw] overflow-hidden rounded-[24px] shadow-2xl transition-transform duration-300 ease-out scale-100 animate-zoomIn"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {isVideoMedia(lightboxMessage.mediaUrl, lightboxMessage.mediaType) ? (
+                <video
+                  src={resolveMediaSrc(lightboxMessage.mediaUrl!)}
+                  controls
+                  autoPlay
+                  className="max-h-[85vh] max-w-[90vw] object-contain rounded-[24px]"
+                />
+              ) : (
+                <img
+                  src={resolveMediaSrc(lightboxMessage.mediaUrl!)}
+                  alt="Enlarged media"
+                  className="max-h-[85vh] max-w-[90vw] object-contain rounded-[24px]"
+                />
+              )}
+
+              {/* Thông tin tin nhắn đi kèm (nếu có body văn bản) */}
+              {lightboxMessage.body && (
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-slate-950/80 via-slate-950/40 to-transparent p-6 text-white">
+                  <p className="text-sm font-medium leading-relaxed drop-shadow-md">
+                    {lightboxMessage.body}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </main>
     </ProtectedPage>
   );
