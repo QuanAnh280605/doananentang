@@ -1,4 +1,5 @@
-import { Image, View, Pressable } from 'react-native';
+import { View, Pressable } from 'react-native';
+import { Image } from 'expo-image';
 import { API_URL } from '@/lib/api';
 import { ThemedText } from '@/components/themed-text';
 import { SharedPostPreview } from './SharedPostPreview';
@@ -17,7 +18,9 @@ export function MessageBubble({ item }: { item: MessageBubbleData }) {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       return url;
     }
-    return `${API_URL}${url}`;
+    const api = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
+    const path = url.startsWith('/') ? url : `/${url}`;
+    return `${api}${path}`;
   };
 
   let sharedPostId: string | null = null;
@@ -39,7 +42,8 @@ export function MessageBubble({ item }: { item: MessageBubbleData }) {
         {item.mediaUrl ? (
           <Image
             source={{ uri: getAbsoluteUrl(item.mediaUrl) }}
-            style={{ width: 240, height: 180, resizeMode: 'cover' }}
+            style={{ width: 240, height: 180 }}
+            contentFit="cover"
           />
         ) : null}
         

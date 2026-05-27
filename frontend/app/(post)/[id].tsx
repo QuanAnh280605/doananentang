@@ -483,11 +483,7 @@ export default function PostDetailScreen() {
                                 <View
                                     className="mx-auto w-full max-w-[800px] mb-2 rounded-2xl bg-white border border-[#E4E8EE] overflow-hidden"
                                     style={{
-                                        shadowColor: '#000',
-                                        shadowOffset: { width: 0, height: -4 },
-                                        shadowOpacity: 0.08,
-                                        shadowRadius: 12,
-                                        elevation: 8,
+                                        boxShadow: '0px -4px 12px rgba(0, 0, 0, 0.08)',
                                         maxHeight: 240,
                                     }}
                                 >

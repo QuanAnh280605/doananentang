@@ -10,7 +10,7 @@ import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { API_URL, fetchPosts } from '@/lib/api';
-import { fetchCurrentUser, fetchFollowStatus } from '@/lib/auth';
+import { fetchCurrentUser, fetchFollowStatus, updateUserProfile } from '@/lib/auth';
 import type { AuthUser, FollowStatus } from '@/lib/auth';
 import type { Post, VisibilityLevel } from '@/lib/types';
 

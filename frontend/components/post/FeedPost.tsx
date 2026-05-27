@@ -340,11 +340,7 @@ export function FeedPost({ item, onDeleteSuccess, onDelete, isNested }: { item: 
                                     top: 50,
                                     backgroundColor: 'white',
                                     borderRadius: 24,
-                                    shadowColor: '#000',
-                                    shadowOffset: { width: 0, height: 4 },
-                                    shadowOpacity: 0.1,
-                                    shadowRadius: 12,
-                                    elevation: 5,
+                                    boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.1)',
                                     width: 160,
                                     zIndex: 999
                                 }}
