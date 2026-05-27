@@ -418,10 +418,22 @@ export async function uploadChatMedia(uri: string): Promise<{ url: string; media
     } as any);
   }
 
-  return apiFetch<{ url: string; media_type: string }>('/api/chats/upload-media', {
+  const token = await getAccessToken();
+  const response = await fetch(`${API_URL}/api/chats/upload-media`, {
     method: 'POST',
     body: formData,
+    headers: {
+      'Accept': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    },
   });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Upload media thất bại: ${response.status} - ${errText}`);
+  }
+
+  return response.json();
 }
 
 
@@ -525,10 +537,22 @@ export async function uploadPostMedia(uris: string[]): Promise<{ data: string[] 
     }
   }
 
-  return apiFetch<{ data: string[] }>('/api/posts/upload-media', {
+  const token = await getAccessToken();
+  const response = await fetch(`${API_URL}/api/posts/upload-media`, {
     method: 'POST',
     body: formData,
+    headers: {
+      'Accept': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    },
   });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Upload media thất bại: ${response.status} - ${errText}`);
+  }
+
+  return response.json();
 }
 
 // ─── Stories API ─────────────────────────────────────────────
