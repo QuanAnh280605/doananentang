@@ -42,17 +42,26 @@ export function InboxListItem({ item, onPress }: { item: InboxListItemData; onPr
         <AvatarPill initials={item.initials} avatarUrl={item.avatarUrl} />
         <View className="flex-1 gap-1">
           <View className="flex-row items-center justify-between gap-3">
-            <ThemedText className="text-base font-semibold text-slate-950">{item.name}</ThemedText>
+            <View className="flex-row items-center gap-1.5 flex-1">
+              <ThemedText className={`text-base text-slate-950 ${item.unread ? 'font-bold' : 'font-semibold'}`} numberOfLines={1}>
+                {item.name}
+              </ThemedText>
+              {item.unread ? (
+                <View className="h-2.5 w-2.5 rounded-full bg-[#EF4444]" />
+              ) : null}
+            </View>
             <ThemedText className="text-xs font-medium text-slate-400">{item.time}</ThemedText>
           </View>
-          <ThemedText className="text-sm leading-6 text-slate-500">{item.preview}</ThemedText>
+          <View className="flex-row items-center justify-between gap-2">
+            <ThemedText 
+              className={`text-sm leading-6 flex-1 ${item.unread ? 'font-bold text-slate-900' : 'text-slate-500'}`}
+              numberOfLines={1}
+            >
+              {item.preview}
+            </ThemedText>
+          </View>
         </View>
       </View>
-      {item.unread ? (
-        <View className="mt-3 self-start rounded-full bg-slate-900 px-2.5 py-1">
-          <ThemedText className="text-xs font-semibold text-white">{item.unread} new</ThemedText>
-        </View>
-      ) : null}
     </Pressable>
   );
 }

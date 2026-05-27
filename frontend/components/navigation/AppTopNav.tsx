@@ -65,7 +65,7 @@ export function AppTopNav({
   onSearchChange,
 }: AppTopNavProps) {
   const globalSearch = useGlobalSearch();
-  const { unreadCount } = useNotifications();
+  const { unreadCount, unreadChatCount } = useNotifications();
   const insets = useSafeAreaInsets();
   const isControlled = typeof onSearchChange === 'function';
   const resolvedSearchValue = isControlled ? (searchValue ?? '') : globalSearch.query;
@@ -150,7 +150,14 @@ export function AppTopNav({
           </View>
 
           <View className="flex-row items-center gap-3">
-            <NavActionBubble icon={EnvelopeSimple} />
+            <Pressable onPress={() => router.push('/(tabs)/inbox')} className="active:opacity-75">
+              <View className="relative">
+                <NavActionBubble icon={EnvelopeSimple} />
+                {unreadChatCount > 0 && (
+                  <View className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-[#EF4444] border-2 border-white" />
+                )}
+              </View>
+            </Pressable>
             <Pressable onPress={() => router.push('/(tabs)/notifications')}>
               <View className="relative">
                 <NavActionBubble icon={Bell} />
@@ -240,6 +247,12 @@ export function AppTopNav({
               }}
             >
               <EnvelopeSimple color="#334155" size={21} weight="regular" />
+              {unreadChatCount > 0 && (
+                <View
+                  className="absolute h-2.5 w-2.5 rounded-full bg-[#EF4444] border-2 border-white"
+                  style={{ top: -1, right: -1 }}
+                />
+              )}
             </Pressable>
 
             <Pressable

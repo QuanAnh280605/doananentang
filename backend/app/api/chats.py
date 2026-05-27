@@ -227,15 +227,17 @@ def create_chat_message_endpoint(
   response = _build_message_read(db, message)
 
   member_ids = get_chat_member_user_ids(db, chat_id)
-  for member_id in member_ids:
-    if member_id != current_user.id:
-      create_social_notification(
-        db,
-        receiver_id=member_id,
-        actor_id=current_user.id,
-        type='message',
-        message_id=message.id,
-      )
+  # Bỏ thông báo tin nhắn trong phần Alerts chung (Bình luận/Like/Follow)
+  # nhưng vẫn giữ nguyên Socket emit để tin nhắn realtime và chấm đỏ ở phần Inbox
+  # for member_id in member_ids:
+  #   if member_id != current_user.id:
+  #     create_social_notification(
+  #       db,
+  #       receiver_id=member_id,
+  #       actor_id=current_user.id,
+  #       type='message',
+  #       message_id=message.id,
+  #     )
 
   try:
     response_payload = response.model_dump(mode='json')

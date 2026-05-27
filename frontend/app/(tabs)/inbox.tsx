@@ -34,6 +34,8 @@ import {
   API_URL,
 } from '@/lib/api';
 import { fetchCurrentUser, searchUsers, type AuthUser, type SearchUser } from '@/lib/auth';
+import { connectAppSocket, joinChatRoom, leaveChatRoom } from '@/lib/socket';
+import { useNotifications } from '@/hooks/useNotifications';
 import type { ChatListItemRead, ChatMessageRead, ChatParticipant } from '@/lib/types';
 
 const surfaceClass = 'rounded-surface border border-app-border bg-app-surface';
@@ -89,6 +91,7 @@ function formatTime(isoString: string): string {
 
 export default function InboxScreen() {
   const router = useRouter();
+  const { setUnreadChatCount } = useNotifications();
   const params = useLocalSearchParams<{ openChatId?: string }>();
   const { width, height } = useWindowDimensions();
 
@@ -100,6 +103,12 @@ export default function InboxScreen() {
   // States
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [chats, setChats] = useState<ChatListItemRead[]>([]);
+
+  // Tự động đồng bộ dấu đỏ trên icon Envelope ở Header khi chats thay đổi hoặc được xem (mark read)
+  useEffect(() => {
+    const totalUnread = chats.reduce((sum, c) => sum + c.unread_count, 0);
+    setUnreadChatCount(totalUnread > 0 ? 1 : 0);
+  }, [chats, setUnreadChatCount]);
   const [activeChatId, setActiveChatId] = useState<number | null>(null);
   const [messages, setMessages] = useState<ChatMessageRead[]>([]);
   const [draftMessage, setDraftMessage] = useState('');
@@ -203,39 +212,75 @@ export default function InboxScreen() {
       .finally(() => setIsLoadingMessages(false));
   }, [activeChatId]);
 
-  // 4. Polling for New Messages (Every 3 seconds)
+  const activeChatIdRef = useRef<number | null>(null);
+  const currentUserRef = useRef<AuthUser | null>(null);
+
+  useEffect(() => {
+    activeChatIdRef.current = activeChatId;
+  }, [activeChatId]);
+
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+
+  // 4. Socket.io Realtime updates
+  useEffect(() => {
+    const socket = connectAppSocket();
+    if (!socket) return;
+
+    const handleMessageCreated = (payload: any) => {
+      const chatId = payload.chat_id;
+      const currentActiveChatId = activeChatIdRef.current;
+      const currentAuthUser = currentUserRef.current;
+      
+      const nextMessage: ChatMessageRead = {
+        id: payload.id,
+        chat_id: chatId,
+        sender_id: payload.sender_id,
+        content: payload.body || payload.content || '',
+        media_url: payload.media_url,
+        media_type: payload.media_type,
+        created_at: payload.created_at,
+      };
+
+      // 1. Nếu đang mở cuộc trò chuyện này, thêm tin nhắn trực tiếp vào khung chat
+      if (currentActiveChatId !== null && Number(chatId) === Number(currentActiveChatId)) {
+        setMessages((prevMsgs) => {
+          if (prevMsgs.some(m => Number(m.id) === Number(nextMessage.id))) return prevMsgs;
+          const newMsgs = [...prevMsgs, nextMessage];
+          scrollToBottom();
+          return newMsgs;
+        });
+
+        if (currentAuthUser && Number(nextMessage.sender_id) !== Number(currentAuthUser.id)) {
+          markChatAsRead(currentActiveChatId)
+            .then(() => {
+              loadChats();
+            })
+            .catch((err) => console.error('Failed to mark read realtime:', err));
+        }
+      } else {
+        // 2. Nếu ở ngoài danh sách chat hoặc chat khác, tải lại danh sách chat từ API
+        // giúp cập nhật tin nhắn xem trước, chấm đỏ, và đẩy chat lên đầu realtime cực kỳ chính xác!
+        loadChats();
+      }
+    };
+
+    socket.on('message-created', handleMessageCreated);
+
+    return () => {
+      socket.off('message-created', handleMessageCreated);
+    };
+  }, []);
+
   useEffect(() => {
     if (activeChatId === null) return;
 
-    const interval = setInterval(() => {
-      fetchChatMessages(activeChatId, 1, 30)
-        .then((res) => {
-          const reversed = [...res.items].reverse();
-          const currentMsgs = messagesRef.current;
-          // Deep compare simple IDs length to trigger re-render
-          if (
-            reversed.length !== currentMsgs.length ||
-            (reversed.length > 0 &&
-              currentMsgs.length > 0 &&
-              reversed[reversed.length - 1].id !== currentMsgs[currentMsgs.length - 1].id)
-          ) {
-            setMessages(reversed);
-            scrollToBottom();
-            // Automatically mark read
-            markChatAsRead(activeChatId).catch((err) => console.error('Failed to mark read:', err));
-          }
-        })
-        .catch((err) => console.error('Polling error:', err));
+    joinChatRoom(activeChatId.toString());
 
-      // Also update chats list to fetch preview messages
-      listDirectChats(1, 30)
-        .then((res) => {
-          setChats(res.items);
-        })
-        .catch((err) => console.error('Chats polling error:', err));
-    }, 3000);
-
-    return () => clearInterval(interval);
+    return () => {
+      leaveChatRoom(activeChatId.toString());
+    };
   }, [activeChatId]);
 
   // 5. Debounced User Search for starting new chats

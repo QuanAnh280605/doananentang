@@ -1,0 +1,121 @@
+import { io, type Socket } from 'socket.io-client';
+
+import { API_URL } from '@/lib/api';
+import { getAccessToken } from '@/lib/session';
+
+const SOCKET_PATH = '/socket.io';
+
+let inboxSocket: Socket | null = null;
+
+function getInboxSocket(): Socket {
+  if (inboxSocket === null) {
+    inboxSocket = io(API_URL, {
+      autoConnect: false,
+      path: SOCKET_PATH,
+    });
+  }
+
+  return inboxSocket;
+}
+
+function waitForSocketConnection(socket: Socket): Promise<Socket> {
+  if (socket.connected) {
+    return Promise.resolve(socket);
+  }
+
+  return new Promise((resolve, reject) => {
+    const handleConnect = () => {
+      socket.off('connect_error', handleConnectError);
+      resolve(socket);
+    };
+
+    const handleConnectError = (error: Error) => {
+      socket.off('connect', handleConnect);
+      reject(error);
+    };
+
+    socket.once('connect', handleConnect);
+    socket.once('connect_error', handleConnectError);
+  });
+}
+
+export function connectInboxSocket() {
+  const token = getAccessToken();
+
+  if (!token) {
+    disconnectInboxSocket();
+    return null;
+  }
+
+  const socket = getInboxSocket();
+  socket.auth = { token };
+
+  if (!socket.connected) {
+    socket.connect();
+  }
+
+  return socket;
+}
+
+export const connectAppSocket = connectInboxSocket;
+export const POST_METRICS_UPDATED_EVENT = 'post-metrics-updated';
+
+export function disconnectInboxSocket() {
+  if (inboxSocket === null) {
+    return;
+  }
+
+  inboxSocket.disconnect();
+}
+
+export const disconnectAppSocket = disconnectInboxSocket;
+
+export function getConnectedAppSocket(): Socket | null {
+  if (!inboxSocket?.connected) {
+    return null;
+  }
+
+  return inboxSocket;
+}
+
+export async function joinChatRoom(chatId: string) {
+  const socket = connectInboxSocket();
+
+  if (!socket) {
+    return;
+  }
+
+  await waitForSocketConnection(socket);
+  await socket.emitWithAck('chat:join', { chat_id: chatId });
+}
+
+export async function leaveChatRoom(chatId: string) {
+  const socket = inboxSocket;
+
+  if (!socket) {
+    return;
+  }
+
+  await waitForSocketConnection(socket);
+  await socket.emitWithAck('chat:leave', { chat_id: chatId });
+}
+
+export function joinPostRoom(postId: number): void {
+  const socket = connectInboxSocket();
+
+  if (!socket) {
+    return;
+  }
+
+  socket.emit('post:join', { post_id: postId });
+}
+
+export function leavePostRoom(postId: number): void {
+  const socket = inboxSocket;
+
+  if (!socket) {
+    return;
+  }
+
+  socket.emit('post:leave', { post_id: postId });
+}
