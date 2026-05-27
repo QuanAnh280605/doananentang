@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View, Alert, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
@@ -190,6 +191,7 @@ function MediaPanel() {
 
 export default function UserProfileScreen() {
   const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const params = useLocalSearchParams<{ userId?: string; name?: string; initials?: string; preview?: string; bio?: string }>();
 
@@ -291,7 +293,7 @@ export default function UserProfileScreen() {
           setPosts(res.items);
         }
       })
-      .catch(() => { })
+      .catch(() => {})
       .finally(() => {
         if (isActive) setLoadingPosts(false);
       });
@@ -357,9 +359,11 @@ export default function UserProfileScreen() {
       <ThemedView className="flex-1 bg-[#F8FAFC]" style={{ minHeight: height }}>
         <ScrollView bounces={false} className="flex-1" contentContainerClassName="pb-8">
           <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-4 md:px-6">
-
             {/* Header / Back */}
-            <View className="flex-row items-center gap-3 rounded-surface border border-app-border bg-app-surface px-5 py-4">
+            <View 
+              className="flex-row items-center gap-3 rounded-3xl border border-app-border bg-app-surface px-5 py-4 mx-0 shadow-sm"
+              style={{ marginTop: Math.max(insets.top, 0) + 10 }}
+            >
               <Pressable
                 onPress={() => router.back()}
                 className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA] active:opacity-80"
@@ -369,7 +373,6 @@ export default function UserProfileScreen() {
               <ThemedText className="text-lg font-semibold text-slate-900">{profile.displayName}</ThemedText>
               {isLoadingUser && <ActivityIndicator size="small" color="#4A9FD8" className="ml-2" />}
             </View>
-
             {/* Profile Card */}
             <ThemedView className={`${surfaceClass} overflow-hidden`}>
               <View className="h-[210px] bg-[#D9ECF8]" />
@@ -461,7 +464,6 @@ export default function UserProfileScreen() {
             {/* Content panels */}
             <View className={isWide ? 'flex-row items-start gap-4' : 'gap-4'}>
               <View className={isWide ? 'w-[320px] gap-4' : 'gap-4'}>
-
                 {/* Intro Sidebar */}
                 <SidebarCard title="Intro">
                   {profile.intro ? (
@@ -473,7 +475,6 @@ export default function UserProfileScreen() {
                       Chưa có giới thiệu.
                     </ThemedText>
                   )}
-
                   <View className="mt-4 gap-3">
                     {[
                       { icon: 'mail-outline', value: profile.email },

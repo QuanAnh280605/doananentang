@@ -58,10 +58,7 @@ export function connectInboxSocket() {
 }
 
 export const connectAppSocket = connectInboxSocket;
-<<<<<<< HEAD
 export const POST_METRICS_UPDATED_EVENT = 'post-metrics-updated';
-=======
->>>>>>> 4df61f6 (update UI profile)
 
 export function disconnectInboxSocket() {
   if (inboxSocket === null) {

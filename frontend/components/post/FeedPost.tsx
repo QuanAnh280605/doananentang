@@ -53,7 +53,7 @@ function formatTime(isoString: string): string {
     return `${days} ngày trước`;
 }
 
-export function FeedPost({ item, onDeleteSuccess, isNested }: { item: Post; onDeleteSuccess?: () => void; isNested?: boolean }) {
+export function FeedPost({ item, onDeleteSuccess, onDelete, isNested }: { item: Post; onDeleteSuccess?: () => void; onDelete?: (postId: string) => void; isNested?: boolean }) {
     const [liked, setLiked] = useState(item.is_liked);
     const [count, setCount] = useState(item.like_count);
     const [loading, setLoading] = useState(false);
@@ -213,6 +213,7 @@ export function FeedPost({ item, onDeleteSuccess, isNested }: { item: Post; onDe
                     await deletePost(String(item.id));
                     setIsDeleted(true);
                     onDeleteSuccess?.();
+                    onDelete?.(String(item.id));
                     DeviceEventEmitter.emit('postDeleted', { postId: String(item.id) });
                 } catch {
                     window.alert("Lỗi: Không thể xóa bài viết.");
@@ -229,6 +230,7 @@ export function FeedPost({ item, onDeleteSuccess, isNested }: { item: Post; onDe
                             await deletePost(String(item.id));
                             setIsDeleted(true);
                             onDeleteSuccess?.();
+                            onDelete?.(String(item.id));
                             DeviceEventEmitter.emit('postDeleted', { postId: String(item.id) });
                         } catch {
                             Alert.alert("Lỗi", "Không thể xóa bài viết.");

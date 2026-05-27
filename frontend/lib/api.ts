@@ -36,6 +36,9 @@ import type {
   PaginatedMessagesResponse,
   DirectChatRead,
   ChatReadStatusRead,
+  Story,
+  StoryCreatePayload,
+  StoryViewStatus,
 } from '@/lib/types';
 
 const FALLBACK_PORT = '8000';
@@ -415,10 +418,22 @@ export async function uploadChatMedia(uri: string): Promise<{ url: string; media
     } as any);
   }
 
-  return apiFetch<{ url: string; media_type: string }>('/api/chats/upload-media', {
+  const token = await getAccessToken();
+  const response = await fetch(`${API_URL}/api/chats/upload-media`, {
     method: 'POST',
     body: formData,
+    headers: {
+      'Accept': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    },
   });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Upload media thất bại: ${response.status} - ${errText}`);
+  }
+
+  return response.json();
 }
 
 
@@ -524,10 +539,79 @@ export async function uploadPostMedia(uris: string[]): Promise<{ data: string[] 
     }
   }
 
-  return apiFetch<{ data: string[] }>('/api/posts/upload-media', {
+  const token = await getAccessToken();
+  const response = await fetch(`${API_URL}/api/posts/upload-media`, {
+    method: 'POST',
+    body: formData,
+    headers: {
+      'Accept': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Upload media thất bại: ${response.status} - ${errText}`);
+  }
+
+  return response.json();
+}
+
+// ─── Stories API ─────────────────────────────────────────────
+
+export function fetchStories(): Promise<Story[]> {
+  return apiFetch<Story[]>('/api/stories');
+}
+
+export async function uploadStoryMedia(uri: string): Promise<{ file_url: string }> {
+  const formData = new FormData();
+  let filename = uri.split('/').pop() || 'media.bin';
+  filename = filename.split('?')[0].split('#')[0];
+
+  let mimeType = 'application/octet-stream';
+  const match = /\\.(\\w+)$/.exec(filename);
+  if (match) {
+    const ext = match[1].toLowerCase();
+    if (ext === 'jpg' || ext === 'jpeg') mimeType = 'image/jpeg';
+    else if (ext === 'png') mimeType = 'image/png';
+    else if (ext === 'gif') mimeType = 'image/gif';
+    else if (ext === 'mp4') mimeType = 'video/mp4';
+    else if (ext === 'mov') mimeType = 'video/quicktime';
+    else mimeType = `image/${ext}`;
+  }
+
+  if (Platform.OS === 'web') {
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    const finalMime = blob.type || mimeType;
+    if (!match) {
+      if (finalMime.startsWith('video/')) filename += '.mp4';
+      else if (finalMime.startsWith('image/')) filename += '.jpg';
+    }
+    formData.append('file', new File([blob], filename, { type: finalMime }));
+  } else {
+    formData.append('file', {
+      uri,
+      name: filename,
+      type: mimeType,
+    } as any);
+  }
+
+  return apiFetch<{ file_url: string }>('/api/stories/upload-media', {
     method: 'POST',
     body: formData,
   });
+}
+
+export function createStory(payload: StoryCreatePayload): Promise<Story> {
+  return apiFetch<Story>('/api/stories', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function markStoryViewed(storyId: string | number): Promise<StoryViewStatus> {
+  return apiFetch<StoryViewStatus>(`/api/stories/${storyId}/views`, { method: 'POST' });
 }
 
 // ─── Likes API ───────────────────────────────────────────────

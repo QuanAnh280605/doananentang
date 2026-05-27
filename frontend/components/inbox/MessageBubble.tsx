@@ -35,7 +35,7 @@ export function MessageBubble({ item }: { item: MessageBubbleData }) {
 
   return (
     <View className={`max-w-[88%] ${item.incoming ? 'self-start' : 'self-end'}`}>
-      <View className={`rounded-[24px] overflow-hidden ${item.incoming ? 'bg-[#F1F5F9]' : 'bg-[#0F172A]'}`}>
+      <View className={`rounded-[24px] overflow-hidden ${item.incoming ? 'bg-[#F1F5F9]' : 'bg-[#4A9FD8]'}`}>
         {item.mediaUrl ? (
           <Image
             source={{ uri: getAbsoluteUrl(item.mediaUrl) }}
