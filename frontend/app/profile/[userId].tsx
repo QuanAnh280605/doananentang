@@ -1,55 +1,29 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useLocalSearchParams, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, useRef, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View, Alert, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 
 import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { API_URL, fetchPosts, createDirectChat } from '@/lib/api';
-import { fetchFollowStatus, followUser, fetchUserProfile, type FollowStatus, unfollowUser, type AuthUser } from '@/lib/auth';
+import { fetchCurrentUser, fetchFollowStatus, followUser, fetchUserProfile, type FollowStatus, unfollowUser, type AuthUser } from '@/lib/auth';
 import type { Post } from '@/lib/types';
 
-type ProfileTab = 'posts' | 'about' | 'media';
-
-type MediaSpotlight = {
-  id: string;
-  title: string;
-  subtitle: string;
-  fillClassName: string;
-};
-
-const surfaceClass = 'rounded-surface border border-app-border bg-app-surface';
-const mutedSurfaceClass = 'rounded-[24px] bg-[#F7F8FA]';
+type ProfileTab = 'posts' | 'media';
 
 const tabs: { key: ProfileTab; label: string; icon: keyof typeof MaterialIcons.glyphMap }[] = [
-  { key: 'posts', label: 'Posts', icon: 'grid-view' },
-  { key: 'about', label: 'About', icon: 'person-outline' },
+  { key: 'posts', label: 'All', icon: 'grid-view' },
   { key: 'media', label: 'Media', icon: 'photo-library' },
-];
-
-const featuredMedia: MediaSpotlight[] = [
-  {
-    id: '1',
-    title: 'Review systems playbook',
-    subtitle: 'A tighter artifact for faster approvals and clearer motion notes.',
-    fillClassName: 'bg-[#D9ECF8]',
-  },
-  {
-    id: '2',
-    title: 'Northfeed launch board',
-    subtitle: 'Signals, rituals, and release checkpoints shaped for distributed teams.',
-    fillClassName: 'bg-[#EEE8FF]',
-  },
 ];
 
 function getSingleParam(value: string | string[] | undefined, fallback: string): string {
   if (Array.isArray(value)) {
     return value[0] ?? fallback;
   }
-
   return value ?? fallback;
 }
 
@@ -80,7 +54,7 @@ function buildProfileViewModel(user: AuthUser | null, fallbackName: string, fall
 
   let initials = '';
   if (firstName || lastName) {
-    initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+    initials = `${(firstName || '').charAt(0)}${(lastName || '').charAt(0)}`.toUpperCase();
   }
 
   const intro = user.bio || '';
@@ -91,7 +65,7 @@ function buildProfileViewModel(user: AuthUser | null, fallbackName: string, fall
     : null;
   return {
     displayName,
-    initials: initials || 'N/A',
+    initials: initials || 'NA',
     intro,
     location,
     email,
@@ -99,11 +73,13 @@ function buildProfileViewModel(user: AuthUser | null, fallbackName: string, fall
   };
 }
 
+// ─── Sub-components ──────────────────────────────────────────────────────────
+
 function AvatarBlock({ initials, soft = false, size = 'large', avatarUrl }: { initials: string; soft?: boolean; size?: 'large' | 'small', avatarUrl?: string | null }) {
   const containerClassName =
     size === 'large'
-      ? `h-[92px] w-[92px] rounded-[28px] overflow-hidden ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`
-      : `h-14 w-14 rounded-[22px] overflow-hidden ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`;
+      ? `h-[92px] w-[92px] rounded-full overflow-hidden ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`
+      : `h-14 w-14 rounded-full overflow-hidden ${soft ? 'bg-[#D9ECF8]' : 'bg-[#EAF4FB]'}`;
   const textClassName = size === 'large' ? 'text-[28px]' : 'text-base';
 
   return (
@@ -117,13 +93,53 @@ function AvatarBlock({ initials, soft = false, size = 'large', avatarUrl }: { in
   );
 }
 
-
-
-function ProfileTabButton({ active, icon, label, onPress }: { active: boolean; icon: keyof typeof MaterialIcons.glyphMap; label: string; onPress: () => void }) {
+function ActionButton({
+  icon,
+  label,
+  filled = false,
+  onPress,
+  disabled = false,
+  loading = false,
+}: {
+  icon: keyof typeof MaterialIcons.glyphMap;
+  label: string;
+  filled?: boolean;
+  onPress?: () => void;
+  disabled?: boolean;
+  loading?: boolean;
+}) {
   return (
     <Pressable
-      className={`min-w-[112px] flex-1 flex-row items-center justify-center gap-2 rounded-[20px] px-4 py-4 active:opacity-90 ${active ? 'bg-[#0A0A0A]' : 'bg-[#F7F8FA]'}`}
-      onPress={onPress}>
+      onPress={onPress}
+      disabled={disabled}
+      className={`min-w-[150px] flex-1 flex-row items-center justify-center gap-2 rounded-full px-4 py-[14px] active:opacity-90 ${disabled ? 'opacity-70' : ''} ${filled ? 'bg-[#4A9FD8]' : 'bg-[#F7F8FA]'}`}
+    >
+      {loading ? (
+        <ActivityIndicator color={filled ? '#FFFFFF' : '#0F172A'} size="small" />
+      ) : (
+        <MaterialIcons color={filled ? '#FFFFFF' : '#0F172A'} name={icon} size={20} />
+      )}
+      <ThemedText className={`text-base font-medium ${filled ? 'text-white' : 'text-slate-900'}`}>{label}</ThemedText>
+    </Pressable>
+  );
+}
+
+function ProfileTabButton({
+  active,
+  icon,
+  label,
+  onPress,
+}: {
+  active: boolean;
+  icon: keyof typeof MaterialIcons.glyphMap;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      className={`min-w-[112px] flex-1 flex-row items-center justify-center gap-2 rounded-full px-4 py-[14px] active:opacity-90 ${active ? 'bg-[#0A0A0A]' : 'bg-[#F7F8FA]'}`}
+      onPress={onPress}
+    >
       <MaterialIcons color={active ? '#FFFFFF' : '#0F172A'} name={icon} size={18} />
       <ThemedText className={`text-base font-medium ${active ? 'text-white' : 'text-slate-900'}`}>{label}</ThemedText>
     </Pressable>
@@ -134,7 +150,7 @@ function SectionTitle({ title, subtitle, action }: { title: string; subtitle?: s
   return (
     <View className="flex-row items-start justify-between gap-3">
       <View className="flex-1">
-        <ThemedText className="text-[24px] font-semibold text-slate-950">{title}</ThemedText>
+        <ThemedText className="text-[22px] font-semibold text-slate-950">{title}</ThemedText>
         {subtitle ? <ThemedText className="mt-1 text-sm text-slate-500">{subtitle}</ThemedText> : null}
       </View>
       {action}
@@ -144,52 +160,60 @@ function SectionTitle({ title, subtitle, action }: { title: string; subtitle?: s
 
 function SidebarCard({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   return (
-    <ThemedView className={`${surfaceClass} p-5`}>
+    <ThemedView className="bg-white p-5 mb-2 shadow-sm md:rounded-[32px] md:border md:border-[#E4E8EE]">
       <SectionTitle title={title} action={action} />
       <View className="mt-5 gap-4">{children}</View>
     </ThemedView>
   );
 }
 
-function AboutPanel({ profile }: { profile: { displayName: string; initials: string; intro: string; location: string; email: string; avatarUrl: string | null } }) {
+function MediaPanel({ posts, hideHeader }: { posts: Post[]; hideHeader?: boolean }) {
+  const mediaItems = (posts || []).flatMap((p) =>
+    (p.media || []).map((m) => ({ media: m, post: p }))
+  );
+
   return (
-    <ThemedView className={`${surfaceClass} p-5`}>
-      <SectionTitle title="About" subtitle="Calm collaboration, sharper reviews, cleaner systems" />
-      <View className="mt-5 gap-4">
-        <View className={`${mutedSurfaceClass} px-4 py-4`}>
-          <ThemedText className="text-base leading-7 text-slate-700">{profile.intro || 'Chưa có giới thiệu.'}</ThemedText>
+    <ThemedView className={`bg-white mb-2 shadow-sm md:rounded-[32px] md:border md:border-[#E4E8EE] ${hideHeader ? 'p-2 pt-4' : 'p-5'}`}>
+      {!hideHeader && <SectionTitle title="Featured media" subtitle="Ảnh và tài liệu đã chia sẻ" />}
+      {mediaItems.length === 0 ? (
+        <View className="mt-5 items-center py-8">
+          <MaterialIcons name="photo-library" size={40} color="#CBD5E1" />
+          <ThemedText className="mt-3 text-base font-medium text-slate-700">Chưa có ảnh nào</ThemedText>
+          <ThemedText className="mt-1 text-sm text-slate-400">Ảnh chia sẻ sẽ xuất hiện ở đây.</ThemedText>
         </View>
-        <View className="flex-row flex-wrap gap-3">
-          {[profile.location].filter(Boolean).map((item) => (
-            <View key={item} className="rounded-full bg-[#F7F8FA] px-4 py-3">
-              <ThemedText className="text-sm font-medium text-slate-700">{item}</ThemedText>
-            </View>
-          ))}
+      ) : (
+        <View className="mt-5 flex-row flex-wrap -mx-1">
+          {mediaItems.map(({ media, post }) => {
+            const fileUrl = media.file_url.startsWith('http') ? media.file_url : `${API_URL}${media.file_url}`;
+            return (
+              <Pressable
+                key={media.id}
+                className="w-1/3 p-1 active:opacity-80"
+                style={{ aspectRatio: 1 }}
+                onPress={() => router.push(`/(post)/${post.id}`)}
+              >
+                <Image
+                  source={{ uri: fileUrl }}
+                  style={{ width: '100%', height: '100%', borderRadius: 12 }}
+                  contentFit="cover"
+                />
+              </Pressable>
+            );
+          })}
         </View>
-      </View>
+      )}
     </ThemedView>
   );
 }
 
-function MediaPanel() {
-  return (
-    <ThemedView className={`${surfaceClass} p-5`}>
-      <SectionTitle title="Media" subtitle="Featured references and shareable artifacts" />
-      <View className="mt-5 gap-4 lg:flex-row">
-        {featuredMedia.map((item) => (
-          <View key={item.id} className="flex-1 gap-3">
-            <View className={`h-[220px] rounded-[28px] bg-[#F7F8FA] ${item.fillClassName}`} />
-            <ThemedText className="text-lg font-semibold text-slate-950">{item.title}</ThemedText>
-            <ThemedText className="text-sm leading-6 text-slate-600">{item.subtitle}</ThemedText>
-          </View>
-        ))}
-      </View>
-    </ThemedView>
-  );
-}
+// ─── Main screen ─────────────────────────────────────────────────────────────
 
 export default function UserProfileScreen() {
   const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const scrollViewRef = useRef<ScrollView>(null);
+  const postsSectionY = useRef<number>(0);
+  const feedY = useRef<number>(0);
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const params = useLocalSearchParams<{ userId?: string; name?: string; initials?: string; preview?: string; bio?: string }>();
 
@@ -202,6 +226,18 @@ export default function UserProfileScreen() {
     const parsed = Number(userId);
     return Number.isFinite(parsed) ? parsed : null;
   }, [userId]);
+
+  useEffect(() => {
+    if (numericUserId !== null) {
+      fetchCurrentUser()
+        .then((me) => {
+          if (me.id === numericUserId) {
+            router.replace('/(tabs)/profile');
+          }
+        })
+        .catch(() => {});
+    }
+  }, [numericUserId]);
 
   const [viewedUser, setViewedUser] = useState<AuthUser | null>(null);
   const [isLoadingUser, setIsLoadingUser] = useState(false);
@@ -354,15 +390,15 @@ export default function UserProfileScreen() {
   return (
     <>
       <StatusBar style="dark" />
-      <ThemedView className="flex-1 bg-[#F8FAFC]" style={{ minHeight: height }}>
-        <ScrollView bounces={false} className="flex-1" contentContainerClassName="pb-8">
-          <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-4 md:px-6">
-
+      <ThemedView className="flex-1 bg-[#F1F5F9]" style={{ minHeight: height, paddingTop: insets.top }}>
+        <ScrollView ref={scrollViewRef} bounces={false} className="flex-1" contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}>
+          <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 pb-6 md:px-6 md:pt-6">
+            
             {/* Header / Back */}
-            <View className="flex-row items-center gap-3 rounded-surface border border-app-border bg-app-surface px-5 py-4">
+            <View className="mx-4 md:mx-0 flex-row items-center gap-3 bg-white shadow-sm rounded-full md:rounded-[32px] md:border md:border-[#E4E8EE] px-2 py-2 mt-4 md:mt-0">
               <Pressable
                 onPress={() => router.back()}
-                className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA] active:opacity-80"
+                className="h-11 w-11 items-center justify-center rounded-full bg-[#F7F8FA] active:opacity-80"
               >
                 <ThemedText className="text-lg">←</ThemedText>
               </Pressable>
@@ -370,9 +406,9 @@ export default function UserProfileScreen() {
               {isLoadingUser && <ActivityIndicator size="small" color="#4A9FD8" className="ml-2" />}
             </View>
 
-            {/* Profile Card */}
-            <ThemedView className={`${surfaceClass} overflow-hidden`}>
-              <View className="h-[210px] bg-[#D9ECF8]" />
+            {/* Profile card */}
+            <ThemedView className="bg-white shadow-sm overflow-hidden md:rounded-[32px] md:border md:border-[#E4E8EE]">
+              <View className="h-[180px] bg-[#D9ECF8]" />
               <View className="px-5 pb-5">
                 <View className="-mt-12 flex-row items-end justify-between gap-4">
                   <View className="flex-row items-end gap-4">
@@ -390,60 +426,66 @@ export default function UserProfileScreen() {
                         {profile.intro}
                       </ThemedText>
                     ) : null}
-
-                    {followStatus ? (
-                      <View className="mt-4 flex-row flex-wrap gap-5">
-                        <Pressable
-                          className="flex-row items-center gap-1.5 active:opacity-70"
-                          onPress={() => router.push({ pathname: '/profile/follows', params: { userId, type: 'followers' } })}
-                        >
-                          <ThemedText className="text-[15px] font-bold text-slate-950">{followStatus.followers_count}</ThemedText>
-                          <ThemedText className="text-[15px] text-slate-500">người theo dõi</ThemedText>
-                        </Pressable>
-                        <Pressable
-                          className="flex-row items-center gap-1.5 active:opacity-70"
-                          onPress={() => router.push({ pathname: '/profile/follows', params: { userId, type: 'following' } })}
-                        >
-                          <ThemedText className="text-[15px] font-bold text-slate-950">{followStatus.following_count}</ThemedText>
-                          <ThemedText className="text-[15px] text-slate-500">đang theo dõi</ThemedText>
-                        </Pressable>
-                      </View>
-                    ) : null}
+                    <View className="mt-4 flex-row flex-wrap gap-5">
+                      {followStatus ? (
+                        <>
+                          <Pressable
+                            className="flex-row items-center gap-1.5 active:opacity-70"
+                            onPress={() => router.push({ pathname: '/profile/follows', params: { userId, type: 'followers' } })}
+                          >
+                            <ThemedText className="text-[15px] font-bold text-slate-950">{followStatus.followers_count}</ThemedText>
+                            <ThemedText className="text-[15px] text-slate-500">người theo dõi</ThemedText>
+                          </Pressable>
+                          <Pressable
+                            className="flex-row items-center gap-1.5 active:opacity-70"
+                            onPress={() => router.push({ pathname: '/profile/follows', params: { userId, type: 'following' } })}
+                          >
+                            <ThemedText className="text-[15px] font-bold text-slate-950">{followStatus.following_count}</ThemedText>
+                            <ThemedText className="text-[15px] text-slate-500">đang theo dõi</ThemedText>
+                          </Pressable>
+                        </>
+                      ) : null}
+                      <Pressable
+                        className="flex-row items-center gap-1.5 active:opacity-70"
+                        onPress={() => {
+                          if (activeTab !== 'posts') {
+                            setActiveTab('posts');
+                            setTimeout(() => {
+                              scrollViewRef.current?.scrollTo({ y: postsSectionY.current + feedY.current, animated: true });
+                            }, 100);
+                          } else {
+                            scrollViewRef.current?.scrollTo({ y: postsSectionY.current + feedY.current, animated: true });
+                          }
+                        }}
+                      >
+                        <ThemedText className="text-[15px] font-bold text-slate-950">{posts?.length || 0}</ThemedText>
+                        <ThemedText className="text-[15px] text-slate-500">bài viết</ThemedText>
+                      </Pressable>
+                    </View>
                   </View>
 
                   <View className={`${isWide ? 'w-[360px]' : ''} gap-3`}>
                     <View className="flex-row flex-wrap gap-3">
-                      <Pressable
-                        className="min-w-[150px] flex-1 flex-row items-center justify-center gap-2 rounded-[20px] px-4 py-4 active:opacity-90 bg-[#0A0A0A]"
-                        disabled={numericUserId === null || isLoadingFollowStatus || isSubmittingFollow}
+                      <ActionButton
+                        icon={followStatus?.is_following ? 'person-remove' : 'person-add'}
+                        label={isLoadingFollowStatus || isSubmittingFollow ? 'Đang xử lý...' : followStatus?.is_following ? 'Đang theo dõi' : 'Theo dõi'}
+                        filled={!followStatus?.is_following}
                         onPress={handleFollowToggle}
-                      >
-                        <ThemedText className="text-base font-medium text-white">
-                          {isLoadingFollowStatus || isSubmittingFollow
-                            ? 'Please wait...'
-                            : followStatus?.is_following
-                              ? 'Following'
-                              : 'Follow'}
-                        </ThemedText>
-                      </Pressable>
-                      <Pressable
-                        className="min-w-[150px] flex-1 flex-row items-center justify-center gap-2 rounded-[20px] px-4 py-4 active:opacity-90 bg-[#F7F8FA]"
-                        disabled={numericUserId === null || isCreatingChat}
+                        disabled={numericUserId === null || isLoadingFollowStatus || isSubmittingFollow}
+                        loading={isSubmittingFollow}
+                      />
+                      <ActionButton
+                        icon="chat-bubble-outline"
+                        label="Nhắn tin"
                         onPress={handleStartChat}
-                      >
-                        {isCreatingChat ? (
-                          <ActivityIndicator color="#0F172A" size="small" style={{ marginRight: 6 }} />
-                        ) : (
-                          <MaterialIcons color="#0F172A" name="chat-bubble-outline" size={20} style={{ marginRight: 6 }} />
-                        )}
-                        <ThemedText className="text-base font-medium text-slate-900">Message</ThemedText>
-                      </Pressable>
+                        disabled={numericUserId === null || isCreatingChat}
+                        loading={isCreatingChat}
+                      />
                     </View>
+                    {followErrorMessage ? <ThemedText className="mt-2 text-sm text-rose-600 text-center">{followErrorMessage}</ThemedText> : null}
                   </View>
                 </View>
-                {followErrorMessage ? <ThemedText className="mt-2 text-sm text-rose-600">{followErrorMessage}</ThemedText> : null}
 
-                {/* Tabs selection */}
                 <View className="mt-6 flex-row flex-wrap gap-3">
                   {tabs.map((tab) => (
                     <ProfileTabButton
@@ -458,75 +500,75 @@ export default function UserProfileScreen() {
               </View>
             </ThemedView>
 
-            {/* Content panels */}
-            <View className={isWide ? 'flex-row items-start gap-4' : 'gap-4'}>
-              <View className={isWide ? 'w-[320px] gap-4' : 'gap-4'}>
-
-                {/* Intro Sidebar */}
-                <SidebarCard title="Intro">
-                  {profile.intro ? (
-                    <ThemedText className="text-base leading-7 text-slate-700">
-                      {profile.intro}
-                    </ThemedText>
-                  ) : (
-                    <ThemedText className="text-base italic text-slate-400">
-                      Chưa có giới thiệu.
-                    </ThemedText>
-                  )}
-
-                  <View className="mt-4 gap-3">
-                    {[
-                      { icon: 'mail-outline', value: profile.email },
-                      { icon: 'location-on', value: profile.location },
-                    ]
-                      .filter((item) => !!item.value)
-                      .map((item) => (
-                        <View key={item.icon} className="flex-row items-center gap-3">
-                          <View className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA]">
-                            <MaterialIcons name={item.icon as any} size={20} color="#64748B" />
+            {/* Body: sidebar + main */}
+            <View
+              className={isWide ? 'flex-row items-start gap-4' : 'gap-4'}
+              onLayout={(e) => postsSectionY.current = e.nativeEvent.layout.y}
+            >
+              {/* Sidebar */}
+              {activeTab !== 'media' && (
+                <View className={isWide ? 'w-[320px] gap-4' : 'gap-4'}>
+                  <SidebarCard title="Giới thiệu">
+                    <View className="gap-3">
+                      {[
+                        { icon: 'mail-outline' as const, value: profile.email },
+                        { icon: 'location-on' as const, value: profile.location },
+                      ]
+                        .filter((item) => !!item.value)
+                        .map((item) => (
+                          <View key={item.icon} className="flex-row items-center gap-3">
+                            <View className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA]">
+                              <MaterialIcons name={item.icon} size={20} color="#64748B" />
+                            </View>
+                            <View className="flex-1 flex-row items-center gap-2">
+                              <ThemedText className="text-base font-medium text-slate-800" numberOfLines={1}>
+                                {item.value}
+                              </ThemedText>
+                            </View>
                           </View>
-                          <ThemedText className="flex-1 text-base font-medium text-slate-800" numberOfLines={1}>
-                            {item.value}
-                          </ThemedText>
-                        </View>
-                      ))}
-                  </View>
-                </SidebarCard>
-
-                {/* Featured media */}
-                <SidebarCard title="Featured media">
-                  {featuredMedia.map((item) => (
-                    <View key={item.id} className="gap-3">
-                      <View className={`h-[150px] rounded-[24px] bg-[#F7F8FA] ${item.fillClassName}`} />
-                      <View>
-                        <ThemedText className="text-lg font-semibold text-slate-950">{item.title}</ThemedText>
-                        <ThemedText className="mt-1 text-sm leading-6 text-slate-600">{item.subtitle}</ThemedText>
-                      </View>
+                        ))}
+                      {!profile.email && !profile.location && (
+                         <ThemedText className="text-base italic text-slate-400">
+                           Chưa có thông tin.
+                         </ThemedText>
+                      )}
                     </View>
-                  ))}
-                </SidebarCard>
-              </View>
+                  </SidebarCard>
+                </View>
+              )}
 
-              {/* Central panels content */}
+              {/* Main content area */}
               <View className={isWide ? 'min-w-0 flex-1 gap-4' : 'gap-4'}>
                 {activeTab === 'posts' ? (
                   <View className="gap-4">
-                    <ThemedText className="px-1 text-[28px] font-semibold text-slate-950">Recent posts</ThemedText>
+                    <MediaPanel posts={posts} />
+                    <ThemedText
+                      onLayout={(e) => feedY.current = e.nativeEvent.layout.y}
+                      className="px-1 text-[26px] font-semibold text-slate-950"
+                    >
+                      Tất cả bài viết
+                    </ThemedText>
                     {loadingPosts ? (
-                      <ThemedText className="text-slate-500 text-center py-4">Đang tải...</ThemedText>
+                      <View className="items-center py-8">
+                        <ActivityIndicator size="large" color="#4A9FD8" />
+                        <ThemedText className="mt-3 text-sm text-slate-500">Đang tải bài viết...</ThemedText>
+                      </View>
                     ) : posts.length === 0 ? (
-                      <ThemedText className="text-slate-500 text-center py-4">Chưa có bài viết nào.</ThemedText>
+                      <ThemedView className="rounded-[32px] border border-app-border bg-app-surface items-center py-10">
+                        <MaterialIcons name="article" size={40} color="#CBD5E1" />
+                        <ThemedText className="mt-3 text-[20px] font-semibold text-slate-700">Chưa có bài viết</ThemedText>
+                      </ThemedView>
                     ) : (
                       posts.map((post) => (
-                        <FeedPost key={post.id} item={post} onDeleteSuccess={() => handleDeletePost(String(post.id))} />
+                        <FeedPost key={post.id} item={post} onDeleteSuccess={() => handleDeletePost(post.id)} />
                       ))
                     )}
                   </View>
                 ) : null}
 
-                {activeTab === 'about' ? <AboutPanel profile={profile} /> : null}
-
-                {activeTab === 'media' ? <MediaPanel /> : null}
+                {activeTab === 'media' ? (
+                  <MediaPanel posts={posts} hideHeader />
+                ) : null}
               </View>
             </View>
           </ThemedView>

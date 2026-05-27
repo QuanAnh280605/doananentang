@@ -1,16 +1,17 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState, useRef, useCallback, type ReactNode } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View, useWindowDimensions, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { API_URL, fetchPosts } from '@/lib/api';
-import { fetchCurrentUser, fetchFollowStatus } from '@/lib/auth';
+import { fetchCurrentUser, fetchFollowStatus, uploadUserAvatar } from '@/lib/auth';
 import type { AuthUser, FollowStatus } from '@/lib/auth';
 import type { Post, VisibilityLevel } from '@/lib/types';
 
@@ -261,9 +262,37 @@ export default function ProfileScreen() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [avatarPickerActive, setAvatarPickerActive] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [followStatus, setFollowStatus] = useState<FollowStatus | null>(null);
 
   const isWide = width >= 1180;
+
+  const pickImage = async () => {
+    setAvatarPickerActive(false);
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const uri = result.assets[0].uri;
+        setIsUploadingAvatar(true);
+        const { avatar_url } = await uploadUserAvatar(uri);
+        if (user) {
+          setUser({ ...user, avatar_url });
+        }
+      }
+    } catch (error: any) {
+      console.error('Failed to upload avatar:', error);
+      Alert.alert('Lỗi', error.message || 'Không thể tải ảnh lên. Vui lòng thử lại sau.');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
 
   // Load user
   useEffect(() => {
@@ -385,16 +414,20 @@ export default function ProfileScreen() {
                     <ThemedText className="mb-3 text-sm font-semibold text-slate-700">Thay đổi ảnh đại diện</ThemedText>
                     <View className="flex-row gap-3">
                       <Pressable
-                        className="flex-1 items-center rounded-[14px] bg-[#4A9FD8] py-3 active:opacity-80"
-                        onPress={() => {
-                          setAvatarPickerActive(false);
-                        }}
+                        className={`flex-1 items-center justify-center rounded-[14px] bg-[#4A9FD8] py-3 active:opacity-80 ${isUploadingAvatar ? 'opacity-70' : ''}`}
+                        disabled={isUploadingAvatar}
+                        onPress={pickImage}
                       >
-                        <ThemedText className="text-sm font-semibold text-white">Chọn ảnh</ThemedText>
+                        {isUploadingAvatar ? (
+                          <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                          <ThemedText className="text-sm font-semibold text-white">Chọn ảnh</ThemedText>
+                        )}
                       </Pressable>
                       <Pressable
                         className="flex-1 items-center rounded-[14px] bg-[#F7F8FA] py-3 active:opacity-80"
                         onPress={() => setAvatarPickerActive(false)}
+                        disabled={isUploadingAvatar}
                       >
                         <ThemedText className="text-sm font-medium text-slate-700">Huỷ</ThemedText>
                       </Pressable>
