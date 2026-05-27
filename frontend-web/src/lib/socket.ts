@@ -5,17 +5,17 @@ import { getAccessToken } from '@/lib/session';
 
 const SOCKET_PATH = '/socket.io';
 
-let inboxSocket: Socket | null = null;
+let appSocket: Socket | null = null;
 
-function getInboxSocket(): Socket {
-  if (inboxSocket === null) {
-    inboxSocket = io(API_URL, {
+function getAppSocket(): Socket {
+  if (appSocket === null) {
+    appSocket = io(API_URL, {
       autoConnect: false,
       path: SOCKET_PATH,
     });
   }
 
-  return inboxSocket;
+  return appSocket;
 }
 
 function waitForSocketConnection(socket: Socket): Promise<Socket> {
@@ -39,15 +39,15 @@ function waitForSocketConnection(socket: Socket): Promise<Socket> {
   });
 }
 
-export function connectInboxSocket() {
+export function connectAppSocket() {
   const token = getAccessToken();
 
   if (!token) {
-    disconnectInboxSocket();
+    disconnectAppSocket();
     return null;
   }
 
-  const socket = getInboxSocket();
+  const socket = getAppSocket();
   socket.auth = { token };
 
   if (!socket.connected) {
@@ -57,30 +57,26 @@ export function connectInboxSocket() {
   return socket;
 }
 
-export const connectAppSocket = connectInboxSocket;
-
 export const POST_METRICS_UPDATED_EVENT = 'post-metrics-updated';
 
-export function disconnectInboxSocket() {
-  if (inboxSocket === null) {
+export function disconnectAppSocket() {
+  if (appSocket === null) {
     return;
   }
 
-  inboxSocket.disconnect();
+  appSocket.disconnect();
 }
 
-export const disconnectAppSocket = disconnectInboxSocket;
-
 export function getConnectedAppSocket(): Socket | null {
-  if (!inboxSocket?.connected) {
+  if (!appSocket?.connected) {
     return null;
   }
 
-  return inboxSocket;
+  return appSocket;
 }
 
 export async function joinChatRoom(chatId: string) {
-  const socket = connectInboxSocket();
+  const socket = connectAppSocket();
 
   if (!socket) {
     return;
@@ -91,7 +87,7 @@ export async function joinChatRoom(chatId: string) {
 }
 
 export async function leaveChatRoom(chatId: string) {
-  const socket = inboxSocket;
+  const socket = appSocket;
 
   if (!socket) {
     return;
@@ -102,7 +98,7 @@ export async function leaveChatRoom(chatId: string) {
 }
 
 export function joinPostRoom(postId: number): void {
-  const socket = connectInboxSocket();
+  const socket = connectAppSocket();
 
   if (!socket) {
     return;
@@ -112,7 +108,7 @@ export function joinPostRoom(postId: number): void {
 }
 
 export function leavePostRoom(postId: number): void {
-  const socket = inboxSocket;
+  const socket = appSocket;
 
   if (!socket) {
     return;
