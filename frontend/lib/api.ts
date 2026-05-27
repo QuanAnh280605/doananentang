@@ -451,7 +451,8 @@ export function createPost(
   locationName?: string,
   locationLat?: number,
   locationLng?: number,
-  taggedUserIds?: string[]
+  taggedUserIds?: string[],
+  sharedPostId?: string
 ): Promise<Post> {
   return apiFetch<Post>('/api/posts', {
     method: 'POST',
@@ -465,6 +466,7 @@ export function createPost(
       location_lat: locationLat,
       location_lng: locationLng,
       tagged_user_ids: taggedUserIds,
+      shared_post_id: sharedPostId,
     }),
   });
 }

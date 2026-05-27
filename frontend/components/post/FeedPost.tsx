@@ -7,7 +7,7 @@ import { Platform, Image, Modal, Pressable, ScrollView, View, Alert, Share, Text
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ActionBubble, Avatar } from '@/components/ui/core';
-import { API_URL, likePost, unlikePost, deletePost, updatePost, fetchPostLikers } from '@/lib/api';
+import { API_URL, likePost, unlikePost, deletePost, updatePost, fetchPostLikers, listDirectChats, sendChatMessage, createPost } from '@/lib/api';
 import type { PostLiker } from '@/lib/api';
 import { fetchCurrentUser } from '@/lib/auth';
 import type { Post, ReactionType } from '@/lib/types';
@@ -59,7 +59,7 @@ function formatTime(isoString: string): string {
     return `${days} ngày trước`;
 }
 
-export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSuccess?: () => void }) {
+export function FeedPost({ item, onDeleteSuccess, isNested }: { item: Post; onDeleteSuccess?: () => void; isNested?: boolean }) {
     const [liked, setLiked] = useState(item.is_liked);
     const [reactionType, setReactionType] = useState<ReactionType | null | undefined>(item.user_reaction);
     const [count, setCount] = useState(item.like_count);
@@ -85,6 +85,35 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
     const [likers, setLikers] = useState<PostLiker[]>([]);
     const [loadingLikers, setLoadingLikers] = useState(false);
 
+    // Share modal state
+    const [isShareModalVisible, setIsShareModalVisible] = useState(false);
+    const [shareChats, setShareChats] = useState<any[]>([]);
+    const [loadingShareChats, setLoadingShareChats] = useState(false);
+    const [sendingChatIds, setSendingChatIds] = useState<Record<number, boolean>>({});
+    const [isReposting, setIsReposting] = useState(false);
+
+    const handleRepost = async () => {
+        setIsReposting(true);
+        try {
+            await createPost('', [], 'public', undefined, undefined, undefined, undefined, undefined, undefined, String(item.id));
+            if (Platform.OS === 'web') {
+                window.alert('Đã chia sẻ lên bảng tin!');
+            } else {
+                Alert.alert('Thành công', 'Đã chia sẻ bài viết lên bảng tin của bạn!');
+            }
+            setIsShareModalVisible(false);
+            DeviceEventEmitter.emit('postCreated'); // Giả sử có event này để báo reload feed
+        } catch (error) {
+            console.error(error);
+            if (Platform.OS === 'web') {
+                window.alert('Lỗi: Không thể chia sẻ bài viết');
+            } else {
+                Alert.alert('Lỗi', 'Không thể chia sẻ bài viết');
+            }
+        } finally {
+            setIsReposting(false);
+        }
+    };
 
     useEffect(() => {
         setLiked(item.is_liked);
@@ -262,24 +291,37 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
     };
 
     const handleShare = async () => {
-        const shareUrl = `${API_URL}/post/${item.id}`;
+        setIsShareModalVisible(true);
+        setLoadingShareChats(true);
         try {
-            if (Platform.OS === 'web' && navigator.share) {
-                await navigator.share({
-                    title: `Bài viết của ${authorName}`,
-                    url: shareUrl
-                });
-            } else if (Platform.OS === 'web') {
-                // Clipboard fallback on web
-                await navigator.clipboard.writeText(shareUrl);
-                window.alert("Đã copy link bài viết!");
+            const res = await listDirectChats(1, 20);
+            setShareChats(res.items || []);
+        } catch (error) {
+            console.warn("Failed to fetch chats for sharing", error);
+        } finally {
+            setLoadingShareChats(false);
+        }
+    };
+
+    const handleSendToChat = async (chatId: number) => {
+        if (sendingChatIds[chatId]) return;
+        setSendingChatIds(prev => ({ ...prev, [chatId]: true }));
+        try {
+            const shareText = `[Bài viết] Xem bài viết của ${authorName} tại đây: doananentang://post/${item.id}`;
+            await sendChatMessage(chatId, shareText);
+            if (Platform.OS === 'web') {
+                window.alert("Đã gửi tin nhắn!");
             } else {
-                await Share.share({
-                    message: `Xem bài viết của ${authorName}: ${shareUrl}`,
-                });
+                Alert.alert("Thành công", "Đã gửi bài viết qua tin nhắn!");
             }
         } catch (error) {
-            console.warn(error);
+            if (Platform.OS === 'web') {
+                window.alert("Lỗi khi gửi tin nhắn.");
+            } else {
+                Alert.alert("Lỗi", "Không thể gửi tin nhắn.");
+            }
+        } finally {
+            setSendingChatIds(prev => ({ ...prev, [chatId]: false }));
         }
     };
 
@@ -333,51 +375,64 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                     </Pressable>
                 </Link>
 
-                <View style={{ position: 'relative', zIndex: 100 }}>
-                    <Pressable onPress={handleOptionsClick} className="active:opacity-70">
-                        {showMenu ? (
-                            <View className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#F7F8FA]">
-                                <MaterialIcons name="close" size={24} color="#666666" />
-                            </View>
-                        ) : (
-                            <ActionBubble icon="more-horiz" />
-                        )}
-                    </Pressable>
+                {!isNested && (
+                    <View style={{ position: 'relative', zIndex: 100 }}>
+                        <Pressable onPress={handleOptionsClick} className="active:opacity-70">
+                            {showMenu ? (
+                                <View className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#F7F8FA]">
+                                    <MaterialIcons name="close" size={24} color="#666666" />
+                                </View>
+                            ) : (
+                                <ActionBubble icon="more-horiz" />
+                            )}
+                        </Pressable>
 
-                    {showMenu && (
-                        <View
-                            style={{
-                                position: 'absolute',
-                                right: 0,
-                                top: 50,
-                                backgroundColor: 'white',
-                                borderRadius: 24,
-                                shadowColor: '#000',
-                                shadowOffset: { width: 0, height: 4 },
-                                shadowOpacity: 0.1,
-                                shadowRadius: 12,
-                                elevation: 5,
-                                width: 160,
-                                zIndex: 999
-                            }}
-                            className="border border-[#E4E8EE] overflow-hidden"
-                        >
-                            {isAuthor ? (
-                                <>
-                                    <Pressable onPress={() => { setShowMenu(false); setIsEditing(true); setEditContent(displayContent || ''); setEditVisibility(displayVisibility); }} className="px-4 py-4 active:bg-slate-50 border-b border-[#E4E8EE]">
-                                        <ThemedText className="text-slate-900 font-medium">Chỉnh sửa bài viết</ThemedText>
-                                    </Pressable>
-                                    <Pressable onPress={handleDeleteConfirm} className="px-4 py-4 active:bg-slate-50 border-b border-[#E4E8EE]">
-                                        <ThemedText className="text-red-500 font-medium">Xóa bài viết</ThemedText>
-                                    </Pressable>
-                                </>
-                            ) : null}
-                            <Pressable onPress={() => setShowMenu(false)} className="px-4 py-4 active:bg-slate-50">
-                                <ThemedText className="text-slate-500 font-medium">Báo cáo</ThemedText>
-                            </Pressable>
+                        {showMenu && (
+                            <View
+                                style={{
+                                    position: 'absolute',
+                                    right: 0,
+                                    top: 50,
+                                    backgroundColor: 'white',
+                                    borderRadius: 24,
+                                    shadowColor: '#000',
+                                    shadowOffset: { width: 0, height: 4 },
+                                    shadowOpacity: 0.1,
+                                    shadowRadius: 12,
+                                    elevation: 5,
+                                    width: 160,
+                                    zIndex: 999
+                                }}
+                            >
+                            <View className="overflow-hidden rounded-[24px] border border-slate-100">
+                                {isAuthor && (
+                                    <>
+                                        <Pressable
+                                            onPress={() => {
+                                                setShowMenu(false);
+                                                setEditContent(item.content || '');
+                                                setEditVisibility(item.visibility);
+                                                setIsEditing(true);
+                                            }}
+                                            className="flex-row items-center gap-3 px-4 py-3.5 border-b border-slate-100 bg-white active:bg-slate-50"
+                                        >
+                                            <MaterialIcons name="edit" size={20} color="#64748B" />
+                                            <ThemedText className="text-[15px] font-semibold text-slate-700">Sửa bài viết</ThemedText>
+                                        </Pressable>
+                                        <Pressable onPress={handleDeleteConfirm} className="flex-row items-center gap-3 px-4 py-3.5 border-b border-slate-100 bg-white active:bg-red-50">
+                                            <MaterialIcons name="delete-outline" size={20} color="#EF4444" />
+                                            <ThemedText className="text-[15px] font-semibold text-red-500">Xóa bài viết</ThemedText>
+                                        </Pressable>
+                                    </>
+                                )}
+                                <Pressable onPress={() => setShowMenu(false)} className="px-4 py-3.5 active:bg-slate-50">
+                                    <ThemedText className="text-[15px] text-slate-500 font-medium">Báo cáo</ThemedText>
+                                </Pressable>
+                            </View>
                         </View>
                     )}
                 </View>
+                )}
             </View>
 
             {/* Nội dung — bấm vào text chuyển sang detail, bấm vào ảnh mở viewer */}
@@ -484,6 +539,11 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                     </View>
                 )}
 
+                {item.shared_post && (
+                    <View className="mt-4 overflow-hidden rounded-[20px] border border-[#E4E8EE] bg-white">
+                        <FeedPost item={item.shared_post} isNested />
+                    </View>
+                )}
             </View>
 
             {/* Trình xem ảnh toàn màn hình */}
@@ -514,72 +574,74 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                 </View>
             </Modal>
 
-            {/* Stats — bấm vào lượt thích mở modal */}
-            <View className="mt-4 flex-row items-center justify-between gap-3">
-                <View className="flex-row items-center gap-3">
-                    <Pressable onPress={handleOpenLikers} disabled={count === 0} className="active:opacity-70 flex-row items-center gap-1.5">
-                        {count > 0 ? (
-                            <>
-                                <View className="flex-row items-center">
-                                    {topReactions.slice(0, 3).map((rType, index) => {
-                                        const icon = REACTIONS.find(r => r.type === rType)?.icon || '👍';
-                                        return (
-                                            <View
-                                                key={rType}
-                                                className="h-[22px] w-[22px] items-center justify-center rounded-full bg-white border-2 border-white"
-                                                style={{ marginLeft: index > 0 ? -6 : 0, zIndex: 3 - index }}
-                                            >
-                                                <ThemedText style={{ fontSize: 13, lineHeight: 14, marginTop: Platform.OS === 'android' ? -2 : 0 }}>{icon}</ThemedText>
-                                            </View>
-                                        );
-                                    })}
-                                </View>
-                                <ThemedText className="text-sm font-medium text-slate-700 ml-1">
-                                    {count} lượt tương tác
-                                </ThemedText>
-                            </>
-                        ) : (
-                            <ThemedText className="text-sm font-medium text-slate-400">
-                                Chưa có lượt tương tác
-                            </ThemedText>
-                        )}
-                    </Pressable>
-                    {item.comment_count > 0 && (
-                        <>
-                            <View className="h-1 w-1 rounded-full bg-slate-300" />
-                            <ThemedText className="text-sm text-slate-500">
-                                {item.comment_count} bình luận
-                            </ThemedText>
-                        </>
-                    )}
-                </View>
-                {/* Visibility chip */}
-                {(() => {
-                    const vc = getVisibilityConfig(displayVisibility);
-                    return (
-                        <View
-                            style={{
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                gap: 4,
-                                borderRadius: 14,
-                                paddingHorizontal: 10,
-                                paddingVertical: 4,
-                                backgroundColor: `${vc.color}14`,
-                            }}
-                        >
-                            <MaterialIcons name={vc.icon} size={13} color={vc.color} />
-                            <ThemedText style={{ fontSize: 12, fontWeight: '600', color: vc.color }}>
-                                {vc.label}
-                            </ThemedText>
+            {!isNested && (
+                <>
+                    {/* Stats — bấm vào lượt thích mở modal */}
+                    <View className="mt-4 flex-row items-center justify-between gap-3">
+                        <View className="flex-row items-center gap-3">
+                            <Pressable onPress={handleOpenLikers} disabled={count === 0} className="active:opacity-70 flex-row items-center gap-1.5">
+                                {count > 0 ? (
+                                    <>
+                                        <View className="flex-row items-center">
+                                            {topReactions.slice(0, 3).map((rType, index) => {
+                                                const icon = REACTIONS.find(r => r.type === rType)?.icon || '👍';
+                                                return (
+                                                    <View
+                                                        key={rType}
+                                                        className="h-[22px] w-[22px] items-center justify-center rounded-full bg-white border-2 border-white"
+                                                        style={{ marginLeft: index > 0 ? -6 : 0, zIndex: 3 - index }}
+                                                    >
+                                                        <ThemedText style={{ fontSize: 13, lineHeight: 14, marginTop: Platform.OS === 'android' ? -2 : 0 }}>{icon}</ThemedText>
+                                                    </View>
+                                                );
+                                            })}
+                                        </View>
+                                        <ThemedText className="text-sm font-medium text-slate-700 ml-1">
+                                            {count} lượt tương tác
+                                        </ThemedText>
+                                    </>
+                                ) : (
+                                    <ThemedText className="text-sm font-medium text-slate-400">
+                                        Chưa có lượt tương tác
+                                    </ThemedText>
+                                )}
+                            </Pressable>
+                            {item.comment_count > 0 && (
+                                <>
+                                    <View className="h-1 w-1 rounded-full bg-slate-300" />
+                                    <ThemedText className="text-sm text-slate-500">
+                                        {item.comment_count} bình luận
+                                    </ThemedText>
+                                </>
+                            )}
                         </View>
-                    );
-                })()}
-            </View>
+                        {/* Visibility chip */}
+                        {(() => {
+                            const vc = getVisibilityConfig(displayVisibility);
+                            return (
+                                <View
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        gap: 4,
+                                        borderRadius: 14,
+                                        paddingHorizontal: 10,
+                                        paddingVertical: 4,
+                                        backgroundColor: `${vc.color}14`,
+                                    }}
+                                >
+                                    <MaterialIcons name={vc.icon} size={13} color={vc.color} />
+                                    <ThemedText style={{ fontSize: 12, fontWeight: '600', color: vc.color }}>
+                                        {vc.label}
+                                    </ThemedText>
+                                </View>
+                            );
+                        })()}
+                    </View>
 
-            {/* Thanh hành động */}
-            <View className="mt-4 flex-row flex-wrap gap-3 border-t border-[#E4E8EE] pt-4 relative">
-                {/* Overlay bắt tap ra ngoài để đóng bubble */}
+                    {/* Thanh hành động */}
+                    <View className="mt-4 flex-row gap-2 border-t border-[#E4E8EE] pt-4 relative">
+                        {/* Overlay bắt tap ra ngoài để đóng bubble */}
                 {showReactions && (
                     <Pressable
                         style={{ position: 'absolute', top: -200, left: -200, right: -200, bottom: -200, zIndex: 50 }}
@@ -635,7 +697,7 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                     onPress={() => handleToggleLike()}
                     onLongPress={() => setShowReactions(true)}
                     disabled={loading}
-                    className="min-w-[140px] flex-1 flex-row items-center justify-center gap-2 rounded-[20px] bg-[#F7F8FA] px-4 py-4 active:opacity-80"
+                    className="flex-1 flex-row items-center justify-center gap-1.5 rounded-[20px] bg-[#F7F8FA] py-3 px-1 active:opacity-80"
                     style={{ zIndex: 60 }}
                 >
                     {liked ? (() => {
@@ -658,18 +720,20 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
 
                 {/* Comment */}
                 <Link href={`/(post)/${item.id}`} asChild>
-                    <Pressable className="min-w-[140px] flex-1 flex-row items-center justify-center gap-2 rounded-[20px] bg-[#F7F8FA] px-4 py-4 active:opacity-80">
+                    <Pressable className="flex-1 flex-row items-center justify-center gap-1.5 rounded-[20px] bg-[#F7F8FA] py-3 px-1 active:opacity-80">
                         <MaterialIcons color="#666666" name="chat-bubble-outline" size={20} />
                         <ThemedText className="text-base font-medium text-slate-500">Comment</ThemedText>
                     </Pressable>
                 </Link>
 
                 {/* Share */}
-                <Pressable onPress={handleShare} className="min-w-[140px] flex-1 flex-row items-center justify-center gap-2 rounded-[20px] bg-[#F7F8FA] px-4 py-4 active:opacity-80">
+                <Pressable onPress={handleShare} className="flex-1 flex-row items-center justify-center gap-1.5 rounded-[20px] bg-[#F7F8FA] py-3 px-1 active:opacity-80">
                     <MaterialIcons color="#666666" name="reply" size={20} />
                     <ThemedText className="text-base font-medium text-slate-500">Share</ThemedText>
                 </Pressable>
             </View>
+            </>
+            )}
 
             {/* Modal danh sách người đã like */}
             <Modal
@@ -814,6 +878,101 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                                 );
                             })}
                         </ScrollView>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Share Modal */}
+            <Modal
+                visible={isShareModalVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setIsShareModalVisible(false)}
+            >
+                <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                    <Pressable style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }} onPress={() => setIsShareModalVisible(false)} />
+                    <View style={{ borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: 'white', paddingBottom: 32, maxHeight: '75%' }}>
+                        <View className="mx-auto mt-3 h-1 w-10 rounded-full bg-slate-200" />
+                        
+                        <View className="flex-row items-center justify-between px-5 py-4 border-b border-[#E4E8EE]">
+                            <ThemedText className="text-lg font-semibold text-slate-900">
+                                Chia sẻ
+                            </ThemedText>
+                            <Pressable
+                                onPress={() => setIsShareModalVisible(false)}
+                                className="h-8 w-8 items-center justify-center rounded-full bg-[#F7F8FA]"
+                            >
+                                <MaterialIcons name="close" size={18} color="#64748B" />
+                            </Pressable>
+                        </View>
+
+                        <Pressable 
+                            onPress={handleRepost}
+                            disabled={isReposting}
+                            className="flex-row items-center gap-3 px-5 py-4 border-b border-[#E4E8EE] active:bg-slate-50"
+                        >
+                            <View className="h-10 w-10 items-center justify-center rounded-full bg-[#EAF4FB]">
+                                {isReposting ? (
+                                    <ActivityIndicator size="small" color="#4A9FD8" />
+                                ) : (
+                                    <MaterialIcons name="add-to-photos" size={20} color="#4A9FD8" />
+                                )}
+                            </View>
+                            <View>
+                                <ThemedText className="font-semibold text-slate-900">Chia sẻ lên bảng tin</ThemedText>
+                                <ThemedText className="text-sm text-slate-500">Đăng lại bài viết này trên trang của bạn</ThemedText>
+                            </View>
+                        </Pressable>
+
+                        <ThemedText className="px-5 pt-4 pb-2 text-[13px] font-bold text-slate-500 uppercase tracking-wider">
+                            Gửi qua tin nhắn
+                        </ThemedText>
+
+                        {loadingShareChats ? (
+                            <View className="items-center py-10">
+                                <ActivityIndicator size="large" color="#4A9FD8" />
+                                <ThemedText className="mt-3 text-sm text-slate-500">Đang tải...</ThemedText>
+                            </View>
+                        ) : shareChats.length === 0 ? (
+                            <View className="items-center py-10">
+                                <MaterialIcons name="chat-bubble-outline" size={36} color="#CBD5E1" />
+                                <ThemedText className="mt-3 text-sm text-slate-500">Chưa có cuộc trò chuyện nào</ThemedText>
+                            </View>
+                        ) : (
+                            <ScrollView className="px-5 pt-2">
+                                {shareChats.map((chat) => {
+                                    const participant = chat.participant;
+                                    const initials = `${participant.first_name?.[0] || ''}${participant.last_name?.[0] || ''}`.toUpperCase();
+                                    const avatarUrl = participant.avatar_url
+                                        ? (participant.avatar_url.startsWith('http') ? participant.avatar_url : `${API_URL}${participant.avatar_url}`)
+                                        : null;
+                                    
+                                    const isSending = sendingChatIds[chat.chat_id];
+
+                                    return (
+                                        <View key={chat.chat_id} className="flex-row items-center justify-between gap-4 py-3 border-b border-[#F1F5F9]">
+                                            <View className="flex-row items-center gap-3 flex-1">
+                                                <Avatar initials={initials} soft avatarUrl={avatarUrl} />
+                                                <ThemedText className="font-semibold text-slate-900 flex-1" numberOfLines={1}>
+                                                    {participant.full_name}
+                                                </ThemedText>
+                                            </View>
+                                            <Pressable
+                                                disabled={isSending}
+                                                onPress={() => handleSendToChat(chat.chat_id)}
+                                                className={`rounded-[14px] px-4 py-2 ${isSending ? 'bg-slate-200' : 'bg-[#4A9FD8]'} active:opacity-80`}
+                                            >
+                                                {isSending ? (
+                                                    <ActivityIndicator size="small" color="#4A9FD8" />
+                                                ) : (
+                                                    <ThemedText className="text-sm font-semibold text-white">Gửi</ThemedText>
+                                                )}
+                                            </Pressable>
+                                        </View>
+                                    );
+                                })}
+                            </ScrollView>
+                        )}
                     </View>
                 </View>
             </Modal>

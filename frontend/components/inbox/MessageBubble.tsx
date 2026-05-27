@@ -1,7 +1,7 @@
-import { Image, View } from 'react-native';
+import { Image, View, Pressable } from 'react-native';
 import { API_URL } from '@/lib/api';
-
 import { ThemedText } from '@/components/themed-text';
+import { SharedPostPreview } from './SharedPostPreview';
 
 export type MessageBubbleData = {
   id: string;
@@ -17,9 +17,21 @@ export function MessageBubble({ item }: { item: MessageBubbleData }) {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       return url;
     }
-    // Ghép với API_URL của backend
     return `${API_URL}${url}`;
   };
+
+  let sharedPostId: string | null = null;
+  let displayText = item.body;
+
+  if (item.body) {
+    const postMatch = item.body.match(/\/post\/(\d+)/);
+    if (postMatch) {
+      sharedPostId = postMatch[1];
+      // Thay thế phần text rập khuôn bằng một câu tự nhiên hơn hoặc để trống nếu muốn chỉ hiện Card
+      // Xóa các mẫu "[Bài viết] Xem bài viết của..." cũ và mới
+      displayText = item.body.replace(/\[Bài viết\].*?\/post\/\d+/, '').trim();
+    }
+  }
 
   return (
     <View className={`max-w-[88%] ${item.incoming ? 'self-start' : 'self-end'}`}>
@@ -30,13 +42,20 @@ export function MessageBubble({ item }: { item: MessageBubbleData }) {
             style={{ width: 240, height: 180, resizeMode: 'cover' }}
           />
         ) : null}
-        {item.body ? (
-          <View className="px-4 py-3">
+        
+        {displayText ? (
+          <View className="px-4 py-3 pb-2">
             <ThemedText className={`text-[15px] leading-6 ${item.incoming ? 'text-slate-700' : 'text-white'}`}>
-              {item.body}
+              {displayText}
             </ThemedText>
           </View>
         ) : null}
+
+        {sharedPostId && (
+          <View className={`px-2 pb-2 pt-1 ${!displayText ? 'pt-2' : ''}`}>
+            <SharedPostPreview postId={sharedPostId} />
+          </View>
+        )}
       </View>
       <ThemedText className={`mt-2 text-xs text-slate-400 ${item.incoming ? 'text-left' : 'text-right'}`}>
         {item.time}

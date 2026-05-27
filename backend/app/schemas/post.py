@@ -20,6 +20,7 @@ class PostCreate(PostBase):
   media_urls: list[str] | None = Field(default=None, max_length=4)
   tagged_users: list[dict] | None = None
   tagged_user_ids: list[int] | None = None
+  shared_post_id: int | UUID | None = None
 
 class PostMediaRead(BaseModel):
   id: int | UUID
@@ -73,6 +74,7 @@ class PostRead(PostBase):
 # Schema đầy đủ: bài viết + thông tin tác giả (dùng cho list & detail API)
 class PostReadWithAuthor(PostRead):
   author: PostAuthorRead
+  shared_post: "PostReadWithAuthor | None" = None
 
   model_config = ConfigDict(from_attributes=True)
 
