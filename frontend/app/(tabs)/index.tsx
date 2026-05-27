@@ -7,24 +7,19 @@ import { ActivityIndicator, FlatList, Pressable, View, useWindowDimensions, Refr
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ComposerCard } from '@/components/post/ComposerCard';
 import { FeedPost } from '@/components/post/FeedPost';
+import { StoryStrip } from '@/components/story/StoryStrip';
+import { CreateStoryModal } from '@/components/story/CreateStoryModal';
+import { StoryViewerModal } from '@/components/story/StoryViewerModal';
+import { mapApiStoryToStoryItem, type StoryItem } from '@/components/story/storyState';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Avatar, surfaceClass } from '@/components/ui/core';
-import { fetchFollowingUsers, fetchFeedPosts, listDirectChats } from '@/lib/api';
-import type { ChatListItem, FollowUser } from '@/lib/api';
+import { fetchFollowingUsers, fetchFeedPosts, listDirectChats, fetchStories } from '@/lib/api';
+import type { FollowUser } from '@/lib/api';
 import { fetchCurrentUser } from '@/lib/auth';
 import type { AuthUser } from '@/lib/auth';
-import type { Post } from '@/lib/types';
+import type { Post, ChatListItemRead } from '@/lib/types';
 
-
-type Story = {
-  id: string;
-  authorName: string;
-  mediaUrl: string;
-  initials: string;
-  avatarUrl?: string | null;
-  ringColor?: string;
-};
 
 type Contact = {
   id: number;
@@ -46,12 +41,6 @@ type InboxItem = {
 };
 
 
-const stories: Story[] = [
-  { id: '1', authorName: 'Lena Evere', mediaUrl: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=400&q=80', initials: 'LE', ringColor: '#4A9FD8' },
-  { id: '2', authorName: 'Alex Chen', mediaUrl: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=400&q=80', initials: 'AC', ringColor: '#41A36D' },
-  { id: '3', authorName: 'Sarah Kim', mediaUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=400&q=80', initials: 'SK', ringColor: '#F59E0B' },
-];
-
 function buildInitials(firstName?: string | null, lastName?: string | null): string {
   return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase() || 'US';
 }
@@ -67,7 +56,7 @@ function mapFollowUserToContact(user: FollowUser): Contact {
   };
 }
 
-function mapChatToInboxItem(thread: ChatListItem): InboxItem {
+function mapChatToInboxItem(thread: ChatListItemRead): InboxItem {
   return {
     id: thread.chat_id,
     participantId: thread.participant.id,
@@ -90,82 +79,6 @@ function SectionCard({ title, rightLabel, children }: { title: string; rightLabe
   );
 }
 
-
-function StoryStrip({ currentUser }: { currentUser: AuthUser | null }) {
-  const initials = buildInitials(currentUser?.first_name, currentUser?.last_name);
-  const userAvatarUrl = currentUser?.avatar_url
-    ? currentUser.avatar_url.startsWith('http')
-      ? currentUser.avatar_url
-      : `${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000'}${currentUser.avatar_url}`
-    : null;
-
-  return (
-    <ThemedView className="bg-white mb-2 py-4">
-      <View className="mb-4 flex-row items-center justify-between px-4">
-        <ThemedText className="text-[18px] font-bold text-slate-900 tracking-tight">
-          Tin nổi bật
-        </ThemedText>
-        <Pressable className="active:opacity-70">
-          <MaterialIcons name="add-circle-outline" size={24} color="#0F172A" />
-        </Pressable>
-      </View>
-
-      <FlatList
-        horizontal
-        data={stories}
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingLeft: 16, paddingRight: 16 }}
-        ListHeaderComponent={
-          <Pressable className="mr-3 h-[180px] w-[110px] overflow-hidden rounded-[16px] border border-[#E4E8EE] bg-white active:opacity-90">
-            <View className="h-[120px] bg-[#EAF4FB] items-center justify-center">
-              {userAvatarUrl ? (
-                <Image source={{ uri: userAvatarUrl }} className="h-full w-full" resizeMode="cover" />
-              ) : (
-                <ThemedText className="text-[24px] font-bold text-[#4A9FD8]">{initials}</ThemedText>
-              )}
-            </View>
-            <View className="absolute left-1/2 top-[102px] ml-[-18px] h-[36px] w-[36px] items-center justify-center rounded-full border-[3px] border-[#FFFFFF] bg-[#4A9FD8]">
-              <MaterialIcons name="add" size={20} color="#FFFFFF" />
-            </View>
-            <View className="mt-6 items-center px-2">
-              <ThemedText className="text-[12px] font-semibold text-slate-900 text-center">Tạo tin</ThemedText>
-            </View>
-          </Pressable>
-        }
-        renderItem={({ item }) => {
-          const avatarUri = item.avatarUrl
-            ? item.avatarUrl.startsWith('http')
-              ? item.avatarUrl
-              : `${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000'}${item.avatarUrl}`
-            : null;
-          return (
-            <Pressable className="mr-3 h-[180px] w-[110px] overflow-hidden rounded-[16px] bg-slate-900 active:opacity-90">
-              <Image source={{ uri: item.mediaUrl }} className="absolute h-full w-full opacity-90" resizeMode="cover" />
-              <View className="absolute bottom-0 left-0 right-0 h-24" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }} />
-              
-              <View className="absolute left-2 top-2 h-10 w-10 items-center justify-center rounded-full bg-white border-2" style={{ borderColor: item.ringColor || '#4A9FD8' }}>
-                {avatarUri ? (
-                  <Image source={{ uri: avatarUri }} style={{ width: 34, height: 34, borderRadius: 17 }} resizeMode="cover" />
-                ) : (
-                  <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: '#EAF4FB', alignItems: 'center', justifyContent: 'center' }}>
-                    <ThemedText style={{ fontSize: 11, fontWeight: '700', color: item.ringColor || '#4A9FD8' }}>{item.initials}</ThemedText>
-                  </View>
-                )}
-              </View>
-              
-              <View className="absolute bottom-3 left-2 right-2">
-                <ThemedText className="text-[12px] font-bold text-white leading-tight" numberOfLines={2}>
-                  {item.authorName}
-                </ThemedText>
-              </View>
-            </Pressable>
-          );
-        }}
-      />
-    </ThemedView>
-  );
-}
 
 function ContactRow({ item }: { item: Contact }) {
   return (
@@ -247,7 +160,7 @@ function RightRail({ currentUser }: { currentUser: AuthUser | null }) {
       .then(([followingResponse, chatThreads]) => {
         if (!isMounted) return;
         setContacts(followingResponse.items.map(mapFollowUserToContact));
-        setInboxItems(chatThreads.slice(0, 3).map(mapChatToInboxItem));
+        setInboxItems(chatThreads.items.slice(0, 3).map(mapChatToInboxItem));
       })
       .catch((err: unknown) => {
         if (!isMounted) return;
@@ -317,9 +230,25 @@ export default function HomeScreen() {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
+  const [stories, setStories] = useState<StoryItem[]>([]);
+  const [isCreateStoryVisible, setCreateStoryVisible] = useState(false);
+  const [isStoryViewerVisible, setStoryViewerVisible] = useState(false);
+  const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
+
   useEffect(() => {
     fetchCurrentUser().then(setCurrentUser).catch(() => { });
+    loadStories();
   }, []);
+
+  const loadStories = async () => {
+    try {
+      const apiStories = await fetchStories();
+      const mappedStories = apiStories.map(s => mapApiStoryToStoryItem(s as any));
+      setStories(mappedStories);
+    } catch (err) {
+      console.warn('Could not fetch stories', err);
+    }
+  };
 
   const loadPosts = useCallback(async (pageNum = 1, shouldAppend = false) => {
     if (pageNum === 1) {
@@ -431,7 +360,15 @@ export default function HomeScreen() {
               <View className={`${isDesktop ? 'flex-1' : 'w-full'} gap-4`}>
                 <ComposerCard onPostCreated={() => loadPosts(1, false)} currentUser={currentUser} />
                 {/* Stories */}
-                <StoryStrip currentUser={currentUser} />
+                <StoryStrip 
+                  currentUser={currentUser} 
+                  stories={stories}
+                  onCreateStory={() => setCreateStoryVisible(true)}
+                  onOpenStory={(storyId) => {
+                    setSelectedStoryId(storyId);
+                    setStoryViewerVisible(true);
+                  }}
+                />
                 {/* Loading / Error / Empty */}
                 {loading && (
                   <View className="items-center py-12">
@@ -527,6 +464,28 @@ export default function HomeScreen() {
             )
           ) : null
         }
+      />
+      
+      {/* Story Modals */}
+      <CreateStoryModal 
+        visible={isCreateStoryVisible}
+        onClose={() => setCreateStoryVisible(false)}
+        onSuccess={() => {
+          loadStories();
+        }}
+      />
+
+      <StoryViewerModal 
+        visible={isStoryViewerVisible}
+        stories={stories}
+        initialStoryId={selectedStoryId}
+        onClose={() => {
+          setStoryViewerVisible(false);
+          setSelectedStoryId(null);
+        }}
+        onStoryViewed={(id) => {
+          setStories(prev => prev.map(s => s.id === id ? { ...s, isViewed: true } : s));
+        }}
       />
     </ThemedView>
   );
