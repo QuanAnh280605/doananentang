@@ -262,6 +262,11 @@ export default function ProfileScreen() {
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [avatarPickerActive, setAvatarPickerActive] = useState(false);
   const [followStatus, setFollowStatus] = useState<FollowStatus | null>(null);
+  const [isEditingIntro, setIsEditingIntro] = useState(false);
+  const [tempIntro, setTempIntro] = useState('');
+  const [tempCity, setTempCity] = useState('');
+  const [isSavingIntro, setIsSavingIntro] = useState(false);
+  const [introSaved, setIntroSaved] = useState(false);
 
   const isWide = width >= 1180;
 
@@ -343,6 +348,29 @@ export default function ProfileScreen() {
     setPosts((current) => current.filter((p) => p.id !== postId));
   };
 
+  const handleSaveIntro = async () => {
+    setIsSavingIntro(true);
+    try {
+      const updatedUser = await updateUserProfile({
+        bio: tempIntro.trim() || null,
+        city: tempCity.trim() || null,
+      });
+      setUser(updatedUser);
+      setIsEditingIntro(false);
+      setIntroSaved(true);
+      setTimeout(() => setIntroSaved(false), 3000);
+    } catch {
+      // Xử lý lỗi
+    } finally {
+      setIsSavingIntro(false);
+    }
+  };
+
+  const handleCancelIntro = () => {
+    setTempIntro(user?.bio || '');
+    setTempCity(user?.city || '');
+    setIsEditingIntro(false);
+  };
   const profile = useMemo(() => buildProfileViewModel(user), [user]);
 
   if (isLoadingUser) {
@@ -356,9 +384,23 @@ export default function ProfileScreen() {
   return (
     <>
       <StatusBar style="dark" />
-      <ThemedView className="flex-1 bg-[#F1F5F9]" style={{ minHeight: height, paddingTop: insets.top }}>
-        <ScrollView ref={scrollViewRef} bounces={false} className="flex-1" contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}>
-          <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 pb-6 md:px-6 md:pt-6">
+      <ThemedView className="flex-1 bg-[#F1F5F9]" style={{ minHeight: height }}>
+        <ScrollView bounces={false} className="flex-1" contentContainerClassName="pb-8">
+          <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-2 md:px-6">
+            {/* Back header */}
+            <View
+              className="flex-row items-center gap-3 bg-white px-5 py-4 border border-app-border mx-0 rounded-3xl shadow-sm"
+              style={{ marginTop: Math.max(insets.top, 0) + 10 }}
+            >
+              <Pressable
+                onPress={() => router.push('/')}
+                className="h-11 w-11 items-center justify-center rounded-full bg-[#F1F5F9] active:opacity-80"
+              >
+                <ThemedText className="text-xl">←</ThemedText>
+              </Pressable>
+              <ThemedText className="text-[20px] font-bold text-slate-900">Hồ sơ</ThemedText>
+            </View>
+
             {/* Profile card */}
             <ThemedView className="bg-white shadow-sm overflow-hidden md:rounded-[32px] md:border md:border-[#E4E8EE]">
               <View className="h-[180px] bg-[#D9ECF8]" />
@@ -428,7 +470,7 @@ export default function ProfileScreen() {
                           </Pressable>
                         </>
                       ) : null}
-                      <Pressable 
+                      <Pressable
                         className="flex-row items-center gap-1.5 active:opacity-70"
                         onPress={() => {
                           if (activeTab !== 'posts') {
@@ -474,7 +516,7 @@ export default function ProfileScreen() {
             </ThemedView>
 
             {/* Body: sidebar + main */}
-            <View 
+            <View
               className={isWide ? 'flex-row items-start gap-4' : 'gap-4'}
               onLayout={(e) => postsSectionY.current = e.nativeEvent.layout.y}
             >
@@ -522,7 +564,7 @@ export default function ProfileScreen() {
                 {activeTab === 'posts' ? (
                   <View className="gap-4">
                     <MediaPanel posts={posts} />
-                    <ThemedText 
+                    <ThemedText
                       onLayout={(e) => feedY.current = e.nativeEvent.layout.y}
                       className="px-1 text-[26px] font-semibold text-slate-950"
                     >

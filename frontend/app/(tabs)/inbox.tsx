@@ -20,7 +20,6 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { InboxListItem, type InboxListItemData } from '@/components/inbox/InboxListItem';
 import { MessageBubble, type MessageBubbleData } from '@/components/inbox/MessageBubble';
-import { ProfilePanelStat, type ProfilePanelStatData } from '@/components/inbox/ProfilePanelStat';
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -128,9 +127,6 @@ export default function InboxScreen() {
   // Search states
   const [inboxNavSearchQuery, setInboxNavSearchQuery] = useState('');
   const [inboxSearchQuery, setInboxSearchQuery] = useState('');
-
-  // Mobile navigation/modal overlay state
-  const [showProfileOverlay, setShowProfileOverlay] = useState(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const messagesRef = useRef<ChatMessageRead[]>([]);
@@ -319,6 +315,20 @@ export default function InboxScreen() {
     return activeChat?.participant || null;
   }, [activeChat]);
 
+  const currentUserAvatarUrl = useMemo(() => {
+    if (!currentUser?.avatar_url) return null;
+    return currentUser.avatar_url.startsWith('http')
+      ? currentUser.avatar_url
+      : `${API_URL}${currentUser.avatar_url}`;
+  }, [currentUser]);
+
+  const currentUserInitials = useMemo(() => {
+    if (!currentUser) return 'GP';
+    const first = currentUser.first_name ? currentUser.first_name[0] : '';
+    const last = currentUser.last_name ? currentUser.last_name[0] : '';
+    return (first + last).toUpperCase() || currentUser.email.slice(0, 2).toUpperCase();
+  }, [currentUser]);
+
   // Get Initials for Avatar
   const getInitials = (participant: ChatParticipant | null | SearchUser): string => {
     if (!participant) return '??';
@@ -424,6 +434,7 @@ export default function InboxScreen() {
       preview: preview,
       time: chat.latest_message ? formatTime(chat.latest_message.created_at) : formatTime(chat.updated_at),
       initials: initials,
+      avatarUrl: chat.participant.avatar_url,
       bio: chat.participant.bio || undefined,
       active: chat.chat_id === activeChatId,
       unread: chat.unread_count,
@@ -441,15 +452,6 @@ export default function InboxScreen() {
       mediaType: msg.media_type,
     };
   });
-
-  // Profile details items list
-  const profileDetails: ProfilePanelStatData[] = activeParticipant
-    ? [
-      { label: 'Vai trò', value: activeParticipant.bio ? 'Thành viên chính thức' : 'Người dùng mạng xã hội' },
-      { label: 'User ID', value: activeParticipant.id.toString() },
-      { label: 'Tài khoản', value: 'Công khai' },
-    ]
-    : [];
 
   const newChatButton = (
     <Pressable
@@ -537,13 +539,13 @@ export default function InboxScreen() {
     };
 
     return (
-      <ThemedView className={`flex-1 h-full min-h-[350px] bg-[#FCFDFE] p-3 ${useViewportLayout ? 'rounded-surface border border-app-border' : ''}`}>
+      <ThemedView className={`flex-1 h-full min-h-[350px] bg-[#FCFDFE] px-4 pb-4 pt-2.5 ${useViewportLayout ? 'rounded-surface border border-app-border' : ''}`}>
         {/* Header tinh gọn ở phía trên */}
         <View className="flex-row items-center gap-3 pb-3 mb-2 border-b border-slate-100">
           {/* Nút Back - Chỉ hiển thị trên mobile/tablet */}
           {!useViewportLayout && (
             <Pressable
-              className="h-9 w-9 items-center justify-center rounded-[12px] bg-slate-100 active:opacity-80"
+              className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 active:opacity-80"
               onPress={() => setActiveChatId(null)}>
               <MaterialIcons color="#475569" name="arrow-back" size={20} />
             </Pressable>
@@ -551,33 +553,36 @@ export default function InboxScreen() {
 
           {/* Avatar & Tên người nhắn (Ấn vào để mở profile) */}
           <Pressable
-            className="flex-row items-center gap-2.5 active:opacity-80 flex-1"
+            className="flex-row items-center gap-3 active:opacity-80 flex-1"
             onPress={() => {
               router.push(`/profile/${activeParticipant.id}`);
             }}>
             {activeParticipant.avatar_url ? (
               <Image
                 source={{ uri: getAbsoluteAvatarUrl(activeParticipant.avatar_url)! }}
-                className="h-9 w-9 rounded-[12px] bg-slate-200 border border-slate-200"
+                className="h-11 w-11 rounded-full bg-slate-200 border border-slate-200"
               />
             ) : (
-              <View className="h-9 w-9 items-center justify-center rounded-[12px] bg-[#DBEAFE]">
-                <ThemedText className="text-xs font-semibold text-slate-900">{initials}</ThemedText>
+              <View className="h-11 w-11 items-center justify-center rounded-full bg-[#EAF4FB]">
+                <ThemedText className="text-sm font-semibold text-[#4A9FD8]">{initials}</ThemedText>
               </View>
             )}
             <View className="flex-1">
-              <ThemedText className="text-[15px] font-bold text-slate-900 truncate">
+              <ThemedText className="text-base font-bold text-slate-900 truncate">
                 {activeParticipant.full_name}
               </ThemedText>
-              <ThemedText className="text-[11px] text-slate-400 mt-0.5">
-                Đang hoạt động
-              </ThemedText>
+              <View className="flex-row items-center gap-1.5 mt-0.5">
+                <View className="h-2 w-2 rounded-full bg-green-500" />
+                <ThemedText className="text-[11px] font-medium text-slate-400">
+                  Đang hoạt động
+                </ThemedText>
+              </View>
             </View>
           </Pressable>
         </View>
 
         {/* Phần danh sách tin nhắn chiếm trọn không gian */}
-        <View className="min-h-0 flex-1 bg-[#FCFDFE] px-2 py-2">
+        <View className="min-h-0 flex-1 bg-[#FCFDFE] px-1 py-2">
           {isLoadingMessages ? (
             <View className="flex-1 justify-center items-center">
               <ActivityIndicator color="#4A9FD8" size="large" />
@@ -596,23 +601,23 @@ export default function InboxScreen() {
           )}
         </View>
 
-        {/* Thanh nhập tin nhắn siêu tối giản - Đã bỏ nút Back và Info dưới thanh nhập */}
-        <View className="flex-row items-center gap-2 rounded-[20px] bg-slate-100 px-2 py-1.5 mt-2">
+        {/* Thanh nhập tin nhắn siêu tối giản - Đã căn chỉnh lại tỷ lệ và bo góc */}
+        <View className="flex-row items-center gap-2 rounded-[28px] bg-[#F1F5F9] p-1.5 mt-2">
           {/* Nút Chọn Ảnh */}
           <Pressable
-            className="h-9 w-9 items-center justify-center rounded-[12px] bg-white active:opacity-80 shadow-sm"
+            className="h-11 w-11 items-center justify-center rounded-full bg-white active:opacity-80 shadow-sm"
             disabled={isUploading}
             onPress={handleSelectImage}>
             {isUploading ? (
               <ActivityIndicator color="#4A9FD8" size="small" />
             ) : (
-              <MaterialIcons color="#475569" name="image" size={18} />
+              <MaterialIcons color="#475569" name="image" size={20} />
             )}
           </Pressable>
 
-          {/* Ô Nhập Tin Nhắn */}
+          {/* Ô Nhập Tin Nhắn - Cân đối lại padding dọc và căn giữa hoàn hảo */}
           <TextInput
-            className="flex-1 max-h-[70px] min-h-[46px] text-[15px] leading-5 text-slate-900 px-3 py-4 bg-white rounded-[12px]"
+            className="flex-1 max-h-[100px] min-h-[44px] text-[15px] leading-5 text-slate-900 px-4 py-2.5 bg-white rounded-[22px]"
             cursorColor="#4A9FD8"
             multiline
             onChangeText={setDraftMessage}
@@ -622,18 +627,18 @@ export default function InboxScreen() {
             textAlignVertical="center"
             underlineColorAndroid="transparent"
             value={draftMessage}
-            style={{ textAlignVertical: 'center', justifyContent: 'center' }}
+            style={{ textAlignVertical: 'center' }}
           />
 
           {/* Nút Gửi (Send) */}
           <Pressable
-            className={`h-9 w-9 items-center justify-center rounded-[12px] ${!draftMessage.trim() || isSending ? 'bg-slate-200' : 'bg-[#4A9FD8]'} active:opacity-80 shadow-sm`}
+            className={`h-11 w-11 items-center justify-center rounded-full ${!draftMessage.trim() || isSending ? 'bg-slate-200' : 'bg-[#4A9FD8]'} active:opacity-80 shadow-sm`}
             disabled={isSending || !draftMessage.trim()}
             onPress={handleSendMessage}>
             {isSending ? (
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
-              <MaterialIcons color={!draftMessage.trim() ? '#94A3B8' : '#FFFFFF'} name="send" size={18} />
+              <MaterialIcons color={!draftMessage.trim() ? '#94A3B8' : '#FFFFFF'} name="send" size={20} />
             )}
           </Pressable>
         </View>
@@ -641,95 +646,33 @@ export default function InboxScreen() {
     );
   };
 
-  // Content for Cột 3: Profile Sidebar/Overlay
-  const renderProfileSidebar = () => {
-    if (!activeParticipant) return null;
-    const initials = getInitials(activeParticipant);
-    const getAbsoluteAvatarUrl = (url: string | null) => {
-      if (!url) return null;
-      if (url.startsWith('http://') || url.startsWith('https://')) return url;
-      return `${API_URL}${url}`;
-    };
-
-    return (
-      <SectionShell
-        title="Hồ sơ"
-        subtitle="Thông tin người trò chuyện"
-        className={useViewportLayout ? 'h-full' : ''}
-        contentClassName={useViewportLayout ? 'min-h-0 flex-1' : ''}>
-        <ScrollView className={useViewportLayout ? 'min-h-0 flex-1' : ''} showsVerticalScrollIndicator={false}>
-          <View className="gap-4 pb-1">
-            <View className="overflow-hidden rounded-[24px] bg-[#DBEAFE]">
-              <View className="h-[100px] bg-[#BFDBFE]" />
-              <View className="px-4 pb-4">
-                <View className="-mt-8 items-start">
-                  {activeParticipant.avatar_url ? (
-                    <Image
-                      source={{ uri: getAbsoluteAvatarUrl(activeParticipant.avatar_url)! }}
-                      className="h-16 w-16 rounded-[20px] border-2 border-white bg-slate-200"
-                    />
-                  ) : (
-                    <AvatarPill initials={initials} muted />
-                  )}
-                </View>
-                <ThemedText className="mt-4 text-[22px] font-semibold text-slate-950">
-                  {activeParticipant.full_name}
-                </ThemedText>
-                <ThemedText className="mt-2 text-sm leading-6 text-slate-600">
-                  {activeParticipant.bio || 'Chưa cập nhật giới thiệu tiểu sử.'}
-                </ThemedText>
-              </View>
-            </View>
-
-            <View className="gap-3">
-              <Pressable
-                className="flex-row items-center justify-between rounded-[22px] bg-[#F8FAFC] px-4 py-4 active:opacity-90"
-                onPress={() => {
-                  router.push(`/profile/${activeParticipant.id}`);
-                  setShowProfileOverlay(false);
-                }}>
-                <ThemedText className="text-base font-medium text-slate-900">Xem trang cá nhân</ThemedText>
-                <MaterialIcons color="#94A3B8" name="chevron-right" size={20} />
-              </Pressable>
-            </View>
-
-            <View className="gap-3">
-              {profileDetails.map((item) => (
-                <ProfilePanelStat key={item.label} item={item} />
-              ))}
-            </View>
-          </View>
-        </ScrollView>
-      </SectionShell>
-    );
-  };
-
   return (
     <>
       <StatusBar style="dark" />
       <ThemedView className="flex-1 bg-[#F8FAFC]">
-        <ThemedView className="mx-auto w-full max-w-[1720px] px-4 pb-6 pt-4 md:px-6 flex-1">
+        <ThemedView className={`mx-auto w-full max-w-[1720px] px-4 pb-6 md:px-6 flex-1 ${(!useViewportLayout && activeChatId !== null) ? 'pt-1.5' : 'pt-4'}`}>
           {!useViewportLayout && activeChatId !== null ? null : (
             <AppTopNav
               isTablet={isTablet}
               onSearchChange={setInboxNavSearchQuery}
               searchPlaceholder="Tìm kiếm thư, liên lạc hoặc tệp tin..."
               searchValue={inboxNavSearchQuery}
+              avatarUrl={currentUserAvatarUrl}
+              avatarInitials={currentUserInitials}
             />
           )}
 
           {useViewportLayout ? (
-            // Desktop/Web Layout: 3 Columns
+            // Desktop/Web Layout: 2 Columns
             <View
               className="flex-row items-stretch gap-4 mt-4"
               style={{ height: viewportPanelHeight }}>
-              <View className="w-[336px]">{renderInboxList()}</View>
+              <View className="w-[360px]">{renderInboxList()}</View>
               <View className="min-w-0 flex-1">{renderConversation()}</View>
-              <View className="w-[248px]">{renderProfileSidebar()}</View>
             </View>
           ) : (
             // Mobile/Tablet Adaptive Layout: Single-view based on active conversation
-            <View className="mt-2 flex-1 w-full" style={activeChatId === null ? { height: height - 150 } : undefined}>
+            <View className={(!useViewportLayout && activeChatId !== null) ? "w-full" : "mt-2 w-full"} style={{ height: activeChatId === null ? height - 150 : height - 35 }}>
               {activeChatId === null ? (
                 <View className="w-full h-full">{renderInboxList()}</View>
               ) : (
@@ -744,28 +687,6 @@ export default function InboxScreen() {
           )}
         </ThemedView>
       </ThemedView>
-
-      {/* Mobile Profile Modal Overlay */}
-      {!useViewportLayout && activeParticipant && (
-        <Modal
-          animationType="slide"
-          onRequestClose={() => setShowProfileOverlay(false)}
-          transparent={false}
-          visible={showProfileOverlay}>
-          <ThemedView className="flex-1 bg-[#F8FAFC] pt-12 px-4">
-            <View className="flex-row items-center justify-between pb-4 border-b border-slate-100">
-              <Pressable
-                className="h-10 w-10 items-center justify-center rounded-[14px] bg-slate-100"
-                onPress={() => setShowProfileOverlay(false)}>
-                <MaterialIcons color="#475569" name="close" size={24} />
-              </Pressable>
-              <ThemedText className="text-lg font-semibold text-slate-800">Thông tin trò chuyện</ThemedText>
-              <View className="w-10" />
-            </View>
-            <View className="flex-1 pt-4">{renderProfileSidebar()}</View>
-          </ThemedView>
-        </Modal>
-      )}
 
       {/* NEW CHAT MODAL - Allows starting direct chat directly from Inbox */}
       <Modal

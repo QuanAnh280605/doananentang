@@ -59,7 +59,7 @@ function formatTime(isoString: string): string {
     return `${days} ngày trước`;
 }
 
-export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSuccess?: () => void }) {
+export function FeedPost({ item, onDeleteSuccess, onDelete }: { item: Post; onDeleteSuccess?: () => void; onDelete?: (postId: string) => void }) {
     const [liked, setLiked] = useState(item.is_liked);
     const [reactionType, setReactionType] = useState<ReactionType | null | undefined>(item.user_reaction);
     const [count, setCount] = useState(item.like_count);
@@ -235,6 +235,7 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                     await deletePost(String(item.id));
                     setIsDeleted(true);
                     onDeleteSuccess?.();
+                    onDelete?.(String(item.id));
                     DeviceEventEmitter.emit('postDeleted', { postId: String(item.id) });
                 } catch {
                     window.alert("Lỗi: Không thể xóa bài viết.");
@@ -251,6 +252,7 @@ export function FeedPost({ item, onDeleteSuccess }: { item: Post; onDeleteSucces
                             await deletePost(String(item.id));
                             setIsDeleted(true);
                             onDeleteSuccess?.();
+                            onDelete?.(String(item.id));
                             DeviceEventEmitter.emit('postDeleted', { postId: String(item.id) });
                         } catch {
                             Alert.alert("Lỗi", "Không thể xóa bài viết.");

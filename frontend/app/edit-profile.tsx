@@ -21,6 +21,7 @@ import { fetchCurrentUser, fetchFollowStatus, updateUserProfile, uploadUserAvata
 import type { GenderValue } from '@/lib/auth';
 import { fetchPosts, API_URL } from '@/lib/api';
 import type { VisibilityLevel } from '@/lib/types';
+
 const surfaceClass = 'rounded-[32px] border border-app-border bg-app-surface';
 
 // ─── Primitive components ────────────────────────────────────────────────────
@@ -220,8 +221,7 @@ function InlineBanner({
   const isSuccess = type === 'success';
   return (
     <View
-      className={`flex-row items-center justify-between rounded-[24px] px-4 py-3 mx-4 md:mx-0 ${isSuccess ? 'bg-[#DCFCE7]' : 'bg-[#FEE2E2]'
-        }`}
+      className={`flex-row items-center justify-between rounded-[24px] px-4 py-3 mx-4 md:mx-0 ${isSuccess ? 'bg-[#DCFCE7]' : 'bg-[#FEE2E2]'}`}
     >
       <View className="flex-1 flex-row items-center gap-2">
         <MaterialIcons
@@ -366,6 +366,7 @@ export default function EditProfileScreen() {
   const [contactPrivacy, setContactPrivacy] = useState<VisibilityLevel>('public');
   const [emailPrivacy, setEmailPrivacy] = useState<VisibilityLevel>('public');
   const [locationPrivacy, setLocationPrivacy] = useState<VisibilityLevel>('public');
+
   // Profile inline errors
   const [profileErrors, setProfileErrors] = useState<ProfileErrors>({});
 
@@ -410,12 +411,12 @@ export default function EditProfileScreen() {
           .then((status) => {
             if (mounted) setFollowerCount(status.followers_count);
           })
-          .catch(() => { });
+          .catch(() => {});
         fetchPosts(1, 1, user.id)
           .then((res) => {
             if (mounted) setPostCount(res.total);
           })
-          .catch(() => { });
+          .catch(() => {});
       })
       .catch(() => {
         if (mounted) setProfileBanner({ type: 'error', message: 'Không thể tải thông tin cá nhân' });
@@ -582,7 +583,10 @@ export default function EditProfileScreen() {
         <ScrollView bounces={false} className="flex-1" contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}>
           <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-4 md:px-6">
             {/* Back header */}
-            <View className="flex-row items-center gap-3 rounded-full border border-app-border bg-app-surface px-5 py-4 mx-4 md:mx-0">
+            <View 
+              className="flex-row items-center gap-3 rounded-3xl border border-app-border bg-app-surface px-5 py-4 mx-0 shadow-sm"
+              style={{ marginTop: Math.max(insets.top, 0) + 10 }}
+            >
               <Pressable
                 onPress={() => router.back()}
                 className="h-11 w-11 items-center justify-center rounded-full bg-[#F7F8FA] active:opacity-80"
