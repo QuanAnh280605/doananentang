@@ -246,7 +246,7 @@ export default function InboxScreen() {
       // 1. Nếu đang mở cuộc trò chuyện này, thêm tin nhắn trực tiếp vào khung chat
       if (currentActiveChatId !== null && Number(chatId) === Number(currentActiveChatId)) {
         setMessages((prevMsgs) => {
-          if (prevMsgs.some(m => m.id === nextMessage.id)) return prevMsgs;
+          if (prevMsgs.some(m => Number(m.id) === Number(nextMessage.id))) return prevMsgs;
           const newMsgs = [...prevMsgs, nextMessage];
           scrollToBottom();
           return newMsgs;
