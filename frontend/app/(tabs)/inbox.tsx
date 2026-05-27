@@ -11,7 +11,6 @@ import {
   View,
   useWindowDimensions,
   ActivityIndicator,
-  Alert,
   Modal,
   Image,
   KeyboardAvoidingView,
@@ -37,6 +36,7 @@ import {
 import { fetchCurrentUser, searchUsers, type AuthUser, type SearchUser } from '@/lib/auth';
 import { connectAppSocket, joinChatRoom, leaveChatRoom } from '@/lib/socket';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useToast } from '@/hooks/useToast';
 import type { ChatListItemRead, ChatMessageRead, ChatParticipant } from '@/lib/types';
 
 const surfaceClass = 'rounded-surface border border-app-border bg-app-surface';
@@ -93,6 +93,7 @@ function formatTime(isoString: string): string {
 export default function InboxScreen() {
   const router = useRouter();
   const { setUnreadChatCount } = useNotifications();
+  const toast = useToast();
   const params = useLocalSearchParams<{ openChatId?: string }>();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -129,6 +130,11 @@ export default function InboxScreen() {
   // Search states
   const [inboxNavSearchQuery, setInboxNavSearchQuery] = useState('');
   const [inboxSearchQuery, setInboxSearchQuery] = useState('');
+
+  // Chat menu & media gallery states
+  const [showChatMenu, setShowChatMenu] = useState(false);
+  const [showMediaGallery, setShowMediaGallery] = useState(false);
+  const [fullscreenImageUrl, setFullscreenImageUrl] = useState<string | null>(null);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const messagesRef = useRef<ChatMessageRead[]>([]);
@@ -210,9 +216,9 @@ export default function InboxScreen() {
           prevChats.map((c) => (c.chat_id === activeChatId ? { ...c, unread_count: 0 } : c))
         );
       })
-      .catch((err) => Alert.alert('Lỗi', 'Không thể tải tin nhắn: ' + err.message))
+      .catch((err) => toast.error('Không thể tải tin nhắn: ' + err.message))
       .finally(() => setIsLoadingMessages(false));
-  }, [activeChatId]);
+  }, [activeChatId, toast]);
 
   const activeChatIdRef = useRef<number | null>(null);
   const currentUserRef = useRef<AuthUser | null>(null);
@@ -234,7 +240,7 @@ export default function InboxScreen() {
       const chatId = payload.chat_id;
       const currentActiveChatId = activeChatIdRef.current;
       const currentAuthUser = currentUserRef.current;
-      
+
       const nextMessage: ChatMessageRead = {
         id: payload.id,
         chat_id: chatId,
@@ -333,7 +339,8 @@ export default function InboxScreen() {
     if (!currentUser) return 'GP';
     const first = currentUser.first_name ? currentUser.first_name[0] : '';
     const last = currentUser.last_name ? currentUser.last_name[0] : '';
-    return (first + last).toUpperCase() || currentUser.email?.slice(0, 2).toUpperCase() || 'US';
+    const emailFallback = currentUser.email ? currentUser.email.slice(0, 2).toUpperCase() : 'US';
+    return (first + last).toUpperCase() || emailFallback;
   }, [currentUser]);
 
   // Get Initials for Avatar
@@ -355,7 +362,7 @@ export default function InboxScreen() {
       await loadChats();
       setActiveChatId(chat.chat_id);
     } catch (err: any) {
-      Alert.alert('Lỗi', 'Không thể bắt đầu cuộc trò chuyện: ' + err.message);
+      toast.error('Không thể bắt đầu cuộc trò chuyện: ' + err.message);
     }
   };
 
@@ -374,7 +381,7 @@ export default function InboxScreen() {
       loadChats();
     } catch (err: any) {
       setDraftMessage(messageText); // restore draft
-      Alert.alert('Lỗi', 'Gửi tin nhắn thất bại: ' + err.message);
+      toast.error('Gửi tin nhắn thất bại: ' + err.message);
     } finally {
       setIsSending(false);
     }
@@ -387,7 +394,7 @@ export default function InboxScreen() {
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permissionResult.granted) {
-        Alert.alert('Quyền truy cập', 'Ứng dụng cần quyền truy cập thư viện ảnh để gửi hình ảnh.');
+        toast.error('Ứng dụng cần quyền truy cập thư viện ảnh để gửi hình ảnh.');
         return;
       }
 
@@ -412,7 +419,7 @@ export default function InboxScreen() {
       scrollToBottom();
       loadChats();
     } catch (err: any) {
-      Alert.alert('Lỗi', 'Gửi hình ảnh thất bại: ' + err.message);
+      toast.error('Gửi hình ảnh thất bại: ' + err.message);
     } finally {
       setIsUploading(false);
     }
@@ -459,6 +466,16 @@ export default function InboxScreen() {
       mediaType: msg.media_type,
     };
   });
+
+  // Extract all image messages for the media gallery
+  const mediaMessages = messages.filter(
+    (msg) => msg.media_url && (msg.media_type?.startsWith('image') || !msg.media_type)
+  );
+
+  const getAbsoluteUrl = (url: string) => {
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    return `${API_URL}${url}`;
+  };
 
   const newChatButton = (
     <Pressable
@@ -546,7 +563,8 @@ export default function InboxScreen() {
     };
 
     return (
-      <ThemedView className={`flex-1 h-full min-h-[350px] bg-[#FCFDFE] px-4 pb-4 pt-2.5 ${useViewportLayout ? 'rounded-surface border border-app-border' : ''}`}>
+      <ThemedView className={`flex-1 h-full min-h-[350px] bg-[#FCFDFE] px-4 pb-4 ${useViewportLayout ? 'rounded-surface border border-app-border pt-2.5' : ''}`}
+        style={!useViewportLayout ? { paddingTop: Math.max(insets.top, 0) + 10 } : undefined}>
         {/* Header tinh gọn ở phía trên */}
         <View className="flex-row items-center gap-3 pb-3 mb-2 border-b border-slate-100">
           {!useViewportLayout && (
@@ -589,6 +607,13 @@ export default function InboxScreen() {
                 </ThemedText>
               </View>
             </View>
+          </Pressable>
+
+          {/* Nút ba chấm - menu tùy chọn */}
+          <Pressable
+            className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 active:opacity-80"
+            onPress={() => setShowChatMenu(true)}>
+            <MaterialIcons color="#475569" name="more-vert" size={20} />
           </Pressable>
         </View>
 
@@ -783,6 +808,127 @@ export default function InboxScreen() {
               )}
             </ScrollView>
           </ThemedView>
+        </View>
+      </Modal>
+
+      {/* CHAT MENU MODAL - Ba chấm dropdown */}
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setShowChatMenu(false)}
+        transparent={true}
+        visible={showChatMenu}>
+        <Pressable
+          className="flex-1 bg-black/30"
+          onPress={() => setShowChatMenu(false)}>
+          <View
+            className="absolute right-4 rounded-[20px] bg-white shadow-2xl overflow-hidden"
+            style={{ top: Math.max(insets.top, 0) + 80, minWidth: 200 }}>
+            {/* Header */}
+            <View className="px-5 py-4 border-b border-slate-100">
+              <ThemedText className="text-sm font-semibold text-slate-500">Tùy chọn</ThemedText>
+            </View>
+
+            {/* Xem ảnh đã gửi */}
+            <Pressable
+              className="flex-row items-center gap-3 px-5 py-4 active:bg-slate-50"
+              onPress={() => {
+                setShowChatMenu(false);
+                setShowMediaGallery(true);
+              }}>
+              <View className="h-9 w-9 items-center justify-center rounded-[12px] bg-[#EAF4FB]">
+                <MaterialIcons color="#4A9FD8" name="photo-library" size={18} />
+              </View>
+              <View>
+                <ThemedText className="text-sm font-semibold text-slate-900">Ảnh đã gửi</ThemedText>
+                <ThemedText className="text-xs text-slate-400">{mediaMessages.length} ảnh</ThemedText>
+              </View>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* MEDIA GALLERY MODAL - Xem tất cả ảnh đã gửi trong cuộc hội thoại */}
+      <Modal
+        animationType="slide"
+        onRequestClose={() => {
+          if (fullscreenImageUrl) {
+            setFullscreenImageUrl(null);
+          } else {
+            setShowMediaGallery(false);
+          }
+        }}
+        transparent={false}
+        visible={showMediaGallery}>
+        <View className="flex-1 bg-[#F8FAFC]" style={{ paddingTop: Math.max(insets.top, 0) }}>
+          {/* Gallery Header */}
+          <View className="flex-row items-center gap-3 px-5 py-4 bg-white border-b border-slate-100">
+            <Pressable
+              className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 active:opacity-80"
+              onPress={() => {
+                if (fullscreenImageUrl) {
+                  setFullscreenImageUrl(null);
+                } else {
+                  setShowMediaGallery(false);
+                }
+              }}>
+              <MaterialIcons color="#475569" name={fullscreenImageUrl ? 'close' : 'arrow-back'} size={20} />
+            </Pressable>
+            <View className="flex-1">
+              <ThemedText className="text-base font-bold text-slate-900">
+                {fullscreenImageUrl ? 'Xem ảnh' : 'Ảnh đã gửi'}
+              </ThemedText>
+              {!fullscreenImageUrl && (
+                <ThemedText className="text-xs text-slate-400">{mediaMessages.length} ảnh</ThemedText>
+              )}
+            </View>
+          </View>
+
+          {fullscreenImageUrl ? (
+            // Fullscreen single image view
+            <View className="flex-1 items-center justify-center bg-black">
+              <Image
+                source={{ uri: fullscreenImageUrl }}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="contain"
+              />
+            </View>
+          ) : mediaMessages.length === 0 ? (
+            // Empty state
+            <View className="flex-1 items-center justify-center gap-4">
+              <View className="h-20 w-20 items-center justify-center rounded-full bg-slate-100">
+                <MaterialIcons color="#94A3B8" name="photo-library" size={36} />
+              </View>
+              <ThemedText className="text-base font-semibold text-slate-600">Chưa có ảnh nào</ThemedText>
+              <ThemedText className="text-sm text-slate-400 text-center px-8">
+                Các ảnh được gửi trong cuộc hội thoại này sẽ xuất hiện ở đây.
+              </ThemedText>
+            </View>
+          ) : (
+            // Grid of images
+            <ScrollView
+              className="flex-1"
+              contentContainerStyle={{ padding: 4 }}
+              showsVerticalScrollIndicator={false}>
+              <View className="flex-row flex-wrap">
+                {mediaMessages.map((msg) => {
+                  const uri = getAbsoluteUrl(msg.media_url!);
+                  return (
+                    <Pressable
+                      key={msg.id}
+                      style={{ width: '33.33%', padding: 2, aspectRatio: 1 }}
+                      className="active:opacity-80"
+                      onPress={() => setFullscreenImageUrl(uri)}>
+                      <Image
+                        source={{ uri }}
+                        style={{ width: '100%', height: '100%', borderRadius: 10 }}
+                        resizeMode="cover"
+                      />
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          )}
         </View>
       </Modal>
     </>
