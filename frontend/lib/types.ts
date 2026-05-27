@@ -124,3 +124,96 @@ export type NotificationListResponse = {
   unread_count: number;
 };
 
+// ─── Story ────────────────────────────────────────────────────
+
+export type StoryAuthor = {
+  id: string | number;
+  first_name: string;
+  last_name: string;
+  avatar_url: string | null;
+};
+
+export type Story = {
+  id: string | number;
+  user_id: string | number;
+  file_url: string;
+  caption: string | null;
+  type: 'image' | 'video' | 'audio';
+  visibility: 'public' | 'followersonly' | 'custom' | 'onlyme';
+  expired_at: string;
+  created_at: string;
+  view_count: number;
+  is_viewed: boolean;
+  author: StoryAuthor;
+};
+
+export type StoryCreatePayload = {
+  file_url: string;
+  caption?: string | null;
+  type?: 'image';
+  visibility?: 'public' | 'followersonly' | 'custom' | 'onlyme';
+};
+
+export type StoryViewStatus = {
+  story_id: string | number;
+  viewed: boolean;
+  view_count: number;
+};
+
+// ─── Chat / Message ──────────────────────────────────────────
+
+export type ChatParticipant = {
+  id: number;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  avatar_url: string | null;
+  bio: string | null;
+};
+
+export type ChatMessageRead = {
+  id: number;
+  chat_id: number;
+  sender_id: number;
+  content: string | null;
+  media_url: string | null;
+  media_type: string | null;
+  created_at: string;
+};
+
+export type ChatListItemRead = {
+  chat_id: number;
+  participant: ChatParticipant;
+  latest_message: ChatMessageRead | null;
+  updated_at: string;
+  unread_count: number;
+};
+
+export type PaginatedChatsResponse = {
+  items: ChatListItemRead[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+};
+
+export type PaginatedMessagesResponse = {
+  items: ChatMessageRead[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+};
+
+export type DirectChatRead = {
+  chat_id: number;
+  participant_user_id: number;
+  created_at: string;
+};
+
+export type ChatReadStatusRead = {
+  chat_id: number;
+  unread_count: number;
+};
+
+

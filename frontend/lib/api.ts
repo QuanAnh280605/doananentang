@@ -29,6 +29,13 @@ import type {
   Post,
   ReactionType,
   VisibilityLevel,
+  ChatParticipant,
+  ChatMessageRead,
+  ChatListItemRead,
+  PaginatedChatsResponse,
+  PaginatedMessagesResponse,
+  DirectChatRead,
+  ChatReadStatusRead,
 } from '@/lib/types';
 
 const FALLBACK_PORT = '8000';
@@ -346,42 +353,59 @@ export function fetchFollowingUsers(userId: number, page = 1, pageSize = 4): Pro
 
 // ─── Chats API ────────────────────────────────────────────────
 
-export type ChatParticipant = {
-  id: number;
-  first_name: string;
-  last_name: string;
-  full_name: string;
-  avatar_url: string | null;
-  bio: string | null;
-};
-
-export type ChatMessageRead = {
-  id: number;
-  chat_id: number;
-  sender_id: number;
-  content: string;
-  created_at: string;
-};
-
-export type ChatListItem = {
-  chat_id: number;
-  participant: ChatParticipant;
-  latest_message: ChatMessageRead | null;
-  updated_at: string;
-};
-
-export type PaginatedChatsResponse = {
-  items: ChatListItem[];
-  total: number;
-  page: number;
-  page_size: number;
-  total_pages: number;
-};
-
-export async function listDirectChats(): Promise<ChatListItem[]> {
-  const res = await apiFetch<PaginatedChatsResponse>('/api/chats');
-  return res?.items || [];
+export async function listDirectChats(page = 1, pageSize = 20): Promise<PaginatedChatsResponse> {
+  return apiFetch<PaginatedChatsResponse>(`/api/chats?page=${page}&page_size=${pageSize}`);
 }
+
+export async function createDirectChat(targetUserId: number): Promise<DirectChatRead> {
+  return apiFetch<DirectChatRead>('/api/chats/direct', {
+    method: 'POST',
+    body: JSON.stringify({ target_user_id: targetUserId }),
+  });
+}
+
+export async function fetchChatMessages(chatId: number, page = 1, pageSize = 30): Promise<PaginatedMessagesResponse> {
+  return apiFetch<PaginatedMessagesResponse>(`/api/chats/${chatId}/messages?page=${page}&page_size=${pageSize}`);
+}
+
+export async function sendChatMessage(chatId: number, content?: string, mediaUrl?: string): Promise<ChatMessageRead> {
+  return apiFetch<ChatMessageRead>(`/api/chats/${chatId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ content, media_url: mediaUrl }),
+  });
+}
+
+export async function markChatAsRead(chatId: number): Promise<ChatReadStatusRead> {
+  return apiFetch<ChatReadStatusRead>(`/api/chats/${chatId}/read`, {
+    method: 'POST',
+  });
+}
+
+export async function uploadChatMedia(uri: string): Promise<{ url: string; media_type: string }> {
+  const formData = new FormData();
+  const filename = uri.split('/').pop() || 'image.jpg';
+  const match = /\.(\w+)$/.exec(filename);
+  const ext = match ? match[1] : 'jpg';
+  const mimeType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+
+  if (Platform.OS === 'web') {
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    formData.append('file', new File([blob], filename, { type: mimeType }));
+  } else {
+    formData.append('file', {
+      uri,
+      name: filename,
+      type: mimeType,
+    } as any);
+  }
+
+  return apiFetch<{ url: string; media_type: string }>('/api/chats/upload-media', {
+    method: 'POST',
+    body: formData,
+  });
+}
+
 
 // ─── Posts API ────────────────────────────────────────────────
 
