@@ -97,7 +97,7 @@ export function FeedPost({ item, onDeleteSuccess, onDelete, isNested }: { item: 
             if (Platform.OS === 'web') {
                 window.alert('Lỗi: Không thể chia sẻ bài viết');
             } else {
-                Alert.alert('Lỗi', 'Không thể chia sẻ bài viết');
+                toast.error('Không thể chia sẻ bài viết');
             }
         } finally {
             setIsReposting(false);
@@ -196,7 +196,7 @@ export function FeedPost({ item, onDeleteSuccess, onDelete, isNested }: { item: 
             if (Platform.OS === 'web') {
                 window.alert("Lỗi: Không thể cập nhật bài viết.");
             } else {
-                Alert.alert("Lỗi", "Không thể cập nhật bài viết.");
+                toast.error("Không thể cập nhật bài viết.");
             }
         } finally {
             setIsSaving(false);
@@ -231,7 +231,7 @@ export function FeedPost({ item, onDeleteSuccess, onDelete, isNested }: { item: 
                             onDelete?.(String(item.id));
                             DeviceEventEmitter.emit('postDeleted', { postId: String(item.id) });
                         } catch {
-                            Alert.alert("Lỗi", "Không thể xóa bài viết.");
+                            toast.error("Không thể xóa bài viết.");
                         }
                     }
                 }
@@ -263,7 +263,7 @@ export function FeedPost({ item, onDeleteSuccess, onDelete, isNested }: { item: 
             if (Platform.OS === 'web') {
                 window.alert("Lỗi khi gửi tin nhắn.");
             } else {
-                Alert.alert("Lỗi", "Không thể gửi tin nhắn.");
+                toast.error("Không thể gửi tin nhắn.");
             }
         } finally {
             setSendingChatIds(prev => ({ ...prev, [chatId]: false }));
