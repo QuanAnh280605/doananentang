@@ -10,7 +10,6 @@ import {
   View,
   useWindowDimensions,
   ActivityIndicator,
-  Alert,
   Modal,
   Image,
   KeyboardAvoidingView,
@@ -36,6 +35,7 @@ import {
 import { fetchCurrentUser, searchUsers, type AuthUser, type SearchUser } from '@/lib/auth';
 import { connectAppSocket, joinChatRoom, leaveChatRoom } from '@/lib/socket';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useToast } from '@/hooks/useToast';
 import type { ChatListItemRead, ChatMessageRead, ChatParticipant } from '@/lib/types';
 
 const surfaceClass = 'rounded-surface border border-app-border bg-app-surface';
@@ -92,6 +92,7 @@ function formatTime(isoString: string): string {
 export default function InboxScreen() {
   const router = useRouter();
   const { setUnreadChatCount } = useNotifications();
+  const toast = useToast();
   const params = useLocalSearchParams<{ openChatId?: string }>();
   const { width, height } = useWindowDimensions();
 
@@ -208,9 +209,9 @@ export default function InboxScreen() {
           prevChats.map((c) => (c.chat_id === activeChatId ? { ...c, unread_count: 0 } : c))
         );
       })
-      .catch((err) => Alert.alert('Lỗi', 'Không thể tải tin nhắn: ' + err.message))
+      .catch((err) => toast.error('Không thể tải tin nhắn: ' + err.message))
       .finally(() => setIsLoadingMessages(false));
-  }, [activeChatId]);
+  }, [activeChatId, toast]);
 
   const activeChatIdRef = useRef<number | null>(null);
   const currentUserRef = useRef<AuthUser | null>(null);
@@ -232,7 +233,7 @@ export default function InboxScreen() {
       const chatId = payload.chat_id;
       const currentActiveChatId = activeChatIdRef.current;
       const currentAuthUser = currentUserRef.current;
-      
+
       const nextMessage: ChatMessageRead = {
         id: payload.id,
         chat_id: chatId,
@@ -326,7 +327,8 @@ export default function InboxScreen() {
     if (!currentUser) return 'GP';
     const first = currentUser.first_name ? currentUser.first_name[0] : '';
     const last = currentUser.last_name ? currentUser.last_name[0] : '';
-    return (first + last).toUpperCase() || currentUser.email.slice(0, 2).toUpperCase();
+    const emailFallback = currentUser.email ? currentUser.email.slice(0, 2).toUpperCase() : 'US';
+    return (first + last).toUpperCase() || emailFallback;
   }, [currentUser]);
 
   // Get Initials for Avatar
@@ -348,7 +350,7 @@ export default function InboxScreen() {
       await loadChats();
       setActiveChatId(chat.chat_id);
     } catch (err: any) {
-      Alert.alert('Lỗi', 'Không thể bắt đầu cuộc trò chuyện: ' + err.message);
+      toast.error('Không thể bắt đầu cuộc trò chuyện: ' + err.message);
     }
   };
 
@@ -367,7 +369,7 @@ export default function InboxScreen() {
       loadChats();
     } catch (err: any) {
       setDraftMessage(messageText); // restore draft
-      Alert.alert('Lỗi', 'Gửi tin nhắn thất bại: ' + err.message);
+      toast.error('Gửi tin nhắn thất bại: ' + err.message);
     } finally {
       setIsSending(false);
     }
@@ -380,7 +382,7 @@ export default function InboxScreen() {
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permissionResult.granted) {
-        Alert.alert('Quyền truy cập', 'Ứng dụng cần quyền truy cập thư viện ảnh để gửi hình ảnh.');
+        toast.error('Ứng dụng cần quyền truy cập thư viện ảnh để gửi hình ảnh.');
         return;
       }
 
@@ -405,7 +407,7 @@ export default function InboxScreen() {
       scrollToBottom();
       loadChats();
     } catch (err: any) {
-      Alert.alert('Lỗi', 'Gửi hình ảnh thất bại: ' + err.message);
+      toast.error('Gửi hình ảnh thất bại: ' + err.message);
     } finally {
       setIsUploading(false);
     }
