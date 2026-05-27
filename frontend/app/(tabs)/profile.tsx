@@ -11,7 +11,7 @@ import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { API_URL, fetchPosts } from '@/lib/api';
-import { fetchCurrentUser, fetchFollowStatus, uploadUserAvatar } from '@/lib/auth';
+import { fetchCurrentUser, fetchFollowStatus, uploadUserAvatar, updateUserProfile } from '@/lib/auth';
 import type { AuthUser, FollowStatus } from '@/lib/auth';
 import type { Post, VisibilityLevel } from '@/lib/types';
 
@@ -264,6 +264,11 @@ export default function ProfileScreen() {
   const [avatarPickerActive, setAvatarPickerActive] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [followStatus, setFollowStatus] = useState<FollowStatus | null>(null);
+  const [isEditingIntro, setIsEditingIntro] = useState(false);
+  const [tempIntro, setTempIntro] = useState('');
+  const [tempCity, setTempCity] = useState('');
+  const [isSavingIntro, setIsSavingIntro] = useState(false);
+  const [introSaved, setIntroSaved] = useState(false);
 
   const isWide = width >= 1180;
 
@@ -353,7 +358,7 @@ export default function ProfileScreen() {
       let isMounted = true;
       setLoadingPosts(true);
 
-      fetchPosts(1, 10, user.id)
+      fetchPosts(1, 30, user.id)
         .then((res) => {
           if (isMounted) setPosts(res.items);
         })
@@ -372,6 +377,29 @@ export default function ProfileScreen() {
     setPosts((current) => current.filter((p) => p.id !== postId));
   };
 
+  const handleSaveIntro = async () => {
+    setIsSavingIntro(true);
+    try {
+      const updatedUser = await updateUserProfile({
+        bio: tempIntro.trim() || null,
+        city: tempCity.trim() || null,
+      });
+      setUser(updatedUser);
+      setIsEditingIntro(false);
+      setIntroSaved(true);
+      setTimeout(() => setIntroSaved(false), 3000);
+    } catch {
+      // Xử lý lỗi
+    } finally {
+      setIsSavingIntro(false);
+    }
+  };
+
+  const handleCancelIntro = () => {
+    setTempIntro(user?.bio || '');
+    setTempCity(user?.city || '');
+    setIsEditingIntro(false);
+  };
   const profile = useMemo(() => buildProfileViewModel(user), [user]);
 
   if (isLoadingUser) {
@@ -385,9 +413,11 @@ export default function ProfileScreen() {
   return (
     <>
       <StatusBar style="dark" />
-      <ThemedView className="flex-1 bg-[#F1F5F9]" style={{ minHeight: height, paddingTop: insets.top }}>
-        <ScrollView ref={scrollViewRef} bounces={false} className="flex-1" contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}>
-          <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 pb-6 md:px-6 md:pt-6">
+      <ThemedView className="flex-1 bg-[#F1F5F9]" style={{ minHeight: height, paddingTop: Math.max(insets.top, 0) }}>
+        <ScrollView ref={scrollViewRef} bounces={false} className="flex-1" contentContainerClassName="pb-8">
+          <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-2 md:px-6">
+
+
             {/* Profile card */}
             <ThemedView className="bg-white shadow-sm overflow-hidden md:rounded-[32px] md:border md:border-[#E4E8EE]">
               <View className="h-[180px] bg-[#D9ECF8]" />

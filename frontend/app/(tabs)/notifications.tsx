@@ -11,6 +11,8 @@ import { Avatar, surfaceClass } from '@/components/ui/core';
 import { useToast } from '@/hooks/useToast';
 import { useNotifications } from '@/hooks/useNotifications';
 import { fetchNotifications, markNotificationRead, markAllNotificationsRead } from '@/lib/api';
+import { fetchCurrentUser } from '@/lib/auth';
+import type { AuthUser } from '@/lib/auth';
 import type { NotificationRead } from '@/lib/types';
 
 type FilterType = 'all' | 'unread';
@@ -27,6 +29,11 @@ export default function NotificationsScreen() {
   const [filter, setFilter] = useState<FilterType>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+
+  useEffect(() => {
+    fetchCurrentUser().then(setCurrentUser).catch(() => { });
+  }, []);
 
   const loadNotifications = useCallback(async (showLoading = true) => {
     if (showLoading) {
@@ -166,7 +173,16 @@ export default function NotificationsScreen() {
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerClassName="pb-8">
         <View className="mx-auto w-full max-w-[1200px] px-4 pb-6 pt-4 md:px-6">
-          <AppTopNav isTablet={isTablet} searchPlaceholder="Search notifications" />
+          <AppTopNav
+            isTablet={isTablet}
+            searchPlaceholder="Search notifications"
+            avatarUrl={currentUser?.avatar_url}
+            avatarInitials={
+              currentUser
+                ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase()
+                : 'US'
+            }
+          />
 
           {/* Tiêu đề & Nút bấm header */}
           <View className="mt-6 flex-row items-center justify-between gap-3 px-1">

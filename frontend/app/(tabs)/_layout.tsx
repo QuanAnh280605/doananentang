@@ -2,21 +2,18 @@ import { Tabs } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { useWindowDimensions, Platform, Image, View } from 'react-native';
 
-import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useNotifications } from '@/hooks/useNotifications';
 import { fetchCurrentUser } from '@/lib/auth';
 import type { AuthUser } from '@/lib/auth';
 import { API_URL } from '@/lib/api';
 
 export default function TabLayout() {
-  const { unreadCount } = useNotifications();
   const { width } = useWindowDimensions();
   const isDesktopOrTablet = width >= 960;
   const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
-    fetchCurrentUser().then(setUser).catch(() => {});
+    fetchCurrentUser().then(setUser).catch(() => { });
   }, []);
 
   return (
@@ -25,7 +22,6 @@ export default function TabLayout() {
         tabBarActiveTintColor: '#0F172A',
         tabBarInactiveTintColor: '#94A3B8',
         headerShown: false,
-        tabBarButton: HapticTab,
         tabBarStyle: isDesktopOrTablet ? {
           display: 'none',
         } : {
@@ -56,26 +52,23 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={26} name="house.fill" color={color} />,
         }}
       />
+      {/* Ẩn khỏi tab bar nhưng vẫn giữ route để TopNav điều hướng được */}
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'Search',
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="magnifyingglass" color={color} />,
+          href: null,
         }}
       />
       <Tabs.Screen
         name="inbox"
         options={{
-          title: 'Inbox',
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="paperplane.fill" color={color} />,
+          href: null,
         }}
       />
       <Tabs.Screen
         name="notifications"
         options={{
-          title: 'Alerts',
-          tabBarIcon: ({ color }) => <IconSymbol size={26} name="bell.fill" color={color} />,
-          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+          href: null,
         }}
       />
       <Tabs.Screen
