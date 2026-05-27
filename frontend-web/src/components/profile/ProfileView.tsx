@@ -29,11 +29,6 @@ const tabs: { key: ProfileTab; label: string; Icon: IconComponent }[] = [
   { key: 'media', label: 'Media', Icon: Images },
 ];
 
-const featuredMedia = [
-  { id: '1', title: 'Review systems playbook', subtitle: 'A tighter artifact for faster approvals and clearer motion notes.', fillClassName: 'bg-[#D9ECF8]' },
-  { id: '2', title: 'Northfeed launch board', subtitle: 'Signals, rituals, and release checkpoints shaped for distributed teams.', fillClassName: 'bg-[#EEE8FF]' },
-];
-
 type ProfileSnapshot = {
   id: string;
   name: string;
@@ -185,6 +180,35 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
 
   const profile = useMemo(() => buildProfileViewModel(user, selectedUser), [selectedUser, user]);
 
+  const featuredMedia = useMemo(() => {
+    const list: Array<{
+      id: string;
+      postId: string;
+      url: string;
+      title: string;
+      isVideo: boolean;
+      post: Post;
+    }> = [];
+
+    posts.forEach((post) => {
+      if (post.media && post.media.length > 0) {
+        post.media.forEach((m) => {
+          const resolvedUrl = resolveAvatarUrl(m.file_url) || '';
+          list.push({
+            id: m.id,
+            postId: post.id,
+            url: resolvedUrl,
+            title: post.content ? (post.content.length > 40 ? post.content.substring(0, 40) + '...' : post.content) : 'Phương tiện từ bài viết',
+            isVideo: m.type?.startsWith('video') || m.file_url?.toLowerCase().endsWith('.mp4') || m.file_url?.toLowerCase().endsWith('.mov') || m.file_url?.toLowerCase().endsWith('.webm') || false,
+            post: post,
+          });
+        });
+      }
+    });
+
+    return list;
+  }, [posts]);
+
   const handleSaveIntro = async () => {
     setIsSavingIntro(true);
     try {
@@ -211,7 +235,8 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
 
 
   useEffect(() => {
-    if (!isSelectedUserProfile || selectedUserId === null || Number.isNaN(selectedUserId)) {
+    const targetUserId = isSelectedUserProfile ? selectedUserId : user?.id;
+    if (targetUserId === null || targetUserId === undefined || Number.isNaN(targetUserId)) {
       return;
     }
 
@@ -220,7 +245,7 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
       setIsLoadingFollowStatus(true);
       setFollowErrorMessage(null);
 
-      fetchFollowStatus(selectedUserId)
+      fetchFollowStatus(targetUserId)
         .then((status) => {
           if (isActive) {
             setFollowStatus(status);
@@ -245,7 +270,7 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
       isActive = false;
       clearTimeout(timeoutId);
     };
-  }, [isSelectedUserProfile, selectedUserId]);
+  }, [isSelectedUserProfile, selectedUserId, user?.id]);
 
   const handleFollowToggle = () => {
     if (!isSelectedUserProfile || selectedUserId === null || Number.isNaN(selectedUserId) || isSubmittingFollow) {
@@ -332,11 +357,11 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
               ) : null}
               <div className="mt-4 flex flex-wrap gap-5">
                 <button type="button" onClick={() => { setFollowModalType('followers'); setIsFollowModalOpen(true); }} className="flex items-center gap-1.5 transition-opacity hover:opacity-80">
-                  <ThemedText as="span" className="text-[15px] font-bold text-slate-950">{followStatus?.followers_count ?? '2.4k'}</ThemedText>
+                  <ThemedText as="span" className="text-[15px] font-bold text-slate-950">{followStatus?.followers_count ?? 0}</ThemedText>
                   <ThemedText as="span" className="text-[15px] text-slate-500">người theo dõi</ThemedText>
                 </button>
                 <button type="button" onClick={() => { setFollowModalType('following'); setIsFollowModalOpen(true); }} className="flex items-center gap-1.5 transition-opacity hover:opacity-80">
-                  <ThemedText as="span" className="text-[15px] font-bold text-slate-950">{followStatus?.following_count ?? '120'}</ThemedText>
+                  <ThemedText as="span" className="text-[15px] font-bold text-slate-950">{followStatus?.following_count ?? 0}</ThemedText>
                   <ThemedText as="span" className="text-[15px] text-slate-500">đang theo dõi</ThemedText>
                 </button>
               </div>
@@ -434,8 +459,45 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
               </section>
 
               <section className={`${surfaceClass} p-5`}>
-                <ThemedText as="h2" className="text-[24px] font-semibold text-slate-950">Featured media</ThemedText>
-                <div className="mt-5 space-y-4">{featuredMedia.map((item) => <div key={item.id} className="space-y-3"><div className={`h-[150px] rounded-[24px] ${item.fillClassName}`} /><div><ThemedText as="p" className="text-lg font-semibold text-slate-950">{item.title}</ThemedText><ThemedText as="p" className="mt-1 text-sm leading-6 text-slate-600">{item.subtitle}</ThemedText></div></div>)}</div>
+                <div className="flex items-center justify-between mb-4">
+                  <ThemedText as="h2" className="text-[20px] font-bold text-slate-950">Ảnh</ThemedText>
+                  {featuredMedia.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('media')}
+                      className="text-sm font-semibold text-blue-600 hover:underline"
+                    >
+                      Xem tất cả ảnh
+                    </button>
+                  )}
+                </div>
+                {featuredMedia.length === 0 ? (
+                  <ThemedText className="block text-base italic text-slate-400">Chưa có ảnh nào.</ThemedText>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {featuredMedia.slice(0, 6).map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setSelectedPostId(item.postId)}
+                        className="w-full overflow-hidden rounded-xl transition-opacity hover:opacity-90 relative aspect-square"
+                      >
+                        {item.isVideo ? (
+                          <>
+                            <video src={item.url} className="h-full w-full object-cover" muted playsInline />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/15">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow-md">
+                                <span className="text-slate-900 text-xs ml-0.5">▶</span>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <img src={item.url} alt={item.title} className="h-full w-full object-cover" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </section>
             </div>
 
@@ -490,8 +552,36 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
               {activeTab === 'media' ? (
                 <section className={`${surfaceClass} p-5`}>
                   <ThemedText as="h2" className="text-[24px] font-semibold text-slate-950">Media</ThemedText>
-                  <ThemedText as="p" className="mt-1 text-sm text-slate-500">Featured references and shareable artifacts</ThemedText>
-                  <div className="mt-5 grid gap-4 lg:grid-cols-2">{featuredMedia.map((item) => <div key={item.id} className="space-y-3"><div className={`h-[220px] rounded-[28px] ${item.fillClassName}`} /><ThemedText as="p" className="text-lg font-semibold text-slate-950">{item.title}</ThemedText><ThemedText as="p" className="text-sm leading-6 text-slate-600">{item.subtitle}</ThemedText></div>)}</div>
+                  <ThemedText as="p" className="mt-1 text-sm text-slate-500">Ảnh và video từ các bài viết đã chia sẻ</ThemedText>
+                  {featuredMedia.length === 0 ? (
+                    <ThemedText className="mt-6 block text-base italic text-slate-400">Chưa tải lên phương tiện nào.</ThemedText>
+                  ) : (
+                    <div className="mt-5 grid gap-4 lg:grid-cols-2">
+                      {featuredMedia.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setSelectedPostId(item.postId)}
+                          className="w-full transition-opacity hover:opacity-90"
+                        >
+                          <div className="h-[220px] w-full rounded-[28px] overflow-hidden bg-slate-100 border border-slate-100 relative">
+                            {item.isVideo ? (
+                              <>
+                                <video src={item.url} className="h-full w-full object-cover" muted playsInline />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/15">
+                                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 shadow-md">
+                                    <span className="text-slate-900 text-xl ml-0.5">▶</span>
+                                  </div>
+                                </div>
+                              </>
+                            ) : (
+                              <img src={item.url} alt={item.title} className="h-full w-full object-cover" />
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </section>
               ) : null}
             </div>
@@ -502,7 +592,15 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
         visible={isFollowModalOpen}
         type={followModalType}
         userId={selectedUserId ?? user?.id ?? null}
-        onClose={() => setIsFollowModalOpen(false)}
+        onClose={() => {
+          setIsFollowModalOpen(false);
+          const targetUserId = isSelectedUserProfile ? selectedUserId : user?.id;
+          if (targetUserId) {
+            fetchFollowStatus(targetUserId)
+              .then((status) => setFollowStatus(status))
+              .catch(() => {});
+          }
+        }}
       />
     </ProtectedPage>
   );

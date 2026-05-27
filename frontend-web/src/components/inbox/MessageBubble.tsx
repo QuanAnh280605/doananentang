@@ -50,7 +50,14 @@ function ReadReceiptIcon({ isRead, pending, avatarUrl }: { isRead?: boolean; pen
 
 export function MessageBubble({ item, showTimeSeparator, timeSeparatorLabel, isLastRead, recipientAvatarUrl, recipientName }: MessageBubbleProps) {
   const hasMedia = Boolean(item.mediaUrl);
-  const isVideo = hasMedia && item.mediaType?.startsWith('video/');
+  const isVideo = hasMedia && (
+    item.mediaType?.toLowerCase().includes('video') ||
+    item.mediaUrl?.toLowerCase().endsWith('.mp4') ||
+    item.mediaUrl?.toLowerCase().endsWith('.webm') ||
+    item.mediaUrl?.toLowerCase().endsWith('.mov') ||
+    item.mediaUrl?.toLowerCase().endsWith('.avi') ||
+    item.mediaUrl?.toLowerCase().endsWith('.mkv')
+  );
   const hasText = Boolean(item.body?.trim());
   const isOutgoing = !item.incoming;
 
