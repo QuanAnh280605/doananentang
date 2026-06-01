@@ -15,11 +15,12 @@ services:
       APP_HOST: ${APP_HOST}
       APP_PORT: ${APP_PORT}
       DATABASE_URL: ${DATABASE_URL}
+      WATCHFILES_FORCE_POLLING: "true"
     ports:
       - '${APP_PORT}:${APP_PORT}'
     volumes:
       - .:/app
-    command: sh -c "alembic upgrade head && uvicorn app.main:app --host ${APP_HOST} --port ${APP_PORT} --reload --reload-include '.env'"
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host ${APP_HOST} --port ${APP_PORT} --reload --reload-dir app --reload-include '.env'"
 
   db:
     image: postgres:16-alpine

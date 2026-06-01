@@ -241,6 +241,7 @@ def create_chat_message_endpoint(
 
   try:
     response_payload = response.model_dump(mode='json')
+    # Run the async socket emission safely from this synchronous worker thread
     from_thread.run(_emit_message_created_to_user_rooms, response_payload, member_ids)
   except Exception:
     logger.exception('Failed to emit message-created event', extra={'chat_id': chat_id, 'message_id': response.id})
