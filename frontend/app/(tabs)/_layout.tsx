@@ -13,7 +13,7 @@ export default function TabLayout() {
   const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
-    fetchCurrentUser().then(setUser).catch(() => {});
+    fetchCurrentUser().then(setUser).catch(() => { });
   }, []);
 
   return (

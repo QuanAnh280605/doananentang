@@ -360,8 +360,8 @@ export default function HomeScreen() {
               <View className={`${isDesktop ? 'flex-1' : 'w-full'} gap-4`}>
                 <ComposerCard onPostCreated={() => loadPosts(1, false)} currentUser={currentUser} />
                 {/* Stories */}
-                <StoryStrip 
-                  currentUser={currentUser} 
+                <StoryStrip
+                  currentUser={currentUser}
                   stories={stories}
                   onCreateStory={() => setCreateStoryVisible(true)}
                   onOpenStory={(storyId) => {
@@ -464,9 +464,9 @@ export default function HomeScreen() {
           ) : null
         }
       />
-      
+
       {/* Story Modals */}
-      <CreateStoryModal 
+      <CreateStoryModal
         visible={isCreateStoryVisible}
         onClose={() => setCreateStoryVisible(false)}
         onSuccess={() => {
@@ -474,7 +474,7 @@ export default function HomeScreen() {
         }}
       />
 
-      <StoryViewerModal 
+      <StoryViewerModal
         visible={isStoryViewerVisible}
         stories={stories}
         initialStoryId={selectedStoryId}

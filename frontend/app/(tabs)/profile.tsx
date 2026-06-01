@@ -1,16 +1,17 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState, useRef, useCallback, type ReactNode } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View, useWindowDimensions, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { API_URL, fetchPosts } from '@/lib/api';
-import { fetchCurrentUser, fetchFollowStatus, updateUserProfile } from '@/lib/auth';
+import { fetchCurrentUser, fetchFollowStatus, uploadUserAvatar, updateUserProfile } from '@/lib/auth';
 import type { AuthUser, FollowStatus } from '@/lib/auth';
 import type { Post, VisibilityLevel } from '@/lib/types';
 
@@ -229,9 +230,9 @@ function MediaPanel({ posts, hideHeader }: { posts: Post[]; hideHeader?: boolean
           {mediaItems.map(({ media, post }) => {
             const fileUrl = media.file_url.startsWith('http') ? media.file_url : `${API_URL}${media.file_url}`;
             return (
-              <Pressable 
-                key={media.id} 
-                className="w-1/3 p-1 active:opacity-80" 
+              <Pressable
+                key={media.id}
+                className="w-1/3 p-1 active:opacity-80"
                 style={{ aspectRatio: 1 }}
                 onPress={() => router.push(`/(post)/${post.id}`)}
               >
@@ -261,6 +262,7 @@ export default function ProfileScreen() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [avatarPickerActive, setAvatarPickerActive] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [followStatus, setFollowStatus] = useState<FollowStatus | null>(null);
   const [isEditingIntro, setIsEditingIntro] = useState(false);
   const [tempIntro, setTempIntro] = useState('');
@@ -269,6 +271,33 @@ export default function ProfileScreen() {
   const [introSaved, setIntroSaved] = useState(false);
 
   const isWide = width >= 1180;
+
+  const pickImage = async () => {
+    setAvatarPickerActive(false);
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const uri = result.assets[0].uri;
+        setIsUploadingAvatar(true);
+        const { avatar_url } = await uploadUserAvatar(uri);
+        if (user) {
+          setUser({ ...user, avatar_url });
+        }
+      }
+    } catch (error: any) {
+      console.error('Failed to upload avatar:', error);
+      Alert.alert('Lỗi', error.message || 'Không thể tải ảnh lên. Vui lòng thử lại sau.');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
 
   // Load user
   useEffect(() => {
@@ -384,22 +413,10 @@ export default function ProfileScreen() {
   return (
     <>
       <StatusBar style="dark" />
-      <ThemedView className="flex-1 bg-[#F1F5F9]" style={{ minHeight: height }}>
-        <ScrollView bounces={false} className="flex-1" contentContainerClassName="pb-8">
+      <ThemedView className="flex-1 bg-[#F1F5F9]" style={{ minHeight: height, paddingTop: Math.max(insets.top, 0) }}>
+        <ScrollView ref={scrollViewRef} bounces={false} className="flex-1" contentContainerClassName="pb-8">
           <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-2 md:px-6">
-            {/* Back header */}
-            <View
-              className="flex-row items-center gap-3 bg-white px-5 py-4 border border-app-border mx-0 rounded-3xl shadow-sm"
-              style={{ marginTop: Math.max(insets.top, 0) + 10 }}
-            >
-              <Pressable
-                onPress={() => router.push('/')}
-                className="h-11 w-11 items-center justify-center rounded-full bg-[#F1F5F9] active:opacity-80"
-              >
-                <ThemedText className="text-xl">←</ThemedText>
-              </Pressable>
-              <ThemedText className="text-[20px] font-bold text-slate-900">Hồ sơ</ThemedText>
-            </View>
+
 
             {/* Profile card */}
             <ThemedView className="bg-white shadow-sm overflow-hidden md:rounded-[32px] md:border md:border-[#E4E8EE]">
@@ -427,16 +444,20 @@ export default function ProfileScreen() {
                     <ThemedText className="mb-3 text-sm font-semibold text-slate-700">Thay đổi ảnh đại diện</ThemedText>
                     <View className="flex-row gap-3">
                       <Pressable
-                        className="flex-1 items-center rounded-[14px] bg-[#4A9FD8] py-3 active:opacity-80"
-                        onPress={() => {
-                          setAvatarPickerActive(false);
-                        }}
+                        className={`flex-1 items-center justify-center rounded-[14px] bg-[#4A9FD8] py-3 active:opacity-80 ${isUploadingAvatar ? 'opacity-70' : ''}`}
+                        disabled={isUploadingAvatar}
+                        onPress={pickImage}
                       >
-                        <ThemedText className="text-sm font-semibold text-white">Chọn ảnh</ThemedText>
+                        {isUploadingAvatar ? (
+                          <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                          <ThemedText className="text-sm font-semibold text-white">Chọn ảnh</ThemedText>
+                        )}
                       </Pressable>
                       <Pressable
                         className="flex-1 items-center rounded-[14px] bg-[#F7F8FA] py-3 active:opacity-80"
                         onPress={() => setAvatarPickerActive(false)}
+                        disabled={isUploadingAvatar}
                       >
                         <ThemedText className="text-sm font-medium text-slate-700">Huỷ</ThemedText>
                       </Pressable>
@@ -523,40 +544,40 @@ export default function ProfileScreen() {
               {/* Sidebar */}
               {activeTab !== 'media' && (
                 <View className={isWide ? 'w-[320px] gap-4' : 'gap-4'}>
-                <SidebarCard title="Giới thiệu">
-                  <View className="gap-3">
-                    {[
-                      { icon: 'mail-outline' as const, value: profile.email, privacy: profile.emailPrivacy },
-                      { icon: 'phone' as const, value: profile.phone, privacy: profile.contactPrivacy },
-                      { icon: 'location-on' as const, value: profile.location, privacy: profile.locationPrivacy },
-                    ]
-                      .filter((item) => !!item.value)
-                      .map((item) => {
-                        let privacyIcon: keyof typeof MaterialIcons.glyphMap | null = null;
-                        if (item.privacy === 'onlyme') privacyIcon = 'lock';
-                        else if (item.privacy === 'followersonly') privacyIcon = 'group';
+                  <SidebarCard title="Giới thiệu">
+                    <View className="gap-3">
+                      {[
+                        { icon: 'mail-outline' as const, value: profile.email, privacy: profile.emailPrivacy },
+                        { icon: 'phone' as const, value: profile.phone, privacy: profile.contactPrivacy },
+                        { icon: 'location-on' as const, value: profile.location, privacy: profile.locationPrivacy },
+                      ]
+                        .filter((item) => !!item.value)
+                        .map((item) => {
+                          let privacyIcon: keyof typeof MaterialIcons.glyphMap | null = null;
+                          if (item.privacy === 'onlyme') privacyIcon = 'lock';
+                          else if (item.privacy === 'followersonly') privacyIcon = 'group';
 
-                        return (
-                          <View key={item.icon} className="flex-row items-center gap-3">
-                            <View className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA]">
-                              <MaterialIcons name={item.icon} size={20} color="#64748B" />
+                          return (
+                            <View key={item.icon} className="flex-row items-center gap-3">
+                              <View className="h-11 w-11 items-center justify-center rounded-[18px] bg-[#F7F8FA]">
+                                <MaterialIcons name={item.icon} size={20} color="#64748B" />
+                              </View>
+                              <View className="flex-1 flex-row items-center gap-2">
+                                <ThemedText className="text-base font-medium text-slate-800" numberOfLines={1}>
+                                  {item.value}
+                                </ThemedText>
+                                {privacyIcon && (
+                                  <MaterialIcons name={privacyIcon} size={14} color="#94A3B8" />
+                                )}
+                              </View>
                             </View>
-                            <View className="flex-1 flex-row items-center gap-2">
-                              <ThemedText className="text-base font-medium text-slate-800" numberOfLines={1}>
-                                {item.value}
-                              </ThemedText>
-                              {privacyIcon && (
-                                <MaterialIcons name={privacyIcon} size={14} color="#94A3B8" />
-                              )}
-                            </View>
-                          </View>
-                        );
-                      })}
-                  </View>
-                </SidebarCard>
+                          );
+                        })}
+                    </View>
+                  </SidebarCard>
 
 
-              </View>
+                </View>
               )}
 
               {/* Main content area */}
