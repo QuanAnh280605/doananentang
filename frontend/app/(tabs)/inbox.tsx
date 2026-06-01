@@ -260,17 +260,37 @@ export default function InboxScreen() {
           return newMsgs;
         });
 
+        // Cập nhật latest_message local + mark read — không cần gọi lại API
         if (currentAuthUser && Number(nextMessage.sender_id) !== Number(currentAuthUser.id)) {
-          markChatAsRead(currentActiveChatId)
-            .then(() => {
-              loadChats();
-            })
-            .catch((err) => console.error('Failed to mark read realtime:', err));
+          markChatAsRead(currentActiveChatId).catch((err) =>
+            console.error('Failed to mark read realtime:', err)
+          );
         }
+        setChats((prevChats) =>
+          prevChats.map((c) =>
+            c.chat_id === Number(chatId)
+              ? { ...c, latest_message: nextMessage, updated_at: nextMessage.created_at, unread_count: 0 }
+              : c
+          )
+        );
       } else {
-        // 2. Nếu ở ngoài danh sách chat hoặc chat khác, tải lại danh sách chat từ API
-        // giúp cập nhật tin nhắn xem trước, chấm đỏ, và đẩy chat lên đầu realtime cực kỳ chính xác!
-        loadChats();
+        // 2. Chat khác đang active — cập nhật local: đẩy lên đầu + tăng unread
+        setChats((prevChats) => {
+          const idx = prevChats.findIndex((c) => Number(c.chat_id) === Number(chatId));
+          if (idx === -1) {
+            // Chat mới chưa có trong danh sách → load lại từ API (hiếm)
+            loadChats();
+            return prevChats;
+          }
+          const updated: ChatListItemRead = {
+            ...prevChats[idx],
+            latest_message: nextMessage,
+            updated_at: nextMessage.created_at,
+            unread_count: prevChats[idx].unread_count + 1,
+          };
+          // Đẩy chat lên đầu danh sách
+          return [updated, ...prevChats.filter((_, i) => i !== idx)];
+        });
       }
     };
 

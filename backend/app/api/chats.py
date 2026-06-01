@@ -169,6 +169,14 @@ def mark_chat_read_endpoint(
   return ChatReadStatusRead(chat_id=chat_id, unread_count=unread_count)
 
 
+@router.get('/has-unread-messages', response_model=bool)
+def has_unread_messages_endpoint(
+  current_user: User = Depends(get_current_user),
+  db: Session = Depends(get_db),
+) -> bool:
+  return has_unread_messages(db, current_user.id)
+
+
 @router.get('/{chat_id}/messages', response_model=PaginatedMessagesResponse)
 def list_chat_messages_endpoint(
   chat_id: int,
@@ -246,9 +254,4 @@ def create_chat_message_endpoint(
     logger.exception('Failed to emit message-created event', extra={'chat_id': chat_id, 'message_id': response.id})
   return response
 
-@router.get('/has-unread-messages', response_model=bool)
-def has_unread_messages_endpoint(
-  current_user: User = Depends(get_current_user),
-  db: Session = Depends(get_db),
-) -> bool:
-  return has_unread_messages(db, current_user.id)
+
