@@ -244,3 +244,35 @@ def test_presence_registry_tracks_online_state_across_multiple_sockets() -> None
 
 def test_get_user_room_name_uses_stable_user_namespace() -> None:
   assert get_user_room_name(42) == 'user:42'
+
+
+def test_create_and_list_group_chat() -> None:
+  with build_test_session() as db:
+    current_user = seed_user(db, email='current@example.com', first_name='Current')
+    member1 = seed_user(db, email='member1@example.com', first_name='MemberOne')
+    member2 = seed_user(db, email='member2@example.com', first_name='MemberTwo')
+
+    client = build_client(db, current_user)
+
+    # 1. Test create group chat
+    payload = {
+      'group_name': 'My Super Group',
+      'user_ids': [member1.id, member2.id]
+    }
+    response = client.post('/api/chats/group', json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    assert data['group_name'] == 'My Super Group'
+    assert data['is_group'] is True
+    chat_id = data['chat_id']
+
+    # 2. Test list chats contains the group chat
+    list_response = client.get('/api/chats')
+    assert list_response.status_code == 200
+    list_data = list_response.json()
+    assert list_data['total'] == 1
+    item = list_data['items'][0]
+    assert item['chat_id'] == chat_id
+    assert item['is_group'] is True
+    assert item['group_name'] == 'My Super Group'
+    assert item['participant'] is None

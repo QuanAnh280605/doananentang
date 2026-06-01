@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { View, Modal, Pressable, Image, Dimensions, Animated, StyleSheet, SafeAreaView, Platform } from 'react-native';
+import { View, Modal, Pressable, Dimensions, Animated, StyleSheet, SafeAreaView, Platform } from 'react-native';
+import { Image } from 'expo-image';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -154,7 +155,7 @@ export function StoryViewerModal({ visible, stories, initialStoryId, onClose, on
         <Image 
           source={{ uri: currentStory.mediaUrl }} 
           style={StyleSheet.absoluteFillObject} 
-          resizeMode="cover" 
+          contentFit="cover" 
         />
         
         {/* Overlay gradient top */}

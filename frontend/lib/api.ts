@@ -39,6 +39,7 @@ import type {
   Story,
   StoryCreatePayload,
   StoryViewStatus,
+  GroupChatRead,
 } from '@/lib/types';
 
 const FALLBACK_PORT = '8000';
@@ -375,10 +376,19 @@ export async function listDirectChats(page = 1, pageSize = 20): Promise<Paginate
   return apiFetch<PaginatedChatsResponse>(`/api/chats?page=${page}&page_size=${pageSize}`);
 }
 
+export const listChats = listDirectChats;
+
 export async function createDirectChat(targetUserId: number): Promise<DirectChatRead> {
   return apiFetch<DirectChatRead>('/api/chats/direct', {
     method: 'POST',
     body: JSON.stringify({ target_user_id: targetUserId }),
+  });
+}
+
+export async function createGroupChat(groupName: string, userIds: number[]): Promise<GroupChatRead> {
+  return apiFetch<GroupChatRead>('/api/chats/group', {
+    method: 'POST',
+    body: JSON.stringify({ group_name: groupName, user_ids: userIds }),
   });
 }
 
@@ -396,6 +406,12 @@ export async function sendChatMessage(chatId: number, content?: string, mediaUrl
 export async function markChatAsRead(chatId: number): Promise<ChatReadStatusRead> {
   return apiFetch<ChatReadStatusRead>(`/api/chats/${chatId}/read`, {
     method: 'POST',
+  });
+}
+
+export async function deleteChat(chatId: number): Promise<{ status: string; message: string }> {
+  return apiFetch<{ status: string; message: string }>(`/api/chats/${chatId}`, {
+    method: 'DELETE',
   });
 }
 
@@ -431,6 +447,43 @@ export async function uploadChatMedia(uri: string): Promise<{ url: string; media
   if (!response.ok) {
     const errText = await response.text();
     throw new Error(`Upload media thất bại: ${response.status} - ${errText}`);
+  }
+
+  return response.json();
+}
+
+export async function uploadGroupAvatar(chatId: number, uri: string): Promise<GroupChatRead> {
+  const formData = new FormData();
+  const filename = uri.split('/').pop() || 'avatar.jpg';
+  const match = /\.(\w+)$/.exec(filename);
+  const ext = match ? match[1] : 'jpg';
+  const mimeType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+
+  if (Platform.OS === 'web') {
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    formData.append('file', new File([blob], filename, { type: mimeType }));
+  } else {
+    formData.append('file', {
+      uri,
+      name: filename,
+      type: mimeType,
+    } as any);
+  }
+
+  const token = await getAccessToken();
+  const response = await fetch(`${API_URL}/api/chats/${chatId}/avatar`, {
+    method: 'POST',
+    body: formData,
+    headers: {
+      'Accept': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Upload avatar nhóm thất bại: ${response.status} - ${errText}`);
   }
 
   return response.json();

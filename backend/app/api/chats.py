@@ -21,6 +21,10 @@ from app.crud.chat import (
   list_chat_messages,
   list_direct_chats_for_user,
   mark_chat_messages_read,
+  count_chats_for_user,
+  list_chats_for_user,
+  create_group_chat,
+  delete_chat,
 )
 from app.crud.user import get_user_by_id
 from app.models.message_media import MessageMedia
@@ -36,6 +40,8 @@ from app.schemas.chat import (
   PaginatedChatsResponse,
   PaginatedMessagesResponse,
   SendMessageRequest,
+  CreateGroupChatRequest,
+  GroupChatRead,
 )
 from app.schemas.user import UserSearchRead
 from app.services.notification import create_social_notification
@@ -77,14 +83,17 @@ def list_chats_endpoint(
   current_user: User = Depends(get_current_user),
   db: Session = Depends(get_db),
 ) -> PaginatedChatsResponse:
-  total = count_direct_chats_for_user(db, current_user.id)
+  total = count_chats_for_user(db, current_user.id)
   total_pages = (total + page_size - 1) // page_size if total > 0 else 0
   skip = (page - 1) * page_size
-  threads = list_direct_chats_for_user(db, current_user.id, skip=skip, limit=page_size)
+  threads = list_chats_for_user(db, current_user.id, skip=skip, limit=page_size)
   items = [
     ChatListItemRead(
       chat_id=thread.chat.id,
-      participant=UserSearchRead.model_validate(thread.participant),
+      participant=UserSearchRead.model_validate(thread.participant) if thread.participant is not None else None,
+      is_group=thread.chat.is_group,
+      group_name=thread.chat.group_name,
+      avatar_url=thread.chat.avatar_url,
       latest_message=_build_message_read(db, thread.latest_message) if thread.latest_message is not None else None,
       updated_at=thread.updated_at,
       unread_count=thread.unread_count,
@@ -116,6 +125,22 @@ def create_direct_chat_endpoint(
 
   chat = get_or_create_direct_chat(db, current_user.id, payload.target_user_id)
   return DirectChatRead(chat_id=chat.id, participant_user_id=payload.target_user_id, created_at=chat.created_at)
+
+
+@router.post('/group', response_model=GroupChatRead, status_code=status.HTTP_201_CREATED)
+def create_group_chat_endpoint(
+  payload: CreateGroupChatRequest,
+  current_user: User = Depends(get_current_user),
+  db: Session = Depends(get_db),
+) -> GroupChatRead:
+  if not payload.group_name.strip():
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Group name cannot be empty')
+
+  if not payload.user_ids:
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Group must have at least one other member')
+
+  chat = create_group_chat(db, current_user.id, payload.group_name, payload.user_ids)
+  return GroupChatRead(chat_id=chat.id, group_name=chat.group_name, is_group=chat.is_group, avatar_url=chat.avatar_url, created_at=chat.created_at)
 
 
 @router.post('/upload-media', status_code=status.HTTP_201_CREATED)
@@ -253,5 +278,80 @@ def create_chat_message_endpoint(
   except Exception:
     logger.exception('Failed to emit message-created event', extra={'chat_id': chat_id, 'message_id': response.id})
   return response
+
+
+@router.delete('/{chat_id}', status_code=status.HTTP_200_OK)
+def delete_chat_endpoint(
+  chat_id: int,
+  current_user: User = Depends(get_current_user),
+  db: Session = Depends(get_db),
+):
+  chat = get_chat_by_id(db, chat_id)
+  if chat is None:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Chat not found')
+
+  if not is_chat_member(db, chat_id, current_user.id):
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not a member of this chat')
+
+  delete_chat(db, chat_id)
+  return {'status': 'success', 'message': 'Đã xóa cuộc trò chuyện thành công'}
+
+
+@router.post('/{chat_id}/avatar', response_model=GroupChatRead)
+def upload_group_avatar_endpoint(
+  chat_id: int,
+  file: UploadFile = File(...),
+  current_user: User = Depends(get_current_user),
+  db: Session = Depends(get_db),
+) -> GroupChatRead:
+  """Tải lên ảnh đại diện cho nhóm chat."""
+  chat = get_chat_by_id(db, chat_id)
+  if chat is None:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Chat not found')
+
+  if not chat.is_group:
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Cannot set avatar for direct chat')
+
+  if not is_chat_member(db, chat_id, current_user.id):
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not a member of this chat')
+
+  content_type = file.content_type or ''
+  if not content_type.startswith('image/'):
+    raise HTTPException(
+      status_code=status.HTTP_400_BAD_REQUEST,
+      detail=f"File '{file.filename}' không phải là ảnh hợp lệ."
+    )
+
+  # Tạo thư mục lưu trữ avatar nhóm chat
+  AVATARS_DIR = Path('uploads') / 'avatars'
+  AVATARS_DIR.mkdir(parents=True, exist_ok=True)
+  file_ext = file.filename.split('.')[-1] if file.filename else 'jpg'
+  unique_filename = f"group_{chat_id}_{uuid.uuid4().hex}.{file_ext}"
+  file_path = AVATARS_DIR / unique_filename
+
+  try:
+    with file_path.open('wb') as buffer:
+      shutil.copyfileobj(file.file, buffer)
+  except IOError as e:
+    raise HTTPException(
+      status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+      detail=f"Lỗi lưu file: {str(e)}"
+    )
+  finally:
+    file.file.close()
+
+  # Cập nhật avatar_url vào DB
+  chat.avatar_url = f'/static/avatars/{unique_filename}'
+  db.add(chat)
+  db.commit()
+  db.refresh(chat)
+
+  return GroupChatRead(
+    chat_id=chat.id,
+    group_name=chat.group_name,
+    is_group=chat.is_group,
+    avatar_url=chat.avatar_url,
+    created_at=chat.created_at,
+  )
 
 

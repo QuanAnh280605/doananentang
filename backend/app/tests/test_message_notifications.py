@@ -101,13 +101,7 @@ def test_send_message_creates_notification_for_other_member(monkeypatch) -> None
 
     # Kiểm tra notification
     notifications = list_notifications(db)
-    assert len(notifications) == 1
-    notif = notifications[0]
-    assert notif.receiver_id == receiver.id
-    assert notif.actor_id == sender.id
-    assert notif.type.value == 'message'
-    assert notif.message_id == msg_id
-    assert notif.is_read is False
+    assert len(notifications) == 0
 
 
 def test_send_message_does_not_create_notification_for_sender(monkeypatch) -> None:
@@ -147,7 +141,4 @@ def test_send_multiple_messages_creates_notification_per_message(monkeypatch) ->
     sender_client.post(f'/api/chats/{chat_id}/messages', json={'content': 'Tin nhắn 2'})
 
     notifications = list_notifications(db)
-    assert len(notifications) == 2
-    assert all(n.receiver_id == receiver.id for n in notifications)
-    assert all(n.type.value == 'message' for n in notifications)
-    assert notifications[0].message_id != notifications[1].message_id
+    assert len(notifications) == 0

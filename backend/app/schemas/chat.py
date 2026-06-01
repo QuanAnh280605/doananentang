@@ -44,12 +44,32 @@ class DirectChatRead(BaseModel):
   created_at: datetime
 
 
+class CreateGroupChatRequest(BaseModel):
+  group_name: str
+  user_ids: list[int]
+
+
+class GroupChatRead(BaseModel):
+  chat_id: int
+  group_name: str
+  is_group: bool = True
+  avatar_url: str | None = None
+  created_at: datetime
+
+  model_config = ConfigDict(from_attributes=True)
+
+
 class ChatListItemRead(BaseModel):
   chat_id: int
-  participant: UserSearchRead
+  participant: UserSearchRead | None = None
+  is_group: bool = False
+  group_name: str | None = None
+  avatar_url: str | None = None
   latest_message: MessageRead | None = None
   updated_at: datetime
   unread_count: int
+
+  model_config = ConfigDict(from_attributes=True)
 
 
 class PaginatedChatsResponse(BaseModel):
@@ -63,3 +83,4 @@ class PaginatedChatsResponse(BaseModel):
 class ChatReadStatusRead(BaseModel):
   chat_id: int
   unread_count: int
+

@@ -316,3 +316,93 @@ def list_direct_chats_for_user(db: Session, user_id: int, skip: int = 0, limit: 
   if limit is None:
     return sorted_threads[skip:]
   return sorted_threads[skip:skip + limit]
+
+
+@dataclass(slots=True)
+class ChatThread:
+  chat: Chat
+  participant: User | None
+  latest_message: Message | None
+  updated_at: datetime
+  unread_count: int
+
+
+def list_chats_for_user(db: Session, user_id: int, skip: int = 0, limit: int | None = None) -> list[ChatThread]:
+  # Lấy tất cả các Chats mà user tham gia
+  user_chats_stmt = (
+    select(Chat)
+    .join(ChatMember, ChatMember.chat_id == Chat.id)
+    .where(ChatMember.user_id == user_id)
+  )
+  chats = db.scalars(user_chats_stmt).all()
+
+  threads: list[ChatThread] = []
+  for chat in chats:
+    participant = None
+    if not chat.is_group:
+      # Nếu là chat 1-1, tìm participant còn lại
+      participant = db.scalar(
+        select(User)
+        .join(ChatMember, ChatMember.user_id == User.id)
+        .where(ChatMember.chat_id == chat.id, ChatMember.user_id != user_id)
+      )
+
+    latest_message = get_latest_chat_message(db, chat.id)
+    threads.append(
+      ChatThread(
+        chat=chat,
+        participant=participant,
+        latest_message=latest_message,
+        updated_at=latest_message.created_at if latest_message is not None else chat.created_at,
+        unread_count=count_unread_chat_messages(db, chat.id, user_id),
+      )
+    )
+
+  # Sắp xếp theo ngày tin nhắn mới nhất
+  sorted_threads = sorted(
+    threads,
+    key=lambda thread: (thread.updated_at, thread.chat.id),
+    reverse=True,
+  )
+
+  if limit is None:
+    return sorted_threads[skip:]
+  return sorted_threads[skip:skip + limit]
+
+
+def count_chats_for_user(db: Session, user_id: int) -> int:
+  statement = (
+    select(func.count())
+    .select_from(Chat)
+    .join(ChatMember, ChatMember.chat_id == Chat.id)
+    .where(ChatMember.user_id == user_id)
+  )
+  return db.scalar(statement) or 0
+
+
+def create_group_chat(db: Session, creator_id: int, group_name: str, member_ids: list[int]) -> Chat:
+  # Lọc trùng và đảm bảo creator có trong danh sách
+  unique_member_ids = set(member_ids)
+  unique_member_ids.add(creator_id)
+
+  chat = Chat(is_group=True, group_name=group_name)
+  db.add(chat)
+  db.flush()
+
+  for uid in unique_member_ids:
+    user_exists = db.scalar(select(User.id).where(User.id == uid))
+    if user_exists:
+      role = 'admin' if uid == creator_id else 'member'
+      db.add(ChatMember(chat_id=chat.id, user_id=uid, role=role))
+
+  db.commit()
+  db.refresh(chat)
+  return chat
+
+
+def delete_chat(db: Session, chat_id: int) -> None:
+  chat = db.get(Chat, chat_id)
+  if chat:
+    db.delete(chat)
+    db.commit()
+
