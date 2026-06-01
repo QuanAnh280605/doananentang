@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, FlatList, Pressable, Image, StyleSheet } from 'react-native';
+import { View, FlatList, Pressable, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 import { ThemedText } from '@/components/themed-text';
@@ -62,7 +63,7 @@ export function StoryStrip({ currentUser, stories, onCreateStory, onOpenStory }:
           >
             <View className="h-[130px] bg-[#EAF4FB] items-center justify-center">
               {userAvatarUrl ? (
-                <Image source={{ uri: userAvatarUrl }} className="h-full w-full" resizeMode="cover" />
+                <Image source={{ uri: userAvatarUrl }} className="h-full w-full" contentFit="cover" />
               ) : (
                 <ThemedText className="text-[28px] font-bold text-[#4A9FD8]">{initials}</ThemedText>
               )}
@@ -88,12 +89,12 @@ export function StoryStrip({ currentUser, stories, onCreateStory, onOpenStory }:
               className="mr-3 h-[200px] w-[116px] overflow-hidden rounded-[20px] bg-slate-900 active:opacity-90"
               onPress={() => onOpenStory(storyToOpen.id)}
             >
-              <Image source={{ uri: story.mediaUrl }} className="absolute h-full w-full opacity-90" resizeMode="cover" />
+              <Image source={{ uri: story.mediaUrl }} className="absolute h-full w-full opacity-90" contentFit="cover" />
               <View className="absolute bottom-0 left-0 right-0 h-28" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} />
               
               <View className="absolute left-2.5 top-2.5 h-11 w-11 items-center justify-center rounded-full bg-white border-[3px]" style={{ borderColor: story.ringColor || '#4A9FD8' }}>
                 {story.avatarUrl ? (
-                  <Image source={{ uri: story.avatarUrl }} style={{ width: 36, height: 36, borderRadius: 18 }} resizeMode="cover" />
+                  <Image source={{ uri: story.avatarUrl }} style={{ width: 36, height: 36, borderRadius: 18 }} contentFit="cover" />
                 ) : (
                   <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#EAF4FB', alignItems: 'center', justifyContent: 'center' }}>
                     <ThemedText style={{ fontSize: 12, fontWeight: '700', color: story.ringColor || '#4A9FD8' }}>{story.authorInitials}</ThemedText>

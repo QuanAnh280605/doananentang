@@ -1,4 +1,5 @@
-import { Pressable, View, Image } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { Image } from 'expo-image';
 
 import { ThemedText } from '@/components/themed-text';
 import { API_URL } from '@/lib/api';

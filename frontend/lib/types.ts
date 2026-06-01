@@ -185,10 +185,21 @@ export type ChatMessageRead = {
 
 export type ChatListItemRead = {
   chat_id: number;
-  participant: ChatParticipant;
+  participant: ChatParticipant | null;
+  is_group?: boolean;
+  group_name?: string | null;
+  avatar_url?: string | null;
   latest_message: ChatMessageRead | null;
   updated_at: string;
   unread_count: number;
+};
+
+export type GroupChatRead = {
+  chat_id: number;
+  group_name: string;
+  is_group: boolean;
+  avatar_url?: string | null;
+  created_at: string;
 };
 
 export type PaginatedChatsResponse = {

@@ -1,5 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useRouter, useLocalSearchParams, useNavigation } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useState, useEffect, useRef, useMemo } from 'react';
@@ -12,10 +12,11 @@ import {
   useWindowDimensions,
   ActivityIndicator,
   Modal,
-  Image,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 
 import { InboxListItem, type InboxListItemData } from '@/components/inbox/InboxListItem';
@@ -31,6 +32,9 @@ import {
   markChatAsRead,
   uploadChatMedia,
   createDirectChat,
+  createGroupChat,
+  deleteChat,
+  uploadGroupAvatar,
   API_URL,
 } from '@/lib/api';
 import { fetchCurrentUser, searchUsers, type AuthUser, type SearchUser } from '@/lib/auth';
@@ -115,17 +119,25 @@ export default function InboxScreen() {
   const [activeChatId, setActiveChatId] = useState<number | null>(null);
   const [messages, setMessages] = useState<ChatMessageRead[]>([]);
   const [draftMessage, setDraftMessage] = useState('');
+  const [selectedImageUris, setSelectedImageUris] = useState<string[]>([]);
 
   const [isLoadingChats, setIsLoadingChats] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
 
   // New Chat Search states
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [newChatSearchQuery, setNewChatSearchQuery] = useState('');
   const [newChatSearchResults, setNewChatSearchResults] = useState<SearchUser[]>([]);
   const [isSearchingUsers, setIsSearchingUsers] = useState(false);
+
+  // Group chat states
+  const [isGroupMode, setIsGroupMode] = useState(false);
+  const [groupName, setGroupName] = useState('');
+  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+
+
 
   // Search states
   const [inboxNavSearchQuery, setInboxNavSearchQuery] = useState('');
@@ -138,25 +150,6 @@ export default function InboxScreen() {
 
   const scrollViewRef = useRef<ScrollView>(null);
   const messagesRef = useRef<ChatMessageRead[]>([]);
-  const navigation = useNavigation();
-
-  // Hide Bottom Tab Bar on Mobile when inside Chat Room
-  useEffect(() => {
-    if (activeChatId !== null && !useViewportLayout) {
-      navigation.setOptions({
-        tabBarStyle: { display: 'none' }
-      });
-    } else {
-      navigation.setOptions({
-        tabBarStyle: undefined
-      });
-    }
-    return () => {
-      navigation.setOptions({
-        tabBarStyle: undefined
-      });
-    };
-  }, [activeChatId, useViewportLayout, navigation]);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -188,8 +181,8 @@ export default function InboxScreen() {
       const targetId = Number(params.openChatId);
       if (Number.isInteger(targetId)) {
         setActiveChatId(targetId);
-        // Clear params to avoid loop
-        router.setParams({ openChatId: undefined });
+        // Clear params to avoid loop, and activate chat view in tab bar dynamically
+        router.setParams({ openChatId: undefined, chatActive: 'true' });
       }
     }
   }, [params.openChatId, router]);
@@ -260,17 +253,37 @@ export default function InboxScreen() {
           return newMsgs;
         });
 
+        // Cập nhật latest_message local + mark read — không cần gọi lại API
         if (currentAuthUser && Number(nextMessage.sender_id) !== Number(currentAuthUser.id)) {
-          markChatAsRead(currentActiveChatId)
-            .then(() => {
-              loadChats();
-            })
-            .catch((err) => console.error('Failed to mark read realtime:', err));
+          markChatAsRead(currentActiveChatId).catch((err) =>
+            console.error('Failed to mark read realtime:', err)
+          );
         }
+        setChats((prevChats) =>
+          prevChats.map((c) =>
+            c.chat_id === Number(chatId)
+              ? { ...c, latest_message: nextMessage, updated_at: nextMessage.created_at, unread_count: 0 }
+              : c
+          )
+        );
       } else {
-        // 2. Nếu ở ngoài danh sách chat hoặc chat khác, tải lại danh sách chat từ API
-        // giúp cập nhật tin nhắn xem trước, chấm đỏ, và đẩy chat lên đầu realtime cực kỳ chính xác!
-        loadChats();
+        // 2. Chat khác đang active — cập nhật local: đẩy lên đầu + tăng unread
+        setChats((prevChats) => {
+          const idx = prevChats.findIndex((c) => Number(c.chat_id) === Number(chatId));
+          if (idx === -1) {
+            // Chat mới chưa có trong danh sách → load lại từ API (hiếm)
+            loadChats();
+            return prevChats;
+          }
+          const updated: ChatListItemRead = {
+            ...prevChats[idx],
+            latest_message: nextMessage,
+            updated_at: nextMessage.created_at,
+            unread_count: prevChats[idx].unread_count + 1,
+          };
+          // Đẩy chat lên đầu danh sách
+          return [updated, ...prevChats.filter((_, i) => i !== idx)];
+        });
       }
     };
 
@@ -324,6 +337,8 @@ export default function InboxScreen() {
     return chats.find((c) => c.chat_id === activeChatId) || null;
   }, [chats, activeChatId]);
 
+  const isGroup = activeChat?.is_group === true;
+
   const activeParticipant: ChatParticipant | null = useMemo(() => {
     return activeChat?.participant || null;
   }, [activeChat]);
@@ -351,6 +366,15 @@ export default function InboxScreen() {
     return (first + last).toUpperCase() || participant.full_name.slice(0, 2).toUpperCase();
   };
 
+  const getGroupInitials = (name: string): string => {
+    if (!name) return 'GP';
+    const parts = name.split(' ').filter(Boolean);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  };
+
   // Handle Start Chat with User from Search
   const handleStartNewChat = async (targetUserId: number) => {
     setShowNewChatModal(false);
@@ -361,35 +385,135 @@ export default function InboxScreen() {
       const chat = await createDirectChat(targetUserId);
       await loadChats();
       setActiveChatId(chat.chat_id);
+      router.setParams({ chatActive: 'true' });
     } catch (err: any) {
       toast.error('Không thể bắt đầu cuộc trò chuyện: ' + err.message);
     }
   };
 
-  // Handle Send Text Message
+  // Handle Create Group Chat
+  const handleCreateGroup = async () => {
+    if (!groupName.trim()) {
+      toast.error('Vui lòng nhập tên nhóm.');
+      return;
+    }
+    if (selectedUserIds.length === 0) {
+      toast.error('Vui lòng chọn ít nhất 1 thành viên.');
+      return;
+    }
+
+    setIsCreatingGroup(true);
+    try {
+      const chat = await createGroupChat(groupName.trim(), selectedUserIds);
+      toast.success('Đã tạo nhóm thành công!');
+      setShowNewChatModal(false);
+      // Reset group states
+      setGroupName('');
+      setSelectedUserIds([]);
+      setIsGroupMode(false);
+      setNewChatSearchQuery('');
+      setNewChatSearchResults([]);
+
+      await loadChats();
+      setActiveChatId(chat.chat_id);
+      router.setParams({ chatActive: 'true' });
+    } catch (err: any) {
+      toast.error('Tạo nhóm thất bại: ' + err.message);
+    } finally {
+      setIsCreatingGroup(false);
+    }
+  };
+
+  const toggleSelectUserForGroup = (userId: number) => {
+    setSelectedUserIds((prev) => {
+      if (prev.includes(userId)) {
+        return prev.filter((id) => id !== userId);
+      }
+      return [...prev, userId];
+    });
+  };
+
+  const handleDeleteChat = () => {
+    if (activeChatId === null) return;
+
+    Alert.alert(
+      'Xóa cuộc trò chuyện',
+      'Bạn có chắc chắn muốn xóa cuộc trò chuyện này? Toàn bộ lịch sử tin nhắn sẽ bị xóa vĩnh viễn.',
+      [
+        {
+          text: 'Hủy',
+          style: 'cancel',
+        },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteChat(activeChatId);
+              setShowChatMenu(false);
+              setActiveChatId(null);
+              router.setParams({ openChatId: undefined, chatActive: undefined });
+              await loadChats();
+              Alert.alert('Thành công', 'Đã xóa cuộc trò chuyện thành công.');
+            } catch (err: any) {
+              toast.error('Xóa cuộc trò chuyện thất bại: ' + err.message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Handle Send Text Message & Multiple Selected Media
   const handleSendMessage = async () => {
-    if (activeChatId === null || !draftMessage.trim() || isSending) return;
+    if (activeChatId === null || isSending) return;
+    if (!draftMessage.trim() && selectedImageUris.length === 0) return;
 
     const messageText = draftMessage;
+    const imageUrisToSend = [...selectedImageUris];
+
     setDraftMessage('');
+    setSelectedImageUris([]); // Xóa preview ngay lập tức để phản hồi UI mượt mà
     setIsSending(true);
 
     try {
-      const newMsg = await sendChatMessage(activeChatId, messageText);
-      setMessages((prev) => [...prev, newMsg]);
+      // 1. Tải lên toàn bộ ảnh song song để tối ưu tốc độ mạng
+      const uploadPromises = imageUrisToSend.map((uri) => uploadChatMedia(uri));
+      const uploadResults = await Promise.all(uploadPromises);
+      const mediaUrls = uploadResults.map((res) => res.url);
+
+      // 2. Gửi tin nhắn văn bản trước (nếu có)
+      if (messageText.trim()) {
+        const newMsg = await sendChatMessage(activeChatId, messageText.trim());
+        setMessages((prev) => {
+          if (prev.some((m) => Number(m.id) === Number(newMsg.id))) return prev;
+          return [...prev, newMsg];
+        });
+      }
+
+      // 3. Gửi từng tin nhắn ảnh lần lượt để đảm bảo thứ tự hiển thị chính xác
+      for (const mediaUrl of mediaUrls) {
+        const newMsg = await sendChatMessage(activeChatId, undefined, mediaUrl);
+        setMessages((prev) => {
+          if (prev.some((m) => Number(m.id) === Number(newMsg.id))) return prev;
+          return [...prev, newMsg];
+        });
+      }
+
       scrollToBottom();
       loadChats();
     } catch (err: any) {
-      setDraftMessage(messageText); // restore draft
+      setDraftMessage(messageText); // khôi phục lại chữ đã nhập
+      setSelectedImageUris(imageUrisToSend); // khôi phục lại danh sách ảnh xem trước
       toast.error('Gửi tin nhắn thất bại: ' + err.message);
     } finally {
       setIsSending(false);
     }
   };
 
-  // Handle Select & Upload Image
+  // Handle Select Multiple Images (Save URIs to Preview state, not uploading immediately)
   const handleSelectImage = async () => {
-    if (activeChatId === null || isUploading) return;
+    if (activeChatId === null) return;
 
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -400,7 +524,38 @@ export default function InboxScreen() {
 
       const pickerResult = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false,
+        allowsMultipleSelection: true, // Cho phép chọn nhiều ảnh
+        quality: 0.8,
+      });
+
+      if (pickerResult.canceled || !pickerResult.assets || pickerResult.assets.length === 0) {
+        return;
+      }
+
+      const selectedUris = pickerResult.assets.map((asset) => asset.uri);
+      // Hợp nhất với danh sách ảnh đã chọn trước đó (nếu có) để người dùng có thể chọn thêm nhiều đợt
+      setSelectedImageUris((prev) => [...prev, ...selectedUris]);
+    } catch (err: any) {
+      toast.error('Chọn hình ảnh thất bại: ' + err.message);
+    }
+  };
+
+  // Handle Change Group Avatar
+  const [isUpdatingGroupAvatar, setIsUpdatingGroupAvatar] = useState(false);
+  const handleChangeGroupAvatar = async () => {
+    if (activeChatId === null || isUpdatingGroupAvatar) return;
+
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        toast.error('Ứng dụng cần quyền truy cập thư viện ảnh để thay đổi avatar nhóm.');
+        return;
+      }
+
+      const pickerResult = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
         quality: 0.8,
       });
 
@@ -409,19 +564,20 @@ export default function InboxScreen() {
       }
 
       const selectedUri = pickerResult.assets[0].uri;
-      setIsUploading(true);
+      setIsUpdatingGroupAvatar(true);
+      toast.success('Đang tải ảnh đại diện nhóm mới lên...');
 
-      const uploadRes = await uploadChatMedia(selectedUri);
+      const updatedChat = await uploadGroupAvatar(activeChatId, selectedUri);
+      toast.success('Thay đổi avatar nhóm thành công!');
 
-      // Send chat message with uploaded media URL
-      const newMsg = await sendChatMessage(activeChatId, undefined, uploadRes.url);
-      setMessages((prev) => [...prev, newMsg]);
-      scrollToBottom();
-      loadChats();
+      // Cập nhật danh sách chat local
+      setChats((prevChats) =>
+        prevChats.map((c) => (c.chat_id === activeChatId ? { ...c, avatar_url: updatedChat.avatar_url } : c))
+      );
     } catch (err: any) {
-      toast.error('Gửi hình ảnh thất bại: ' + err.message);
+      toast.error('Thay đổi avatar nhóm thất bại: ' + err.message);
     } finally {
-      setIsUploading(false);
+      setIsUpdatingGroupAvatar(false);
     }
   };
 
@@ -429,27 +585,30 @@ export default function InboxScreen() {
   const normalizedSearchQuery = inboxSearchQuery.trim().toLowerCase();
   const filteredChats = chats.filter((chat) => {
     if (!normalizedSearchQuery) return true;
+    const name = chat.is_group ? (chat.group_name || '') : (chat.participant?.full_name || '');
     return (
-      chat.participant.full_name.toLowerCase().includes(normalizedSearchQuery) ||
+      name.toLowerCase().includes(normalizedSearchQuery) ||
       (chat.latest_message?.content && chat.latest_message.content.toLowerCase().includes(normalizedSearchQuery))
     );
   });
 
   // Map backend model list items to components
   const mappedInboxThreads: InboxListItemData[] = filteredChats.map((chat) => {
-    const initials = getInitials(chat.participant);
+    const isGroup = chat.is_group === true;
+    const name = isGroup ? (chat.group_name || 'Nhóm Trò Chuyện') : (chat.participant?.full_name || 'Người dùng');
+    const initials = isGroup ? getGroupInitials(name) : getInitials(chat.participant);
     let preview = 'Chưa có tin nhắn';
     if (chat.latest_message) {
       preview = chat.latest_message.content || '[Hình ảnh]';
     }
     return {
       id: chat.chat_id.toString(),
-      name: chat.participant.full_name,
+      name: name,
       preview: preview,
       time: chat.latest_message ? formatTime(chat.latest_message.created_at) : formatTime(chat.updated_at),
       initials: initials,
-      avatarUrl: chat.participant.avatar_url,
-      bio: chat.participant.bio || undefined,
+      avatarUrl: isGroup ? (chat.avatar_url || null) : (chat.participant?.avatar_url || null),
+      bio: isGroup ? 'Nhóm trò chuyện' : (chat.participant?.bio || undefined),
       active: chat.chat_id === activeChatId,
       unread: chat.unread_count,
     };
@@ -523,6 +682,7 @@ export default function InboxScreen() {
               item={item}
               onPress={() => {
                 setActiveChatId(Number(item.id));
+                router.setParams({ chatActive: 'true' });
               }}
             />
           ))
@@ -533,7 +693,7 @@ export default function InboxScreen() {
 
   // Content for Cột 2: Conversation View
   const renderConversation = () => {
-    if (activeChatId === null || !activeParticipant) {
+    if (activeChatId === null || !activeChat) {
       return (
         <ThemedView className={`${surfaceClass} p-5 items-center justify-center flex-1 min-h-[350px] bg-[#FCFDFE]`}>
           <MaterialIcons color="#4A9FD8" name="forum" size={56} />
@@ -555,7 +715,9 @@ export default function InboxScreen() {
 
 
 
-    const initials = getInitials(activeParticipant);
+    const title = isGroup ? (activeChat.group_name || 'Nhóm Trò Chuyện') : (activeParticipant?.full_name || 'Người dùng');
+    const initials = isGroup ? getGroupInitials(title) : getInitials(activeParticipant);
+    const avatarUrl = isGroup ? (activeChat.avatar_url || null) : (activeParticipant?.avatar_url || null);
     const getAbsoluteAvatarUrl = (url: string | null) => {
       if (!url) return null;
       if (url.startsWith('http://') || url.startsWith('https://')) return url;
@@ -574,7 +736,7 @@ export default function InboxScreen() {
               className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 active:opacity-80"
               onPress={() => {
                 setActiveChatId(null);
-                router.setParams({ openChatId: undefined });
+                router.setParams({ openChatId: undefined, chatActive: undefined });
               }}>
               <MaterialIcons color="#475569" name="arrow-back" size={20} />
             </Pressable>
@@ -584,11 +746,15 @@ export default function InboxScreen() {
           <Pressable
             className="flex-row items-center gap-3 active:opacity-80 flex-1"
             onPress={() => {
-              router.push(`/profile/${activeParticipant.id}`);
+              if (isGroup) {
+                toast.success('Đây là nhóm chat: ' + title);
+              } else if (activeParticipant) {
+                router.push(`/profile/${activeParticipant.id}`);
+              }
             }}>
-            {activeParticipant.avatar_url ? (
+            {avatarUrl ? (
               <Image
-                source={{ uri: getAbsoluteAvatarUrl(activeParticipant.avatar_url)! }}
+                source={{ uri: getAbsoluteAvatarUrl(avatarUrl)! }}
                 className="h-11 w-11 rounded-full bg-slate-200 border border-slate-200"
               />
             ) : (
@@ -598,12 +764,12 @@ export default function InboxScreen() {
             )}
             <View className="flex-1">
               <ThemedText className="text-base font-bold text-slate-900 truncate">
-                {activeParticipant.full_name}
+                {title}
               </ThemedText>
               <View className="flex-row items-center gap-1.5 mt-0.5">
-                <View className="h-2 w-2 rounded-full bg-green-500" />
+                <View className={`h-2 w-2 rounded-full ${isGroup ? 'bg-[#4A9FD8]' : 'bg-green-500'}`} />
                 <ThemedText className="text-[11px] font-medium text-slate-400">
-                  Đang hoạt động
+                  {isGroup ? 'Nhóm trò chuyện' : 'Đang hoạt động'}
                 </ThemedText>
               </View>
             </View>
@@ -637,18 +803,44 @@ export default function InboxScreen() {
           )}
         </View>
 
+        {/* PANEL PREVIEW NHIỀU ẢNH (Chỉ hiển thị khi có selectedImageUris) */}
+        {selectedImageUris.length > 0 && (
+          <View className="flex-row items-center mb-2 px-2 mt-2">
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 10, paddingRight: 10 }}
+            >
+              {selectedImageUris.map((uri, idx) => (
+                <View key={`${uri}-${idx}`} className="relative h-20 w-20 rounded-[14px] overflow-hidden border border-slate-200 shadow-sm bg-white">
+                  <Image
+                    source={{ uri }}
+                    style={{ width: '100%', height: '100%' }}
+                  />
+                  
+                  {/* Nút Xóa Preview Ảnh */}
+                  <Pressable
+                    className="absolute top-1 right-1 h-5 w-5 bg-black/60 rounded-full items-center justify-center active:opacity-80"
+                    onPress={() => {
+                      setSelectedImageUris((prev) => prev.filter((_, i) => i !== idx));
+                    }}
+                    hitSlop={10}
+                  >
+                    <MaterialIcons color="#FFFFFF" name="close" size={14} />
+                  </Pressable>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Thanh nhập tin nhắn siêu tối giản - Đã căn chỉnh lại tỷ lệ và bo góc */}
         <View className="flex-row items-center gap-2 rounded-[28px] bg-[#F1F5F9] p-1.5 mt-2">
           {/* Nút Chọn Ảnh */}
           <Pressable
             className="h-11 w-11 items-center justify-center rounded-full bg-white active:opacity-80 shadow-sm"
-            disabled={isUploading}
             onPress={handleSelectImage}>
-            {isUploading ? (
-              <ActivityIndicator color="#4A9FD8" size="small" />
-            ) : (
-              <MaterialIcons color="#475569" name="image" size={20} />
-            )}
+            <MaterialIcons color="#475569" name="image" size={20} />
           </Pressable>
 
           {/* Ô Nhập Tin Nhắn - Cân đối lại padding dọc và căn giữa hoàn hảo */}
@@ -667,16 +859,21 @@ export default function InboxScreen() {
           />
 
           {/* Nút Gửi (Send) */}
-          <Pressable
-            className={`h-11 w-11 items-center justify-center rounded-full ${!draftMessage.trim() || isSending ? 'bg-slate-200' : 'bg-[#4A9FD8]'} active:opacity-80 shadow-sm`}
-            disabled={isSending || !draftMessage.trim()}
-            onPress={handleSendMessage}>
-            {isSending ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <MaterialIcons color={!draftMessage.trim() ? '#94A3B8' : '#FFFFFF'} name="send" size={20} />
-            )}
-          </Pressable>
+          {(() => {
+            const canSend = draftMessage.trim().length > 0 || selectedImageUris.length > 0;
+            return (
+              <Pressable
+                className={`h-11 w-11 items-center justify-center rounded-full ${!canSend || isSending ? 'bg-slate-200' : 'bg-[#4A9FD8]'} active:opacity-80 shadow-sm`}
+                disabled={isSending || !canSend}
+                onPress={handleSendMessage}>
+                {isSending ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <MaterialIcons color={!canSend ? '#94A3B8' : '#FFFFFF'} name="send" size={20} />
+                )}
+              </Pressable>
+            );
+          })()}
         </View>
       </ThemedView>
     );
@@ -727,20 +924,31 @@ export default function InboxScreen() {
         </ThemedView>
       </ThemedView>
 
-      {/* NEW CHAT MODAL - Allows starting direct chat directly from Inbox */}
+      {/* NEW CHAT MODAL - Allows starting direct chat or creating groups */}
       <Modal
         animationType="fade"
-        onRequestClose={() => setShowNewChatModal(false)}
+        onRequestClose={() => {
+          setShowNewChatModal(false);
+          setGroupName('');
+          setSelectedUserIds([]);
+          setIsGroupMode(false);
+          setNewChatSearchQuery('');
+          setNewChatSearchResults([]);
+        }}
         transparent={true}
         visible={showNewChatModal}>
         <View className="flex-1 items-center justify-center bg-black/50 px-4">
           <ThemedView className="w-full max-w-[500px] rounded-[32px] bg-white p-6 shadow-2xl">
+            {/* Header */}
             <View className="flex-row items-center justify-between pb-4 border-b border-slate-100">
-              <ThemedText className="text-lg font-bold text-slate-900">Trò chuyện mới</ThemedText>
+              <ThemedText className="text-lg font-bold text-slate-900">Cuộc trò chuyện mới</ThemedText>
               <Pressable
                 className="h-9 w-9 items-center justify-center rounded-full bg-slate-100 active:opacity-80"
                 onPress={() => {
                   setShowNewChatModal(false);
+                  setGroupName('');
+                  setSelectedUserIds([]);
+                  setIsGroupMode(false);
                   setNewChatSearchQuery('');
                   setNewChatSearchResults([]);
                 }}>
@@ -748,15 +956,51 @@ export default function InboxScreen() {
               </Pressable>
             </View>
 
+            {/* Chuyển đổi Direct Chat / Group Chat */}
+            <View className="flex-row rounded-[18px] bg-slate-100 p-1 mt-4">
+              <Pressable
+                className={`flex-1 py-2.5 rounded-[14px] items-center justify-center ${!isGroupMode ? 'bg-white shadow-sm' : ''}`}
+                onPress={() => setIsGroupMode(false)}>
+                <ThemedText className={`text-sm font-semibold ${!isGroupMode ? 'text-[#4A9FD8]' : 'text-slate-500'}`}>
+                  Nhắn tin 1-1
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                className={`flex-1 py-2.5 rounded-[14px] items-center justify-center ${isGroupMode ? 'bg-white shadow-sm' : ''}`}
+                onPress={() => setIsGroupMode(true)}>
+                <ThemedText className={`text-sm font-semibold ${isGroupMode ? 'text-[#4A9FD8]' : 'text-slate-500'}`}>
+                  Tạo nhóm chat
+                </ThemedText>
+              </Pressable>
+            </View>
+
+            {/* Nhập tên nhóm nếu ở chế độ Tạo nhóm */}
+            {isGroupMode && (
+              <View className="mt-4">
+                <ThemedText className="text-xs font-semibold text-slate-500 mb-1.5 ml-1">Tên nhóm chat</ThemedText>
+                <TextInput
+                  className="w-full text-[15px] leading-5 text-slate-900 px-4 py-3 bg-slate-50 rounded-[18px] border border-slate-100"
+                  cursorColor="#4A9FD8"
+                  onChangeText={setGroupName}
+                  placeholder="Nhập tên nhóm..."
+                  placeholderTextColor="#94A3B8"
+                  selectionColor="rgba(74, 159, 216, 0.24)"
+                  value={groupName}
+                />
+              </View>
+            )}
+
+            {/* Tìm kiếm thành viên */}
             <View className="mt-4">
               <SearchInput
                 onChangeText={setNewChatSearchQuery}
-                placeholder="Tìm tên hoặc email bạn bè..."
+                placeholder={isGroupMode ? "Tìm thành viên..." : "Tìm tên hoặc email bạn bè..."}
                 value={newChatSearchQuery}
               />
             </View>
 
-            <ScrollView className="mt-4 max-h-[280px]" showsVerticalScrollIndicator={false}>
+            {/* Kết quả tìm kiếm */}
+            <ScrollView className="mt-4 max-h-[240px]" showsVerticalScrollIndicator={false}>
               {isSearchingUsers ? (
                 <View className="py-6 justify-center items-center">
                   <ActivityIndicator color="#4A9FD8" size="small" />
@@ -770,6 +1014,7 @@ export default function InboxScreen() {
               ) : (
                 newChatSearchResults.map((user) => {
                   const initials = getInitials(user);
+                  const isSelected = selectedUserIds.includes(user.id);
                   const getAbsoluteAvatarUrl = (url: string | null) => {
                     if (!url) return null;
                     if (url.startsWith('http://') || url.startsWith('https://')) return url;
@@ -779,8 +1024,14 @@ export default function InboxScreen() {
                   return (
                     <Pressable
                       key={user.id}
-                      className="flex-row items-center justify-between rounded-[22px] bg-slate-50 hover:bg-slate-100 active:bg-slate-100 px-4 py-3.5 mb-2 transition-colors border border-slate-100"
-                      onPress={() => handleStartNewChat(user.id)}>
+                      className={`flex-row items-center justify-between rounded-[22px] px-4 py-3.5 mb-2 border active:bg-slate-100 ${isSelected ? 'bg-blue-50/50 border-blue-200' : 'bg-slate-50 border-slate-100'}`}
+                      onPress={() => {
+                        if (isGroupMode) {
+                          toggleSelectUserForGroup(user.id);
+                        } else {
+                          handleStartNewChat(user.id);
+                        }
+                      }}>
                       <View className="flex-row items-center gap-3 flex-1 mr-3">
                         {user.avatar_url ? (
                           <Image
@@ -799,14 +1050,40 @@ export default function InboxScreen() {
                           </ThemedText>
                         </View>
                       </View>
-                      <View className="rounded-[14px] bg-[#4A9FD8] px-3.5 py-2">
-                        <ThemedText className="text-xs font-semibold text-white">Nhắn tin</ThemedText>
-                      </View>
+
+                      {isGroupMode ? (
+                        <View className={`h-6 w-6 items-center justify-center rounded-full border ${isSelected ? 'bg-[#4A9FD8] border-[#4A9FD8]' : 'border-slate-300'}`}>
+                          {isSelected && <MaterialIcons color="#FFFFFF" name="check" size={14} />}
+                        </View>
+                      ) : (
+                        <View className="rounded-[14px] bg-[#4A9FD8] px-3.5 py-2">
+                          <ThemedText className="text-xs font-semibold text-white">Nhắn tin</ThemedText>
+                        </View>
+                      )}
                     </Pressable>
                   );
                 })
               )}
             </ScrollView>
+
+            {/* Nút Tạo Nhóm (chỉ hiển thị ở chế độ nhóm) */}
+            {isGroupMode && (
+              <Pressable
+                className={`mt-4 w-full h-12 rounded-[18px] items-center justify-center ${(!groupName.trim() || selectedUserIds.length === 0 || isCreatingGroup) ? 'bg-slate-200' : 'bg-[#4A9FD8]'} active:opacity-90 flex-row gap-2`}
+                disabled={!groupName.trim() || selectedUserIds.length === 0 || isCreatingGroup}
+                onPress={handleCreateGroup}>
+                {isCreatingGroup ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <>
+                    <MaterialIcons color="#FFFFFF" name="group-add" size={18} />
+                    <ThemedText className="text-sm font-semibold text-white">
+                      Tạo nhóm ({selectedUserIds.length} thành viên)
+                    </ThemedText>
+                  </>
+                )}
+              </Pressable>
+            )}
           </ThemedView>
         </View>
       </Modal>
@@ -820,7 +1097,8 @@ export default function InboxScreen() {
         <Pressable
           className="flex-1 bg-black/30"
           onPress={() => setShowChatMenu(false)}>
-          <View
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
             className="absolute right-4 rounded-[20px] bg-white shadow-2xl overflow-hidden"
             style={{ top: Math.max(insets.top, 0) + 80, minWidth: 200 }}>
             {/* Header */}
@@ -830,7 +1108,7 @@ export default function InboxScreen() {
 
             {/* Xem ảnh đã gửi */}
             <Pressable
-              className="flex-row items-center gap-3 px-5 py-4 active:bg-slate-50"
+              className="flex-row items-center gap-3 px-5 py-4 active:bg-slate-50 border-b border-slate-50"
               onPress={() => {
                 setShowChatMenu(false);
                 setShowMediaGallery(true);
@@ -843,7 +1121,43 @@ export default function InboxScreen() {
                 <ThemedText className="text-xs text-slate-400">{mediaMessages.length} ảnh</ThemedText>
               </View>
             </Pressable>
-          </View>
+
+            {/* Thay đổi ảnh nhóm (Chỉ hiển thị nếu là nhóm) */}
+            {isGroup && (
+              <Pressable
+                className="flex-row items-center gap-3 px-5 py-4 active:bg-slate-50 border-b border-slate-50"
+                disabled={isUpdatingGroupAvatar}
+                onPress={() => {
+                  setShowChatMenu(false);
+                  handleChangeGroupAvatar();
+                }}>
+                <View className="h-9 w-9 items-center justify-center rounded-[12px] bg-blue-50">
+                  {isUpdatingGroupAvatar ? (
+                    <ActivityIndicator color="#4A9FD8" size="small" />
+                  ) : (
+                    <MaterialIcons color="#4A9FD8" name="photo-camera" size={18} />
+                  )}
+                </View>
+                <View>
+                  <ThemedText className="text-sm font-semibold text-slate-900">Thay đổi ảnh nhóm</ThemedText>
+                  <ThemedText className="text-xs text-slate-400">Chọn ảnh đại diện mới</ThemedText>
+                </View>
+              </Pressable>
+            )}
+
+            {/* Xóa cuộc trò chuyện */}
+            <Pressable
+              className="flex-row items-center gap-3 px-5 py-4 active:bg-red-50"
+              onPress={handleDeleteChat}>
+              <View className="h-9 w-9 items-center justify-center rounded-[12px] bg-red-50">
+                <MaterialIcons color="#EF4444" name="delete-outline" size={18} />
+              </View>
+              <View>
+                <ThemedText className="text-sm font-semibold text-red-600">Xóa cuộc trò chuyện</ThemedText>
+                <ThemedText className="text-xs text-red-400">Xóa toàn bộ lịch sử</ThemedText>
+              </View>
+            </Pressable>
+          </Pressable>
         </Pressable>
       </Modal>
 
@@ -889,7 +1203,7 @@ export default function InboxScreen() {
               <Image
                 source={{ uri: fullscreenImageUrl }}
                 style={{ width: '100%', height: '100%' }}
-                resizeMode="contain"
+                contentFit="contain"
               />
             </View>
           ) : mediaMessages.length === 0 ? (
@@ -921,7 +1235,7 @@ export default function InboxScreen() {
                       <Image
                         source={{ uri }}
                         style={{ width: '100%', height: '100%', borderRadius: 10 }}
-                        resizeMode="cover"
+                        contentFit="cover"
                       />
                     </Pressable>
                   );
