@@ -1,5 +1,5 @@
 import { Aperture, EnvelopeSimple, Bell, SquaresFour, MagnifyingGlass, IconWeight } from 'phosphor-react-native';
-import { Pressable, View, Image } from 'react-native';
+import { Pressable, View, Image, Platform } from 'react-native';
 import { router } from 'expo-router';
 
 import { useGlobalSearch } from '@/components/search/GlobalSearchProvider';
@@ -81,8 +81,18 @@ export function AppTopNav({
 
   const handleSearchFocus = () => {
     if (!isControlled) {
+      if (Platform.OS === 'web' && typeof document !== 'undefined') {
+        (document.activeElement as HTMLElement)?.blur?.();
+      }
       router.push('/(tabs)/explore');
     }
+  };
+
+  const handleNav = (path: any) => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      (document.activeElement as HTMLElement)?.blur?.();
+    }
+    router.push(path);
   };
 
   return (
@@ -105,11 +115,7 @@ export function AppTopNav({
           paddingHorizontal: 16,
           paddingVertical: 12,
           backgroundColor: '#FFFFFF',
-          shadowColor: '#0F172A',
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.08,
-          shadowRadius: 16,
-          elevation: 4,
+          boxShadow: '0px 6px 16px rgba(15, 23, 42, 0.08)',
         }
       ]}
     >
@@ -150,7 +156,7 @@ export function AppTopNav({
           </View>
 
           <View className="flex-row items-center gap-3">
-            <Pressable onPress={() => router.push('/(tabs)/inbox')} className="active:opacity-75">
+            <Pressable onPress={() => handleNav('/(tabs)/inbox')} className="active:opacity-75">
               <View className="relative">
                 <NavActionBubble icon={EnvelopeSimple} />
                 {unreadChatCount > 0 && (
@@ -158,7 +164,7 @@ export function AppTopNav({
                 )}
               </View>
             </Pressable>
-            <Pressable onPress={() => router.push('/(tabs)/notifications')}>
+            <Pressable onPress={() => handleNav('/(tabs)/notifications')}>
               <View className="relative">
                 <NavActionBubble icon={Bell} />
                 {unreadCount > 0 && (
@@ -171,7 +177,7 @@ export function AppTopNav({
               </View>
             </Pressable>
             <NavActionBubble icon={SquaresFour} />
-            <Pressable onPress={() => router.push('/profile')} className="active:opacity-70">
+            <Pressable onPress={() => handleNav('/profile')} className="active:opacity-70">
               <NavAvatar initials={avatarInitials} avatarUrl={avatarUrl} />
             </Pressable>
           </View>
@@ -185,11 +191,7 @@ export function AppTopNav({
               className="h-10 w-10 items-center justify-center bg-[#4A9FD8]"
               style={{
                 borderRadius: 12,
-                shadowColor: '#4A9FD8',
-                shadowOffset: { width: 0, height: 3 },
-                shadowOpacity: 0.25,
-                shadowRadius: 5,
-                elevation: 3,
+                boxShadow: '0px 3px 5px rgba(74, 159, 216, 0.25)',
               }}
             >
               <Aperture color="#FFFFFF" size={21} weight="bold" />
@@ -199,30 +201,22 @@ export function AppTopNav({
           {/* Right Action Icons & Avatar */}
           <View className="flex-row items-center gap-2.5">
             <Pressable
-              onPress={() => router.push('/(tabs)/explore')}
+              onPress={() => handleNav('/(tabs)/explore')}
               className="h-10 w-10 items-center justify-center bg-white border border-[#E2E8F0] active:opacity-75"
               style={{
                 borderRadius: 12,
-                shadowColor: '#0F172A',
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.03,
-                shadowRadius: 3,
-                elevation: 1,
+                boxShadow: '0px 1px 3px rgba(15, 23, 42, 0.03)',
               }}
             >
               <MagnifyingGlass color="#334155" size={21} weight="regular" />
             </Pressable>
 
             <Pressable
-              onPress={() => router.push('/(tabs)/notifications')}
+              onPress={() => handleNav('/(tabs)/notifications')}
               className="h-10 w-10 items-center justify-center bg-white border border-[#E2E8F0] active:opacity-75"
               style={{
                 borderRadius: 12,
-                shadowColor: '#0F172A',
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.03,
-                shadowRadius: 3,
-                elevation: 1,
+                boxShadow: '0px 1px 3px rgba(15, 23, 42, 0.03)',
               }}
             >
               <Bell color="#334155" size={21} weight="regular" />
@@ -235,15 +229,11 @@ export function AppTopNav({
             </Pressable>
 
             <Pressable
-              onPress={() => router.push('/(tabs)/inbox')}
+              onPress={() => handleNav('/(tabs)/inbox')}
               className="h-10 w-10 items-center justify-center bg-white border border-[#E2E8F0] active:opacity-75"
               style={{
                 borderRadius: 12,
-                shadowColor: '#0F172A',
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.03,
-                shadowRadius: 3,
-                elevation: 1,
+                boxShadow: '0px 1px 3px rgba(15, 23, 42, 0.03)',
               }}
             >
               <EnvelopeSimple color="#334155" size={21} weight="regular" />
@@ -256,7 +246,7 @@ export function AppTopNav({
             </Pressable>
 
             <Pressable
-              onPress={() => router.push('/profile')}
+              onPress={() => handleNav('/profile')}
               className="active:opacity-75 ml-1"
             >
               <NavAvatar initials={avatarInitials} avatarUrl={avatarUrl} size="small" />

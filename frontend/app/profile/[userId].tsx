@@ -11,6 +11,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { API_URL, fetchPosts, createDirectChat } from '@/lib/api';
 import { fetchFollowStatus, followUser, fetchUserProfile, type FollowStatus, unfollowUser, type AuthUser } from '@/lib/auth';
+import { useToast } from '@/hooks/useToast';
 import type { Post } from '@/lib/types';
 
 type ProfileTab = 'posts' | 'about' | 'media';
@@ -192,6 +193,7 @@ function MediaPanel({ posts, hideHeader }: { posts: Post[]; hideHeader?: boolean
 export default function UserProfileScreen() {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const params = useLocalSearchParams<{ userId?: string; name?: string; initials?: string; preview?: string; bio?: string }>();
 
@@ -339,7 +341,7 @@ export default function UserProfileScreen() {
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Không thể bắt đầu cuộc hội thoại.';
-      Alert.alert('Lỗi', message);
+      toast.error(message);
     } finally {
       setIsCreatingChat(false);
     }

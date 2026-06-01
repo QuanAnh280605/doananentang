@@ -5,6 +5,7 @@ import { Pressable, View, ActivityIndicator, Alert } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { followUser, unfollowUser, type FollowUser } from '@/lib/auth';
+import { useToast } from '@/hooks/useToast';
 
 interface UserListItemProps {
   user: FollowUser;
@@ -12,6 +13,7 @@ interface UserListItemProps {
 
 export function UserListItem({ user }: UserListItemProps) {
   const router = useRouter();
+  const toast = useToast();
   const [isFollowing, setIsFollowing] = useState(user.is_following);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -39,7 +41,7 @@ export function UserListItem({ user }: UserListItemProps) {
     } catch (error) {
       // Revert if error
       setIsFollowing(previousState);
-      Alert.alert('Lỗi', 'Không thể cập nhật trạng thái theo dõi lúc này.');
+      toast.error('Không thể cập nhật trạng thái theo dõi lúc này.');
     } finally {
       setIsLoading(false);
     }

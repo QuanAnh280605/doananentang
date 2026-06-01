@@ -68,7 +68,8 @@ def create_post(db: Session, post_in: PostCreate, author_id: int) -> Post:
     gif_url=post_in.gif_url,
     location_name=post_in.location_name,
     location_lat=post_in.location_lat,
-    location_lng=post_in.location_lng
+    location_lng=post_in.location_lng,
+    shared_post_id=post_in.shared_post_id
   )
   db.add(db_post)
   db.flush()  # Lấy ID trước khi tạo media
@@ -106,7 +107,9 @@ def get_post(db: Session, post_id: int, current_user_id: int | None = None) -> P
     .options(
       joinedload(Post.media), 
       joinedload(Post.author),
-      joinedload(Post.tagged_users).joinedload(PostTag.user)
+      joinedload(Post.tagged_users).joinedload(PostTag.user),
+      joinedload(Post.shared_post).joinedload(Post.author),
+      joinedload(Post.shared_post).joinedload(Post.media)
     )
     .filter(Post.id == post_id, Post.is_deleted == False)
     .first()
@@ -186,7 +189,9 @@ def get_posts(
     .options(
       joinedload(Post.media), 
       joinedload(Post.author),
-      joinedload(Post.tagged_users).joinedload(PostTag.user)
+      joinedload(Post.tagged_users).joinedload(PostTag.user),
+      joinedload(Post.shared_post).joinedload(Post.author),
+      joinedload(Post.shared_post).joinedload(Post.media)
     )
     .order_by(*order)
     .offset((page - 1) * page_size)
@@ -273,7 +278,9 @@ def get_feed_posts(
     .options(
       joinedload(Post.media), 
       joinedload(Post.author),
-      joinedload(Post.tagged_users).joinedload(PostTag.user)
+      joinedload(Post.tagged_users).joinedload(PostTag.user),
+      joinedload(Post.shared_post).joinedload(Post.author),
+      joinedload(Post.shared_post).joinedload(Post.media)
     )
     .order_by(order)
     .offset((page - 1) * page_size)
