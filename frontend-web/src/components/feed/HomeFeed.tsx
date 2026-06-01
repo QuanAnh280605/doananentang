@@ -5,6 +5,7 @@ import type { ComponentType } from 'react';
 
 import { ArrowsClockwise, Article, BookmarkSimple, House } from '@phosphor-icons/react';
 import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 
 import { ProtectedPage } from '@/components/app/ProtectedPage';
@@ -152,13 +153,28 @@ function RightRail({ currentUser }: { currentUser: AuthUser | null }) {
 }
 
 export function HomeFeed() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const postIdFromUrl = searchParams.get('postId');
+
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
-  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  // Initialize from URL param — only read once on mount
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(postIdFromUrl);
   const [stories, setStories] = useState<StoryItem[]>([]);
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
   const [isCreateStoryOpen, setIsCreateStoryOpen] = useState(false);
+
+  const handleClosePostModal = useCallback(() => {
+    setSelectedPostId(null);
+    // Remove postId from URL without page reload
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('postId');
+    const newUrl = params.toString() ? `${pathname}?${params}` : pathname;
+    router.replace(newUrl, { scroll: false });
+  }, [pathname, searchParams, router]);
 
   const loadPosts = useCallback(async () => {
     setLoading(true);
@@ -272,7 +288,7 @@ export function HomeFeed() {
         {selectedPostId && (
           <PostDetailModal
             postId={selectedPostId}
-            onClose={() => setSelectedPostId(null)}
+            onClose={handleClosePostModal}
             currentUser={currentUser}
             onPostMetricsChange={patchPostMetrics}
             onPostMetricsSettled={loadPosts}

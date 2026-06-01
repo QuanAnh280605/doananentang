@@ -305,7 +305,8 @@ export function createPost(
   content: string,
   mediaUrls: string[] = [],
   feeling: string | null = null,
-  taggedUsers: TaggedUser[] | null = null
+  taggedUsers: TaggedUser[] | null = null,
+  sharedPostId?: string
 ): Promise<Post> {
   return apiFetch<Post>('/api/posts', {
     method: 'POST',
@@ -314,6 +315,7 @@ export function createPost(
       media_urls: mediaUrls,
       feeling,
       tagged_users: taggedUsers,
+      ...(sharedPostId ? { shared_post_id: sharedPostId } : {}),
     }),
   });
 }

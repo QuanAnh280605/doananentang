@@ -38,6 +38,8 @@ export type Post = {
   user_reaction?: string | null;
   feeling?: string | null;
   tagged_users?: TaggedUser[] | null;
+  shared_post_id?: string | null;
+  shared_post?: Post | null;
 };
 
 export type PaginatedPosts = {

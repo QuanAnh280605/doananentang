@@ -9,6 +9,7 @@ import type { Post } from '@/lib/types';
 import type { AuthUser } from '@/lib/auth';
 import { ThemedText } from '@/components/ui/ThemedText';
 import { InteractionsModal } from './InteractionsModal';
+import { ShareModal } from './ShareModal';
 
 function formatTime(isoString: string): string {
     const diff = Date.now() - new Date(isoString).getTime();
@@ -40,6 +41,7 @@ export function FeedPost({
     const [isDeleted, setIsDeleted] = useState(false);
     const [showMenu, setShowMenu] = useState(false);
     const [showLikers, setShowLikers] = useState(false);
+    const [showShareModal, setShowShareModal] = useState(false);
 
     const authorName = `${item.author.first_name} ${item.author.last_name}`;
     const initials = `${item.author.first_name?.[0] || ''}${item.author.last_name?.[0] || ''}`.toUpperCase();
@@ -96,18 +98,8 @@ export function FeedPost({
         }
     };
 
-    const handleShare = async () => {
-        const shareUrl = `${window.location.origin}/post/${item.id}`;
-        try {
-            if (navigator.share) {
-                await navigator.share({ title: `Bài viết của ${authorName}`, url: shareUrl });
-            } else {
-                await navigator.clipboard.writeText(shareUrl);
-                alert("Đã copy link bài viết!");
-            }
-        } catch (error) {
-            console.warn(error);
-        }
+    const handleShare = () => {
+        setShowShareModal(true);
     };
 
     const isAuthor = currentUser?.id?.toString() === String(item.author_id) || currentUser?.id?.toString() === String(item.author?.id);
@@ -203,6 +195,61 @@ export function FeedPost({
                     </ThemedText>
                 </button>
 
+                {/* Shared post card */}
+                {item.shared_post && (
+                    <div className="mt-4 overflow-hidden rounded-[24px] border border-slate-200/60 bg-slate-50/50">
+                        <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4A9FD8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                                <polyline points="16 6 12 2 8 6" />
+                                <line x1="12" y1="2" x2="12" y2="15" />
+                            </svg>
+                            <ThemedText as="p" className="text-[12px] font-semibold text-slate-400">
+                                {item.author.first_name} {item.author.last_name} đã chia sẻ bài viết
+                            </ThemedText>
+                        </div>
+                        <div className="px-4 pb-4">
+                            <div className="rounded-[18px] border border-slate-200/40 bg-white p-4">
+                                <div className="flex items-center gap-3 mb-3">
+                                    {item.shared_post.author.avatar_url ? (
+                                        <img
+                                            src={resolveAvatarUrl(item.shared_post.author.avatar_url) as string}
+                                            className="h-8 w-8 rounded-full object-cover"
+                                            alt="Avatar"
+                                        />
+                                    ) : (
+                                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#4A9FD8]/10 text-[12px] font-bold text-[#4A9FD8]">
+                                            {`${item.shared_post.author.first_name?.[0] || ''}${item.shared_post.author.last_name?.[0] || ''}`.toUpperCase()}
+                                        </div>
+                                    )}
+                                    <div>
+                                        <ThemedText as="p" className="text-[14px] font-semibold text-slate-900">
+                                            {item.shared_post.author.first_name} {item.shared_post.author.last_name}
+                                        </ThemedText>
+                                        <ThemedText as="p" className="text-[12px] text-slate-400">
+                                            {formatTime(item.shared_post.created_at)}
+                                        </ThemedText>
+                                    </div>
+                                </div>
+                                {item.shared_post.content && (
+                                    <ThemedText as="p" className="text-[15px] leading-[1.5] text-slate-700 line-clamp-3">
+                                        {item.shared_post.content}
+                                    </ThemedText>
+                                )}
+                                {item.shared_post.media && item.shared_post.media.length > 0 && (
+                                    <div className="mt-3 overflow-hidden rounded-[14px]">
+                                        <img
+                                            src={item.shared_post.media[0].file_url.startsWith('http') ? item.shared_post.media[0].file_url : `${API_URL}${item.shared_post.media[0].file_url}`}
+                                            alt="Shared post media"
+                                            className="max-h-[200px] w-full object-cover"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {firstMediaUrl && (
                     <div className="mt-6 overflow-hidden rounded-[32px] bg-slate-50 border border-slate-100/80 shadow-inner group/media">
                         {item.media && item.media[0]?.type?.toLowerCase().includes('video') ? (
@@ -283,6 +330,17 @@ export function FeedPost({
                 <InteractionsModal
                     postId={String(item.id)}
                     onClose={() => setShowLikers(false)}
+                />
+            )}
+
+            {showShareModal && (
+                <ShareModal
+                    postId={String(item.id)}
+                    authorName={authorName}
+                    onClose={() => setShowShareModal(false)}
+                    onReposted={() => {
+                        // Optionally refresh feed
+                    }}
                 />
             )}
         </section>

@@ -23,6 +23,7 @@ import { connectAppSocket, joinPostRoom, leavePostRoom, POST_METRICS_UPDATED_EVE
 import type { Comment as PostComment, Post } from '@/lib/types';
 
 import { InteractionsModal } from './InteractionsModal';
+import { ShareModal } from './ShareModal';
 
 function formatTime(isoStr: string) {
   const diff = Date.now() - new Date(isoStr).getTime();
@@ -269,6 +270,7 @@ export function PostDetailModal({
   const [togglingLike, setTogglingLike] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showLikers, setShowLikers] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const numericPostId = Number(postId);
 
   const applyPostPatch = useCallback((patch: Partial<Pick<Post, 'like_count' | 'comment_count' | 'is_liked'>>) => {
@@ -440,18 +442,8 @@ export function PostDetailModal({
     }
   };
 
-  const handleShare = async () => {
-    const shareUrl = `${window.location.origin}/post/${postId}`;
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: 'Bài viết', url: shareUrl });
-      } else {
-        await navigator.clipboard.writeText(shareUrl);
-        alert('Đã copy link bài viết!');
-      }
-    } catch (error) {
-      console.warn(error);
-    }
+  const handleShare = () => {
+    setShowShareModal(true);
   };
 
   if (!postId) return null;
@@ -749,6 +741,14 @@ export function PostDetailModal({
         )}
 
         {showLikers ? <InteractionsModal postId={postId} onClose={() => setShowLikers(false)} /> : null}
+
+        {showShareModal && (
+          <ShareModal
+            postId={postId}
+            authorName={authorName}
+            onClose={() => setShowShareModal(false)}
+          />
+        )}
       </div>
     </div>
   );
