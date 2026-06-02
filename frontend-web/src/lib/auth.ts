@@ -305,3 +305,15 @@ export async function uploadUserAvatar(file: File): Promise<{ message: string; a
 
   return response.json();
 }
+
+export async function fetchUserById(userId: number): Promise<SearchUser> {
+  const user = await apiFetch<AuthUser>(`/api/users/${userId}`);
+  return {
+    id: user.id,
+    first_name: user.first_name,
+    last_name: user.last_name,
+    full_name: `${user.first_name} ${user.last_name}`.trim(),
+    avatar_url: user.avatar_url,
+    bio: user.bio,
+  };
+}

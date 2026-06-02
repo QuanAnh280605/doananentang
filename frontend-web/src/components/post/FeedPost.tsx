@@ -1,9 +1,9 @@
 'use client';
 
-import { CaretRight, ChatCircleDots, DotsThree, GlobeHemisphereWest, ShareNetwork, ThumbsUp, Trash, WarningCircle, X } from '@phosphor-icons/react';
+import { CaretRight, ChatCircleDots, DotsThree, GlobeHemisphereWest, ShareNetwork, ThumbsUp, Trash, WarningCircle, X, Users, Lock, PencilSimple, Check, Spinner } from '@phosphor-icons/react';
 import Link from 'next/link';
 import { useState } from 'react';
-import { API_URL, likePost, unlikePost, deletePost, resolveAvatarUrl } from '@/lib/api';
+import { API_URL, likePost, unlikePost, deletePost, updatePost, resolveAvatarUrl } from '@/lib/api';
 import { runOptimisticPostLike } from '@/lib/postMetrics';
 import type { Post } from '@/lib/types';
 import type { AuthUser } from '@/lib/auth';
@@ -20,6 +20,17 @@ function formatTime(isoString: string): string {
     if (hours < 24) return `${hours} giờ trước`;
     const days = Math.floor(hours / 24);
     return `${days} ngày trước`;
+}
+
+function getVisibilityInfo(visibility: string): { icon: typeof GlobeHemisphereWest; label: string; color: string } {
+    switch (visibility) {
+        case 'followersonly':
+            return { icon: Users, label: 'Người theo dõi', color: '#4A9FD8' };
+        case 'onlyme':
+            return { icon: Lock, label: 'Chỉ mình tôi', color: '#64748B' };
+        default:
+            return { icon: GlobeHemisphereWest, label: 'Công khai', color: '#41A36D' };
+    }
 }
 
 export function FeedPost({
@@ -42,6 +53,15 @@ export function FeedPost({
     const [showMenu, setShowMenu] = useState(false);
     const [showLikers, setShowLikers] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
+
+    // Edit states
+    const [isEditing, setIsEditing] = useState(false);
+    const [editContent, setEditContent] = useState(item.content || '');
+    const [editVisibility, setEditVisibility] = useState(item.visibility);
+    const [displayContent, setDisplayContent] = useState(item.content);
+    const [displayVisibility, setDisplayVisibility] = useState(item.visibility);
+    const [isSaving, setIsSaving] = useState(false);
+    const [showVisibilityPicker, setShowVisibilityPicker] = useState(false);
 
     const authorName = `${item.author.first_name} ${item.author.last_name}`;
     const initials = `${item.author.first_name?.[0] || ''}${item.author.last_name?.[0] || ''}`.toUpperCase();
@@ -96,6 +116,29 @@ export function FeedPost({
         } catch {
             alert('Không thể xóa bài viết. Vui lòng thử lại.');
         }
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editContent.trim() || isSaving) return;
+        setIsSaving(true);
+        try {
+            await updatePost(String(item.id), editContent.trim(), editVisibility);
+            setDisplayContent(editContent.trim());
+            setDisplayVisibility(editVisibility);
+            setIsEditing(false);
+            setShowVisibilityPicker(false);
+        } catch {
+            alert('Không thể cập nhật bài viết. Vui lòng thử lại.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleCancelEdit = () => {
+        setIsEditing(false);
+        setEditContent(displayContent || item.content || '');
+        setEditVisibility(displayVisibility || item.visibility);
+        setShowVisibilityPicker(false);
     };
 
     const handleShare = () => {
@@ -155,7 +198,7 @@ export function FeedPost({
                         <div className="flex items-center gap-2">
                             <ThemedText as="p" className="text-[13px] font-semibold text-slate-400">{timeAgo}</ThemedText>
                             <span className="h-1 w-1 rounded-full bg-slate-300" />
-                            <GlobeHemisphereWest className="text-slate-400" size={14} weight="regular" />
+                            {(() => { const vInfo = getVisibilityInfo(item.visibility); const VIcon = vInfo.icon; return <VIcon className="text-slate-400" size={14} weight="regular" />; })()}
                         </div>
                     </div>
                 </Link>
@@ -172,10 +215,16 @@ export function FeedPost({
                         <div className="absolute right-0 top-14 z-20 w-56 overflow-hidden rounded-[24px] border border-slate-200/60 bg-white/95 backdrop-blur-xl shadow-[0_16px_48px_-12px_rgba(0,0,0,0.12)] animate-in fade-in zoom-in-95 duration-300">
                             <div className="p-2 space-y-1">
                                 {isAuthor && (
-                                    <button onClick={handleDelete} className="flex w-full items-center gap-3.5 px-4 py-3.5 text-left text-[15px] font-bold text-red-500 hover:bg-red-50 rounded-[16px] transition-all">
-                                        <Trash size={20} weight="regular" />
-                                        Xóa bài viết
-                                    </button>
+                                    <>
+                                        <button onClick={() => { setShowMenu(false); setEditContent(displayContent || item.content || ''); setEditVisibility(displayVisibility || item.visibility); setIsEditing(true); }} className="flex w-full items-center gap-3.5 px-4 py-3.5 text-left text-[15px] font-bold text-slate-600 hover:bg-slate-50 rounded-[16px] transition-all">
+                                            <PencilSimple size={20} weight="regular" />
+                                            Sửa bài viết
+                                        </button>
+                                        <button onClick={handleDelete} className="flex w-full items-center gap-3.5 px-4 py-3.5 text-left text-[15px] font-bold text-red-500 hover:bg-red-50 rounded-[16px] transition-all">
+                                            <Trash size={20} weight="regular" />
+                                            Xóa bài viết
+                                        </button>
+                                    </>
                                 )}
                                 <button onClick={() => setShowMenu(false)} className="flex w-full items-center gap-3.5 px-4 py-3.5 text-left text-[15px] font-bold text-slate-600 hover:bg-slate-50 rounded-[16px] transition-all">
                                     <WarningCircle size={20} weight="regular" />
@@ -189,11 +238,89 @@ export function FeedPost({
 
             {/* Content Section */}
             <div className="mt-7">
-                <button onClick={handleItemClick} className="block text-left w-full group/content">
-                    <ThemedText as="p" className="text-[18px] leading-[1.65] text-slate-800 font-medium tracking-[-0.01em] group-hover/content:text-slate-950 transition-colors">
-                        {item.content}
-                    </ThemedText>
-                </button>
+                {isEditing ? (
+                    <div className="space-y-3">
+                        <textarea
+                            className="w-full rounded-[24px] bg-[#F7F8FA] px-5 py-4 text-[16px] text-slate-900 placeholder:text-slate-400 resize-none outline-none border border-slate-200 focus:border-[#4A9FD8] transition-colors"
+                            value={editContent}
+                            onChange={(e) => setEditContent(e.target.value)}
+                            placeholder="Chỉnh sửa nội dung..."
+                            rows={4}
+                            autoFocus
+                        />
+                        {/* Visibility chip in edit mode */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowVisibilityPicker(!showVisibilityPicker)}
+                                disabled={isSaving}
+                                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-bold transition-colors"
+                                style={{
+                                    backgroundColor: `${getVisibilityInfo(editVisibility).color}14`,
+                                    color: getVisibilityInfo(editVisibility).color,
+                                    borderWidth: 1,
+                                    borderColor: getVisibilityInfo(editVisibility).color,
+                                }}
+                            >
+                                {(() => { const VIcon = getVisibilityInfo(editVisibility).icon; return <VIcon size={14} weight="regular" />; })()}
+                                {getVisibilityInfo(editVisibility).label}
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 5L6 8L9 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </button>
+                            {showVisibilityPicker && (
+                                <div className="absolute left-0 top-10 z-30 w-52 overflow-hidden rounded-[18px] border border-slate-200/60 bg-white/95 backdrop-blur-xl shadow-[0_12px_32px_-8px_rgba(0,0,0,0.12)] animate-in fade-in zoom-in-95 duration-200">
+                                    <div className="p-1.5 space-y-0.5">
+                                        {[
+                                            { value: 'public', label: 'Công khai', icon: GlobeHemisphereWest, color: '#41A36D' },
+                                            { value: 'followersonly', label: 'Người theo dõi', icon: Users, color: '#4A9FD8' },
+                                            { value: 'onlyme', label: 'Chỉ mình tôi', icon: Lock, color: '#64748B' },
+                                        ].map((opt) => {
+                                            const isSelected = editVisibility === opt.value;
+                                            const VIcon = opt.icon;
+                                            return (
+                                                <button
+                                                    key={opt.value}
+                                                    onClick={() => { setEditVisibility(opt.value); setShowVisibilityPicker(false); }}
+                                                    className="flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left transition-colors"
+                                                    style={{
+                                                        backgroundColor: isSelected ? `${opt.color}14` : 'transparent',
+                                                    }}
+                                                >
+                                                    <VIcon size={16} style={{ color: opt.color }} weight="regular" />
+                                                    <span className="text-[14px] font-semibold" style={{ color: isSelected ? opt.color : '#0F172A' }}>{opt.label}</span>
+                                                    {isSelected && <Check size={16} style={{ color: opt.color }} weight="bold" className="ml-auto" />}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        {/* Save/Cancel buttons */}
+                        <div className="flex justify-end gap-2">
+                            <button
+                                onClick={handleCancelEdit}
+                                disabled={isSaving}
+                                className="rounded-full bg-slate-100 px-5 py-2 text-[14px] font-bold text-slate-600 hover:bg-slate-200 transition-colors"
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                onClick={handleSaveEdit}
+                                disabled={isSaving || !editContent.trim()}
+                                className="flex items-center gap-2 rounded-full px-5 py-2 text-[14px] font-bold text-white transition-all disabled:opacity-50"
+                                style={{ backgroundColor: '#4A9FD8' }}
+                            >
+                                {isSaving ? <Spinner size={16} className="animate-spin" weight="regular" /> : <Check size={16} weight="bold" />}
+                                {isSaving ? 'Đang lưu...' : 'Lưu'}
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <button onClick={handleItemClick} className="block text-left w-full group/content">
+                        <ThemedText as="p" className="text-[18px] leading-[1.65] text-slate-800 font-medium tracking-[-0.01em] group-hover/content:text-slate-950 transition-colors">
+                            {displayContent || item.content}
+                        </ThemedText>
+                    </button>
+                )}
 
                 {/* Shared post card */}
                 {item.shared_post && (

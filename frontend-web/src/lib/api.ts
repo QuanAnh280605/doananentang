@@ -3,7 +3,9 @@ import type {
   ChatMessageResponse,
   ChatReadStatusResponse,
   CreateDirectChatRequest,
+  CreateGroupChatRequest,
   DirectChatResponse,
+  GroupChatResponse,
   PaginatedChatMessagesResponse,
   PaginatedDirectChatsResponse,
   SendChatMessageRequest,
@@ -291,6 +293,16 @@ export function deletePost(postId: string): Promise<void> {
   return apiFetch<void>(`/api/posts/${postId}`, { method: 'DELETE' });
 }
 
+export function updatePost(postId: string, content: string, visibility?: string): Promise<Post> {
+  return apiFetch<Post>(`/api/posts/${postId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      content,
+      ...(visibility !== undefined ? { visibility } : {}),
+    }),
+  });
+}
+
 export type PostLikersResponse = {
   post_id: string;
   like_count: number;
@@ -306,7 +318,8 @@ export function createPost(
   mediaUrls: string[] = [],
   feeling: string | null = null,
   taggedUsers: TaggedUser[] | null = null,
-  sharedPostId?: string
+  sharedPostId?: string,
+  visibility: string = 'public'
 ): Promise<Post> {
   return apiFetch<Post>('/api/posts', {
     method: 'POST',
@@ -315,6 +328,7 @@ export function createPost(
       media_urls: mediaUrls,
       feeling,
       tagged_users: taggedUsers,
+      visibility,
       ...(sharedPostId ? { shared_post_id: sharedPostId } : {}),
     }),
   });
@@ -402,6 +416,39 @@ export function createChatMessage(chatId: string, payload: SendChatMessageReques
   return apiFetch<ChatMessageResponse>(`/api/chats/${chatId}/messages`, {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+}
+
+export function createGroupChat(payload: CreateGroupChatRequest): Promise<GroupChatResponse> {
+  return apiFetch<GroupChatResponse>('/api/chats/group', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function leaveGroup(chatId: string): Promise<{ status: string; message: string }> {
+  return apiFetch<{ status: string; message: string }>(`/api/chats/${chatId}/leave`, {
+    method: 'POST',
+  });
+}
+
+export function markChatRead(chatId: string): Promise<ChatReadStatusResponse> {
+  return apiFetch<ChatReadStatusResponse>(`/api/chats/${chatId}/read`, { method: 'POST' });
+}
+
+export function hasUnreadMessages(): Promise<boolean> {
+  return apiFetch<boolean>('/api/chats/has-unread-messages');
+}
+
+export async function uploadGroupAvatar(chatId: string, file: File): Promise<GroupChatResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiFetch<GroupChatResponse>(`/api/chats/${chatId}/avatar`, {
+    method: 'POST',
+    body: formData,
+    headers: {
+      'Accept': 'application/json',
+    },
   });
 }
 
@@ -549,12 +596,4 @@ export function uploadChatMedia(file: File): Promise<{ url: string; media_type: 
     method: 'POST',
     body: formData,
   });
-}
-
-export function markChatRead(chatId: string): Promise<ChatReadStatusResponse> {
-  return apiFetch<ChatReadStatusResponse>(`/api/chats/${chatId}/read`, { method: 'POST' });
-}
-
-export function hasUnreadMessages(): Promise<boolean> {
-  return apiFetch<boolean>('/api/chats/has-unread-messages');
 }

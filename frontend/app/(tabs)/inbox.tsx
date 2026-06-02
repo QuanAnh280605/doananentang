@@ -34,6 +34,7 @@ import {
   createDirectChat,
   createGroupChat,
   deleteChat,
+  leaveGroup,
   uploadGroupAvatar,
   API_URL,
 } from '@/lib/api';
@@ -98,6 +99,8 @@ export default function InboxScreen() {
   const router = useRouter();
   const { setUnreadChatCount } = useNotifications();
   const toast = useToast();
+  const toastRef = useRef(toast);
+  useEffect(() => { toastRef.current = toast; }, [toast]);
   const params = useLocalSearchParams<{ openChatId?: string }>();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -182,10 +185,19 @@ export default function InboxScreen() {
       if (Number.isInteger(targetId)) {
         setActiveChatId(targetId);
         // Clear params to avoid loop, and activate chat view in tab bar dynamically
-        router.setParams({ openChatId: undefined, chatActive: 'true' });
+        router.setParams({ openChatId: undefined });
       }
     }
   }, [params.openChatId, router]);
+
+  // 2b. Sync chatActive param with activeChatId to toggle tab bar visibility
+  useEffect(() => {
+    if (activeChatId !== null) {
+      router.setParams({ chatActive: 'true' });
+    } else {
+      router.setParams({ chatActive: undefined });
+    }
+  }, [activeChatId, router]);
 
   // 3. Handle Active Chat Selection & Message Fetching
   useEffect(() => {
@@ -194,9 +206,11 @@ export default function InboxScreen() {
       return;
     }
 
+    let cancelled = false;
     setIsLoadingMessages(true);
     fetchChatMessages(activeChatId, 1, 40)
       .then((res) => {
+        if (cancelled) return;
         // API returns descending messages, we reverse them to display in chronological order
         const reversed = [...res.items].reverse();
         setMessages(reversed);
@@ -209,9 +223,17 @@ export default function InboxScreen() {
           prevChats.map((c) => (c.chat_id === activeChatId ? { ...c, unread_count: 0 } : c))
         );
       })
-      .catch((err) => toast.error('Không thể tải tin nhắn: ' + err.message))
-      .finally(() => setIsLoadingMessages(false));
-  }, [activeChatId, toast]);
+      .catch((err) => {
+        if (cancelled) return;
+        toastRef.current.error('Không thể tải tin nhắn: ' + err.message);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setIsLoadingMessages(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [activeChatId]);
 
   const activeChatIdRef = useRef<number | null>(null);
   const currentUserRef = useRef<AuthUser | null>(null);
@@ -238,6 +260,7 @@ export default function InboxScreen() {
         id: payload.id,
         chat_id: chatId,
         sender_id: payload.sender_id,
+        sender_name: payload.sender_name,
         content: payload.body || payload.content || '',
         media_url: payload.media_url,
         media_type: payload.media_type,
@@ -385,7 +408,6 @@ export default function InboxScreen() {
       const chat = await createDirectChat(targetUserId);
       await loadChats();
       setActiveChatId(chat.chat_id);
-      router.setParams({ chatActive: 'true' });
     } catch (err: any) {
       toast.error('Không thể bắt đầu cuộc trò chuyện: ' + err.message);
     }
@@ -416,7 +438,6 @@ export default function InboxScreen() {
 
       await loadChats();
       setActiveChatId(chat.chat_id);
-      router.setParams({ chatActive: 'true' });
     } catch (err: any) {
       toast.error('Tạo nhóm thất bại: ' + err.message);
     } finally {
@@ -452,11 +473,40 @@ export default function InboxScreen() {
               await deleteChat(activeChatId);
               setShowChatMenu(false);
               setActiveChatId(null);
-              router.setParams({ openChatId: undefined, chatActive: undefined });
               await loadChats();
               Alert.alert('Thành công', 'Đã xóa cuộc trò chuyện thành công.');
             } catch (err: any) {
               toast.error('Xóa cuộc trò chuyện thất bại: ' + err.message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleLeaveGroup = () => {
+    if (activeChatId === null) return;
+
+    Alert.alert(
+      'Rời khỏi nhóm',
+      'Bạn có chắc chắn muốn rời khỏi nhóm này? Bạn sẽ không còn nhận được tin nhắn từ nhóm.',
+      [
+        {
+          text: 'Hủy',
+          style: 'cancel',
+        },
+        {
+          text: 'Rời nhóm',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await leaveGroup(activeChatId);
+              setShowChatMenu(false);
+              setActiveChatId(null);
+              await loadChats();
+              toast.success('Đã rời khỏi nhóm thành công.');
+            } catch (err: any) {
+              toast.error('Rời nhóm thất bại: ' + err.message);
             }
           },
         },
@@ -599,7 +649,13 @@ export default function InboxScreen() {
     const initials = isGroup ? getGroupInitials(name) : getInitials(chat.participant);
     let preview = 'Chưa có tin nhắn';
     if (chat.latest_message) {
-      preview = chat.latest_message.content || '[Hình ảnh]';
+      const msgContent = chat.latest_message.content || '[Hình ảnh]';
+      // For group chats, show sender name before message
+      if (isGroup && chat.latest_message.sender_name) {
+        preview = `${chat.latest_message.sender_name}: ${msgContent}`;
+      } else {
+        preview = msgContent;
+      }
     }
     return {
       id: chat.chat_id.toString(),
@@ -608,7 +664,7 @@ export default function InboxScreen() {
       time: chat.latest_message ? formatTime(chat.latest_message.created_at) : formatTime(chat.updated_at),
       initials: initials,
       avatarUrl: isGroup ? (chat.avatar_url || null) : (chat.participant?.avatar_url || null),
-      bio: isGroup ? 'Nhóm trò chuyện' : (chat.participant?.bio || undefined),
+      bio: isGroup ? `${chat.member_count || '—'} thành viên` : (chat.participant?.bio || undefined),
       active: chat.chat_id === activeChatId,
       unread: chat.unread_count,
     };
@@ -621,6 +677,7 @@ export default function InboxScreen() {
       body: msg.content,
       time: formatTime(msg.created_at),
       incoming: currentUser ? msg.sender_id !== currentUser.id : true,
+      senderName: msg.sender_name,
       mediaUrl: msg.media_url,
       mediaType: msg.media_type,
     };
@@ -682,7 +739,6 @@ export default function InboxScreen() {
               item={item}
               onPress={() => {
                 setActiveChatId(Number(item.id));
-                router.setParams({ chatActive: 'true' });
               }}
             />
           ))
@@ -736,7 +792,6 @@ export default function InboxScreen() {
               className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 active:opacity-80"
               onPress={() => {
                 setActiveChatId(null);
-                router.setParams({ openChatId: undefined, chatActive: undefined });
               }}>
               <MaterialIcons color="#475569" name="arrow-back" size={20} />
             </Pressable>
@@ -769,7 +824,9 @@ export default function InboxScreen() {
               <View className="flex-row items-center gap-1.5 mt-0.5">
                 <View className={`h-2 w-2 rounded-full ${isGroup ? 'bg-[#4A9FD8]' : 'bg-green-500'}`} />
                 <ThemedText className="text-[11px] font-medium text-slate-400">
-                  {isGroup ? 'Nhóm trò chuyện' : 'Đang hoạt động'}
+                  {isGroup
+                    ? `${activeChat.member_count || '—'} thành viên`
+                    : 'Đang hoạt động'}
                 </ThemedText>
               </View>
             </View>
@@ -797,7 +854,7 @@ export default function InboxScreen() {
               onContentSizeChange={scrollToBottom}
               showsVerticalScrollIndicator={false}>
               {mappedMessages.map((item) => (
-                <MessageBubble key={item.id} item={item} />
+                <MessageBubble key={item.id} item={item} isGroup={isGroup} />
               ))}
             </ScrollView>
           )}
@@ -1141,6 +1198,24 @@ export default function InboxScreen() {
                 <View>
                   <ThemedText className="text-sm font-semibold text-slate-900">Thay đổi ảnh nhóm</ThemedText>
                   <ThemedText className="text-xs text-slate-400">Chọn ảnh đại diện mới</ThemedText>
+                </View>
+              </Pressable>
+            )}
+
+            {/* Rời nhóm (Chỉ hiển thị nếu là nhóm) */}
+            {isGroup && (
+              <Pressable
+                className="flex-row items-center gap-3 px-5 py-4 active:bg-orange-50 border-b border-slate-50"
+                onPress={() => {
+                  setShowChatMenu(false);
+                  handleLeaveGroup();
+                }}>
+                <View className="h-9 w-9 items-center justify-center rounded-[12px] bg-orange-50">
+                  <MaterialIcons color="#F97316" name="logout" size={18} />
+                </View>
+                <View>
+                  <ThemedText className="text-sm font-semibold text-orange-600">Rời nhóm</ThemedText>
+                  <ThemedText className="text-xs text-orange-400">Thoát khỏi nhóm này</ThemedText>
                 </View>
               </Pressable>
             )}

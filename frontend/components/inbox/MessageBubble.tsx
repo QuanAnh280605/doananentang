@@ -9,11 +9,12 @@ export type MessageBubbleData = {
   body: string | null;
   time: string;
   incoming?: boolean;
+  senderName?: string | null;
   mediaUrl?: string | null;
   mediaType?: string | null;
 };
 
-export function MessageBubble({ item }: { item: MessageBubbleData }) {
+export function MessageBubble({ item, isGroup }: { item: MessageBubbleData; isGroup?: boolean }) {
   const getAbsoluteUrl = (url: string) => {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       return url;
@@ -38,6 +39,12 @@ export function MessageBubble({ item }: { item: MessageBubbleData }) {
 
   return (
     <View className={`max-w-[88%] ${item.incoming ? 'self-start' : 'self-end'}`}>
+      {/* Sender name for group chat incoming messages */}
+      {isGroup && item.incoming && item.senderName ? (
+        <ThemedText className="text-xs font-semibold text-[#4A9FD8] mb-1 ml-3">
+          {item.senderName}
+        </ThemedText>
+      ) : null}
       <View className={`rounded-[24px] overflow-hidden ${item.incoming ? 'bg-[#F1F5F9]' : 'bg-[#4A9FD8]'}`}>
         {item.mediaUrl ? (
           <Image

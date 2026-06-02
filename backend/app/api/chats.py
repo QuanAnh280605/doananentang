@@ -5,6 +5,7 @@ from pathlib import Path
 
 from anyio import from_thread
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -25,8 +26,10 @@ from app.crud.chat import (
   list_chats_for_user,
   create_group_chat,
   delete_chat,
+  remove_chat_member,
 )
 from app.crud.user import get_user_by_id
+from app.models.group_member import ChatMember
 from app.models.message_media import MessageMedia
 from app.models.user import User
 from app.realtime import socket_server
@@ -54,17 +57,27 @@ CHAT_MEDIA_DIR = Path('uploads') / 'chats'
 
 def _get_message_media(db: Session, message_id: int) -> MessageMedia | None:
   """Lấy media đầu tiên của tin nhắn (nếu có)."""
-  from sqlalchemy import select
   return db.scalar(select(MessageMedia).where(MessageMedia.message_id == message_id))
 
 
-def _build_message_read(db: Session, message) -> MessageRead:
-  """Xây dựng MessageRead kèm media_url và media_type."""
+def _get_sender_name(db: Session, sender_id: int) -> str | None:
+  """Lấy tên đầy đủ của người gửi."""
+  user = db.get(User, sender_id)
+  if user:
+    return f"{user.first_name} {user.last_name}".strip()
+  return None
+
+
+def _build_message_read(db: Session, message, sender_name: str | None = None) -> MessageRead:
+  """Xây dựng MessageRead kèm media_url, media_type và sender_name."""
   media = _get_message_media(db, message.id)
+  if sender_name is None:
+    sender_name = _get_sender_name(db, message.sender_id)
   return MessageRead(
     id=message.id,
     chat_id=message.chat_id,
     sender_id=message.sender_id,
+    sender_name=sender_name,
     content=message.content,
     media_url=media.file_url if media else None,
     media_type=media.type.value if media else None,
@@ -87,6 +100,26 @@ def list_chats_endpoint(
   total_pages = (total + page_size - 1) // page_size if total > 0 else 0
   skip = (page - 1) * page_size
   threads = list_chats_for_user(db, current_user.id, skip=skip, limit=page_size)
+
+  # Batch-fetch sender names for latest messages
+  latest_sender_ids = {thread.latest_message.sender_id for thread in threads if thread.latest_message is not None}
+  sender_map: dict[int, str] = {}
+  if latest_sender_ids:
+    users = db.scalars(select(User).where(User.id.in_(latest_sender_ids))).all()
+    sender_map = {u.id: f"{u.first_name} {u.last_name}".strip() for u in users}
+
+  # Batch-fetch member counts for group chats
+  group_chat_ids = [thread.chat.id for thread in threads if thread.chat.is_group]
+  member_count_map: dict[int, int] = {}
+  if group_chat_ids:
+    from sqlalchemy import func as sqlfunc
+    rows = db.execute(
+      select(ChatMember.chat_id, sqlfunc.count(ChatMember.user_id))
+      .where(ChatMember.chat_id.in_(group_chat_ids))
+      .group_by(ChatMember.chat_id)
+    ).all()
+    member_count_map = {chat_id: count for chat_id, count in rows}
+
   items = [
     ChatListItemRead(
       chat_id=thread.chat.id,
@@ -94,7 +127,8 @@ def list_chats_endpoint(
       is_group=thread.chat.is_group,
       group_name=thread.chat.group_name,
       avatar_url=thread.chat.avatar_url,
-      latest_message=_build_message_read(db, thread.latest_message) if thread.latest_message is not None else None,
+      member_count=member_count_map.get(thread.chat.id) if thread.chat.is_group else None,
+      latest_message=_build_message_read(db, thread.latest_message, sender_name=sender_map.get(thread.latest_message.sender_id)) if thread.latest_message is not None else None,
       updated_at=thread.updated_at,
       unread_count=thread.unread_count,
     )
@@ -140,7 +174,8 @@ def create_group_chat_endpoint(
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Group must have at least one other member')
 
   chat = create_group_chat(db, current_user.id, payload.group_name, payload.user_ids)
-  return GroupChatRead(chat_id=chat.id, group_name=chat.group_name, is_group=chat.is_group, avatar_url=chat.avatar_url, created_at=chat.created_at)
+  member_ids = get_chat_member_user_ids(db, chat.id)
+  return GroupChatRead(chat_id=chat.id, group_name=chat.group_name, is_group=chat.is_group, avatar_url=chat.avatar_url, member_count=len(member_ids), created_at=chat.created_at)
 
 
 @router.post('/upload-media', status_code=status.HTTP_201_CREATED)
@@ -221,7 +256,15 @@ def list_chat_messages_endpoint(
   total_pages = (total + page_size - 1) // page_size if total > 0 else 0
   skip = (page - 1) * page_size
   messages = list_chat_messages(db, chat_id, skip=skip, limit=page_size)
-  items = [_build_message_read(db, message) for message in messages]
+
+  # Batch-fetch sender names to avoid N+1 queries
+  sender_ids = list({msg.sender_id for msg in messages})
+  sender_map: dict[int, str] = {}
+  if sender_ids:
+    users = db.scalars(select(User).where(User.id.in_(sender_ids))).all()
+    sender_map = {u.id: f"{u.first_name} {u.last_name}".strip() for u in users}
+
+  items = [_build_message_read(db, message, sender_name=sender_map.get(message.sender_id)) for message in messages]
 
   return PaginatedMessagesResponse(
     items=items,
@@ -257,7 +300,8 @@ def create_chat_message_endpoint(
   except ValueError as error:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
 
-  response = _build_message_read(db, message)
+  sender_name = f"{current_user.first_name} {current_user.last_name}".strip()
+  response = _build_message_read(db, message, sender_name=sender_name)
 
   member_ids = get_chat_member_user_ids(db, chat_id)
   # Bỏ thông báo tin nhắn trong phần Alerts chung (Bình luận/Like/Follow)
@@ -296,6 +340,30 @@ def delete_chat_endpoint(
 
   delete_chat(db, chat_id)
   return {'status': 'success', 'message': 'Đã xóa cuộc trò chuyện thành công'}
+
+
+@router.post('/{chat_id}/leave', status_code=status.HTTP_200_OK)
+def leave_group_endpoint(
+  chat_id: int,
+  current_user: User = Depends(get_current_user),
+  db: Session = Depends(get_db),
+):
+  """Rời khỏi nhóm chat."""
+  chat = get_chat_by_id(db, chat_id)
+  if chat is None:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Chat not found')
+
+  if not chat.is_group:
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Cannot leave a direct chat')
+
+  if not is_chat_member(db, chat_id, current_user.id):
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not a member of this chat')
+
+  removed = remove_chat_member(db, chat_id, current_user.id)
+  if not removed:
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Failed to leave group')
+
+  return {'status': 'success', 'message': 'Đã rời khỏi nhóm thành công'}
 
 
 @router.post('/{chat_id}/avatar', response_model=GroupChatRead)
@@ -347,11 +415,13 @@ def upload_group_avatar_endpoint(
   db.commit()
   db.refresh(chat)
 
+  member_ids = get_chat_member_user_ids(db, chat.id)
   return GroupChatRead(
     chat_id=chat.id,
     group_name=chat.group_name,
     is_group=chat.is_group,
     avatar_url=chat.avatar_url,
+    member_count=len(member_ids),
     created_at=chat.created_at,
   )
 

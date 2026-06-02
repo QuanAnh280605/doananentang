@@ -193,7 +193,6 @@ export function AppTopNav({
           <div className="flex items-center gap-2.5">
             {!hideInboxAction ? <IconBubble href={ROUTES.inbox} icon={EnvelopeSimple} label="Open inbox" badgeCount={hasNewMessage ? 1 : 0} /> : null}
             <IconBubble icon={Bell} label="Open notifications" badgeCount={unreadNotificationCount} onClick={() => setIsNotificationsOpen(true)} />
-            <IconBubble icon={SquaresFour} label="Open apps" />
 
             <div className="relative ml-2" ref={accountMenuRef}>
               <button

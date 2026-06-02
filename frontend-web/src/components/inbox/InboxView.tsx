@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { UIEvent } from 'react';
 
@@ -22,8 +23,11 @@ import { fetchCurrentUser, searchFollowingUsers, type AuthUser, type SearchUser 
 import {
   appendMessageById,
   applyMessagePreviewToThreads,
+  createGroupChat,
   createSingleFlightMessageSender,
   getOrCreateDirectChat,
+  isGroupChatThread,
+  leaveGroupChat,
   listDirectChatsPage,
   listMessages,
   listMessagesPage,
@@ -115,6 +119,10 @@ function buildThreadFromFollowedUser(user: SearchUser): InboxThreadData {
 
 export function InboxView() {
   const { isUserOnline, setHasNewMessage } = useRealtimePresence();
+  const searchParams = useSearchParams();
+  const queryUserId = searchParams.get('userId');
+  const queryChatId = searchParams.get('chatId');
+
   const [threads, setThreads] = useState<InboxThreadData[]>([]);
   const [threadsPage, setThreadsPage] = useState(1);
   const [threadsTotalPages, setThreadsTotalPages] = useState(0);
@@ -143,6 +151,18 @@ export function InboxView() {
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
 
+  // Group chat creation state
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [groupName, setGroupName] = useState('');
+  const [groupSearchQuery, setGroupSearchQuery] = useState('');
+  const [groupSearchResults, setGroupSearchResults] = useState<SearchUser[]>([]);
+  const [isSearchingGroupUsers, setIsSearchingGroupUsers] = useState(false);
+  const [selectedGroupUserIds, setSelectedGroupUserIds] = useState<number[]>([]);
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+
+  // Chat menu state
+  const [showChatMenu, setShowChatMenu] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const searchTimeoutRef = useRef<number | null>(null);
   const latestSearchRequestRef = useRef(0);
@@ -158,11 +178,11 @@ export function InboxView() {
   const normalizedDraftMessage = draftMessage.trim();
   const selectedUserId = selectedUser?.id ?? null;
   const followedUserThreads = matchingFollowedUsers.map(buildThreadFromFollowedUser);
-  const selectedApiThread = threads.find((item) => item.user.id === selectedUser?.id) ?? null;
-  const selectedFollowedThread = followedUserThreads.find((item) => item.user.id === selectedUser?.id) ?? null;
+  const selectedApiThread = threads.find((item) => item.user?.id === selectedUser?.id) ?? null;
+  const selectedFollowedThread = followedUserThreads.find((item) => item.user?.id === selectedUser?.id) ?? null;
   const selectedThread = selectedApiThread ?? selectedFollowedThread ?? (selectedUser ? buildThreadFromFollowedUser(selectedUser) : null);
   const defaultVisibleThreads = selectedThread ? ensureThreadStaysInInboxContext(threads, selectedThread) : threads;
-  const selectedConversation = selectedThread
+  const selectedConversation = selectedThread && selectedThread.user
     ? {
       user: selectedThread.user,
       profileHref: buildProfileHref(selectedThread.user, selectedThread.preview),
@@ -259,6 +279,38 @@ export function InboxView() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (isLoadingThreads) return;
+
+    if (queryUserId) {
+      const uId = Number(queryUserId);
+      const existingThread = threads.find((t) => t.user?.id === uId);
+      if (existingThread?.user) {
+        setSelectedUser(existingThread.user);
+      } else {
+        // Tải thông tin người dùng từ API và tự động chọn
+        import('@/lib/auth').then(({ fetchUserById }) => {
+          fetchUserById(uId)
+            .then((user) => {
+              setSelectedUser(user);
+            })
+            .catch((err) => {
+              console.error('Failed to fetch user by ID:', err);
+            });
+        });
+      }
+    } else if (queryChatId) {
+      const existingThread = threads.find((t) => t.chatId === queryChatId);
+      if (existingThread) {
+        if (existingThread.isGroup) {
+          handleSelectGroupThread(existingThread);
+        } else if (existingThread.user) {
+          handleSelectUser(existingThread.user);
+        }
+      }
+    }
+  }, [queryUserId, queryChatId, threads, isLoadingThreads]);
 
   const clearThreadUnread = useCallback((chatId: string) => {
     setThreads((currentThreads) => currentThreads.map((thread) => (
@@ -464,11 +516,20 @@ export function InboxView() {
     }, 300);
   };
 
+  const clearChatIdFromUrl = useCallback(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('chatId')) {
+      url.searchParams.delete('chatId');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, []);
+
   const handleSelectUser = (user: SearchUser) => {
     if (selectedUserId === user.id) {
       return;
     }
 
+    clearChatIdFromUrl();
     setIsLoadingMessages(true);
     setMessageError(null);
     setSelectedChat(null);
@@ -477,6 +538,121 @@ export function InboxView() {
     setMessagesTotalPages(0);
     setIsLoadingMoreMessages(false);
     setSelectedUser(user);
+  };
+
+  const handleSelectGroupThread = (thread: InboxThreadData) => {
+    if (!thread.chatId || !thread.isGroup) return;
+
+    clearChatIdFromUrl();
+    setIsLoadingMessages(true);
+    setMessageError(null);
+    setSelectedUser(null);
+    setSelectedChat({
+      id: thread.chatId,
+      participantUserId: null,
+      isGroup: true,
+      groupName: thread.groupName ?? null,
+      avatarUrl: thread.avatarUrl ?? null,
+      memberCount: thread.memberCount ?? null,
+      createdAt: null,
+      updatedAt: null,
+    });
+    setMessages([]);
+    setMessagesPage(1);
+    setMessagesTotalPages(0);
+    setIsLoadingMoreMessages(false);
+
+    // Load messages for group chat
+    listMessagesPage(thread.chatId, 1, MESSAGES_PAGE_SIZE)
+      .then((response) => {
+        shouldScrollToLatestRef.current = true;
+        setMessages(response.items);
+        setMessagesPage(response.page);
+        setMessagesTotalPages(response.totalPages);
+      })
+      .catch((error: unknown) => {
+        const nextMessage = error instanceof Error ? error.message : 'Không thể tải tin nhắn nhóm lúc này.';
+        setMessageError(nextMessage);
+      })
+      .finally(() => {
+        setIsLoadingMessages(false);
+      });
+  };
+
+  const handleGroupSearchChange = (value: string) => {
+    setGroupSearchQuery(value);
+
+    if (searchTimeoutRef.current) {
+      window.clearTimeout(searchTimeoutRef.current);
+      searchTimeoutRef.current = null;
+    }
+
+    if (value.trim().length < 2) {
+      setGroupSearchResults([]);
+      return;
+    }
+
+    setIsSearchingGroupUsers(true);
+    searchTimeoutRef.current = window.setTimeout(() => {
+      searchFollowingUsers(value.trim(), 20)
+        .then(setGroupSearchResults)
+        .catch(() => setGroupSearchResults([]))
+        .finally(() => setIsSearchingGroupUsers(false));
+    }, 300);
+  };
+
+  const toggleGroupUser = (userId: number) => {
+    setSelectedGroupUserIds((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+    );
+  };
+
+  const handleCreateGroup = async () => {
+    if (!groupName.trim() || selectedGroupUserIds.length === 0) return;
+
+    setIsCreatingGroup(true);
+    try {
+      const chat = await createGroupChat(groupName.trim(), selectedGroupUserIds);
+      setShowCreateGroup(false);
+      setGroupName('');
+      setGroupSearchQuery('');
+      setGroupSearchResults([]);
+      setSelectedGroupUserIds([]);
+
+      await refreshThreads();
+
+      // Select the new group chat
+      setSelectedChat(chat);
+      if (chat.id) {
+        listMessagesPage(chat.id, 1, MESSAGES_PAGE_SIZE)
+          .then((response) => {
+            shouldScrollToLatestRef.current = true;
+            setMessages(response.items);
+            setMessagesPage(response.page);
+            setMessagesTotalPages(response.totalPages);
+          })
+          .catch(() => undefined)
+          .finally(() => setIsLoadingMessages(false));
+      }
+    } catch (error: unknown) {
+      setMessageError(error instanceof Error ? error.message : 'Tạo nhóm thất bại.');
+    } finally {
+      setIsCreatingGroup(false);
+    }
+  };
+
+  const handleLeaveGroup = async () => {
+    if (!selectedChat?.id || !selectedChat.isGroup) return;
+
+    try {
+      await leaveGroupChat(selectedChat.id);
+      setSelectedChat(null);
+      setMessages([]);
+      setShowChatMenu(false);
+      await refreshThreads();
+    } catch (error: unknown) {
+      setMessageError(error instanceof Error ? error.message : 'Rời nhóm thất bại.');
+    }
   };
 
   const handleThreadsScroll = (event: UIEvent<HTMLDivElement>) => {
@@ -642,24 +818,38 @@ export function InboxView() {
     }
   };
 
-  const renderThreadButton = (item: InboxThreadData) => (
-    <InboxListItem
-      key={item.id}
-      item={{
-        id: item.id,
-        name: item.user.full_name,
-        preview: item.preview,
-        time: item.time,
-        initials: buildInitials(item.user.first_name, item.user.last_name),
-        avatarUrl: item.user.avatar_url,
-        bio: item.user.bio?.trim() || item.preview,
-        isOnline: isUserOnline(item.user.id),
-        unread: item.unread,
-        active: item.user.id === selectedConversation?.user.id,
-      }}
-      onClick={() => handleSelectUser(item.user)}
-    />
-  );
+  const renderThreadButton = (item: InboxThreadData) => {
+    const isGroup = isGroupChatThread(item);
+
+    return (
+      <InboxListItem
+        key={item.id}
+        item={{
+          id: item.id,
+          name: isGroup ? (item.groupName || 'Nhóm Trò Chuyện') : (item.user?.full_name || 'Unknown'),
+          preview: item.preview,
+          time: item.time,
+          initials: isGroup
+            ? (item.groupName || 'GP').slice(0, 2).toUpperCase()
+            : buildInitials(item.user?.first_name || '', item.user?.last_name || ''),
+          avatarUrl: isGroup ? item.avatarUrl : item.user?.avatar_url,
+          bio: isGroup ? `${item.memberCount || '—'} thành viên` : (item.user?.bio?.trim() || item.preview),
+          isOnline: !isGroup && item.user ? isUserOnline(item.user.id) : false,
+          unread: item.unread,
+          active: isGroup
+            ? item.chatId === selectedChat?.id
+            : (item.user?.id ?? null) === selectedConversation?.user?.id,
+        }}
+        onClick={() => {
+          if (isGroup) {
+            handleSelectGroupThread(item);
+          } else if (item.user) {
+            handleSelectUser(item.user);
+          }
+        }}
+      />
+    );
+  };
 
   return (
     <ProtectedPage>
@@ -668,8 +858,22 @@ export function InboxView() {
           <AppTopNav searchPlaceholder="Search people, notes, or screenshots" currentUser={currentUser} hideInboxAction />
           <div className="mt-4 grid min-h-0 flex-1 gap-4 xl:h-[calc(100dvh-112px)] xl:grid-cols-[336px_minmax(0,1fr)_248px]">
             <section className={`${surfaceClass} min-h-0 overflow-hidden p-5`}>
-              <ThemedText as="h1" className="text-[24px] font-semibold text-slate-950">Inbox</ThemedText>
-              <ThemedText as="p" className="mt-1 text-sm text-slate-500">Priority threads and recent updates</ThemedText>
+              <div className="flex items-center justify-between">
+                <div>
+                  <ThemedText as="h1" className="text-[24px] font-semibold text-slate-950">Inbox</ThemedText>
+                  <ThemedText as="p" className="mt-1 text-sm text-slate-500">Priority threads and recent updates</ThemedText>
+                </div>
+                <button
+                  className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-slate-100 border border-slate-200 hover:bg-[#EAF4FB] hover:border-[#4A9FD8] transition-all active:scale-95"
+                  onClick={() => setShowCreateGroup(true)}
+                  type="button"
+                  title="Tạo nhóm chat"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" fill="#4A9FD8">
+                    <path d="M244.8,150.4a8,8,0,0,1-11.2-1.6A51.6,51.6,0,0,0,192,128a8,8,0,0,1-7.37-4.89,8,8,0,0,1,0-6.22A8,8,0,0,1,192,112a24,24,0,1,0-23.56-30,8,8,0,1,1-15.1-4A40,40,0,1,1,219,117.36a51.71,51.71,0,0,0,27.4,22.24A8,8,0,0,1,244.8,150.4ZM190.92,212a8,8,0,1,1-13.84,8,57,57,0,0,0-98.16,0,8,8,0,1,1-13.84-8,72.06,72.06,0,0,1,33.74-29.92,44,44,0,1,1,58.32,0A72.06,72.06,0,0,1,190.92,212ZM128,172a28,28,0,1,0-28-28A28,28,0,0,0,128,172ZM216,88a8,8,0,0,1-8,8H200v8a8,8,0,0,1-16,0V96H176a8,8,0,0,1,0-16h8V72a8,8,0,0,1,16,0v8h8A8,8,0,0,1,216,88Z" />
+                  </svg>
+                </button>
+              </div>
               <SearchInput className="mt-5" onChange={handleInboxSearchChange} placeholder="Search followed users" value={inboxSearchQuery} />
               <div className="mt-4 max-h-[calc(100dvh-260px)] space-y-3 overflow-y-auto pr-1 xl:max-h-none" onScroll={handleThreadsScroll}>
                 {normalizedInboxSearchQuery.length === 0 ? (
@@ -721,14 +925,26 @@ export function InboxView() {
               <div className="shrink-0">
                 <ThemedText as="h2" className="text-[24px] font-semibold text-slate-950">Conversation</ThemedText>
                 <ThemedText as="p" className="mt-1 text-sm text-slate-500">
-                  {selectedThread ? `${selectedThread.user.full_name} · ${selectedThread.preview}` : 'Chọn một cuộc trò chuyện hoặc tìm người bạn đang theo dõi để bắt đầu.'}
+                  {selectedChat?.isGroup
+                    ? `${selectedChat.groupName || 'Nhóm Trò Chuyện'} · ${selectedChat.memberCount || '—'} thành viên`
+                    : selectedThread
+                      ? `${selectedThread.user?.full_name || 'Unknown'} · ${selectedThread.preview}`
+                      : 'Chọn một cuộc trò chuyện hoặc tìm người bạn đang theo dõi để bắt đầu.'}
                 </ThemedText>
               </div>
               <div className="mt-4 flex shrink-0 items-center justify-between gap-3 rounded-[22px] bg-[#F8FAFC] px-4 py-3">
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[18px] bg-[#DBEAFE]">
-                    {selectedConversation && resolveAvatarUrl(selectedConversation.user.avatar_url) ? (
-                      <img alt={selectedConversation.user.full_name} className="h-full w-full object-cover" src={resolveAvatarUrl(selectedConversation.user.avatar_url) as string} />
+                    {selectedChat?.isGroup ? (
+                      selectedChat.avatarUrl ? (
+                        <img alt={selectedChat.groupName || 'Group'} className="h-full w-full object-cover" src={resolveAvatarUrl(selectedChat.avatarUrl) as string} />
+                      ) : (
+                        <span className="text-sm font-semibold tracking-[0.6px] text-slate-900">
+                          {(selectedChat.groupName || 'GP').slice(0, 2).toUpperCase()}
+                        </span>
+                      )
+                    ) : selectedConversation && resolveAvatarUrl(selectedConversation.user?.avatar_url) ? (
+                      <img alt={selectedConversation.user?.full_name || ''} className="h-full w-full object-cover" src={resolveAvatarUrl(selectedConversation.user?.avatar_url) as string} />
                     ) : (
                       <span className="text-sm font-semibold tracking-[0.6px] text-slate-900">
                         {selectedConversation ? selectedConversation.initials : 'DM'}
@@ -737,17 +953,35 @@ export function InboxView() {
                   </div>
                   <div className="min-w-0">
                     <ThemedText as="p" className="text-base font-semibold text-slate-950">
-                      {selectedConversation ? selectedConversation.user.full_name : 'No conversation selected'}
+                      {selectedChat?.isGroup
+                        ? (selectedChat.groupName || 'Nhóm Trò Chuyện')
+                        : selectedConversation
+                          ? (selectedConversation.user?.full_name || 'Unknown')
+                          : 'No conversation selected'}
                     </ThemedText>
                     <ThemedText as="p" className="truncate text-sm text-slate-500">
-                      {selectedThread ? selectedThread.activityLabel : 'Follow search opens or resumes a direct chat.'}
+                      {selectedChat?.isGroup
+                        ? `${selectedChat.memberCount || '—'} thành viên`
+                        : selectedThread
+                          ? selectedThread.activityLabel
+                          : 'Follow search opens or resumes a direct chat.'}
                     </ThemedText>
                   </div>
                 </div>
-                {selectedConversation ? <Link className="shrink-0 rounded-[18px] bg-white px-4 py-3 text-sm font-semibold text-slate-900" href={selectedConversation.profileHref}>View profile</Link> : null}
+                {selectedConversation && !selectedChat?.isGroup ? (
+                  <Link className="shrink-0 rounded-[18px] bg-white px-4 py-3 text-sm font-semibold text-slate-900" href={selectedConversation.profileHref}>View profile</Link>
+                ) : selectedChat?.isGroup ? (
+                  <button
+                    className="shrink-0 rounded-[18px] bg-white px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50 transition-colors"
+                    onClick={() => setShowChatMenu(!showChatMenu)}
+                    type="button"
+                  >
+                    Tùy chọn
+                  </button>
+                ) : null}
               </div>
               <div className="mt-3 flex min-h-0 flex-1 overflow-y-auto flex-col rounded-[24px] bg-[#FCFDFE] px-4 py-4" onScroll={handleMessagesScroll} ref={messagesScrollRef}>
-                {!selectedConversation ? (
+                {!selectedConversation && !selectedChat ? (
                   <div className="flex min-h-full flex-1 items-center justify-center rounded-[22px] bg-[#F8FAFC] px-4 py-4 text-sm text-slate-500">
                     Chọn một cuộc trò chuyện để xem tin nhắn.
                   </div>
@@ -755,12 +989,12 @@ export function InboxView() {
                   <div className="flex min-h-full flex-1 items-center justify-center rounded-[22px] bg-[#F8FAFC] px-4 py-4 text-sm text-slate-500">
                     Đang tải tin nhắn...
                   </div>
-                ) : messageError && selectedConversation.messages.length === 0 ? (
+                ) : messageError && messages.length === 0 ? (
                   <div className="flex min-h-full flex-1 items-center justify-center rounded-[22px] bg-rose-50 px-4 py-4 text-sm text-rose-700">
                     {messageError}
                   </div>
-                ) : selectedConversation.messages.length ? (
-                  <div className="flex min-h-full flex-col">
+                ) : messages.length ? (
+                    <div className="flex min-h-full flex-col">
                     {isLoadingMoreMessages ? (
                       <div className="rounded-[18px] bg-[#F8FAFC] px-4 py-3 text-center text-sm text-slate-500">
                         Đang tải thêm tin nhắn...
@@ -768,11 +1002,11 @@ export function InboxView() {
                     ) : null}
                     <div className="mt-auto" aria-hidden="true" />
                     {(() => {
-                      const lastReadMessageId = [...selectedConversation.messages]
+                      const lastReadMessageId = [...messages]
                         .reverse()
                         .find((msg) => !msg.incoming && msg.isRead)?.id;
 
-                      return selectedConversation.messages.map((item, index, allMessages) => {
+                      return messages.map((item, index, allMessages) => {
                       const TIME_GAP_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
                       const currentDate = new Date(item.createdAt);
                       const previousMessage = index > 0 ? allMessages[index - 1] : null;
@@ -819,8 +1053,9 @@ export function InboxView() {
                           showTimeSeparator={showTimeSeparator}
                           timeSeparatorLabel={timeSeparatorLabel}
                           isLastRead={item.id === lastReadMessageId}
-                          recipientAvatarUrl={selectedConversation.user.avatar_url}
-                          recipientName={selectedConversation.user.full_name}
+                          recipientAvatarUrl={selectedConversation?.user?.avatar_url ?? selectedChat?.avatarUrl ?? null}
+                          recipientName={selectedConversation?.user?.full_name ?? selectedChat?.groupName ?? ''}
+                          isGroup={selectedChat?.isGroup ?? false}
                         />
                       );
                     });
@@ -880,7 +1115,7 @@ export function InboxView() {
                     type="button"
                     title="Gửi ảnh / video"
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={!selectedConversation}
+                    disabled={!selectedConversation && !selectedChat}
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-50 text-slate-500 hover:bg-[#EAF4FB] hover:text-[#4A9FD8] transition-all active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" fill="currentColor">
@@ -890,7 +1125,7 @@ export function InboxView() {
 
                   <textarea
                     className="no-focus-ring min-h-10 max-h-24 w-full resize-none overflow-y-auto rounded-[18px] bg-slate-50 px-4 py-2 text-[15px] leading-6 text-slate-900 outline-none placeholder:text-slate-400 focus:outline-none focus:shadow-none focus:ring-0 [box-shadow:none!important] [outline:none!important]"
-                    disabled={!selectedConversation}
+                    disabled={!selectedConversation && !selectedChat}
                     onChange={(event) => {
                       const textarea = event.currentTarget;
                       textarea.style.height = '40px';
@@ -906,7 +1141,7 @@ export function InboxView() {
                         void handleSendMessage();
                       }
                     }}
-                    placeholder={selectedConversation ? 'Nhắn tin...' : 'Chọn một cuộc trò chuyện để nhắn tin'}
+                    placeholder={(selectedConversation || selectedChat) ? 'Nhắn tin...' : 'Chọn một cuộc trò chuyện để nhắn tin'}
                     ref={composerTextareaRef}
                     rows={1}
                     value={draftMessage}
@@ -935,38 +1170,58 @@ export function InboxView() {
 
             <section className={`${surfaceClass} min-h-0 overflow-y-auto p-5`}>
               <ThemedText as="h2" className="text-[24px] font-semibold text-slate-950">Profile</ThemedText>
-              <ThemedText as="p" className="mt-1 text-sm text-slate-500">Conversation contact</ThemedText>
+              <ThemedText as="p" className="mt-1 text-sm text-slate-500">
+                {selectedChat?.isGroup ? 'Group info' : 'Conversation contact'}
+              </ThemedText>
               <div className="mt-5 space-y-4">
                 <div className="overflow-hidden rounded-[24px] bg-[#DBEAFE]">
                   <div className="h-[120px] bg-[#BFDBFE]" />
                   <div className="px-4 pb-4">
                     <div className="-mt-6 flex h-12 w-12 items-center justify-center overflow-hidden rounded-[18px] bg-[#E2E8F0] text-sm font-semibold tracking-[0.6px] text-slate-900">
-                      {selectedConversation && resolveAvatarUrl(selectedConversation.user.avatar_url) ? (
-                        <img alt={selectedConversation.user.full_name} className="h-full w-full object-cover" src={resolveAvatarUrl(selectedConversation.user.avatar_url) as string} />
+                      {selectedChat?.isGroup ? (
+                        selectedChat.avatarUrl ? (
+                          <img alt={selectedChat.groupName || 'Group'} className="h-full w-full object-cover" src={resolveAvatarUrl(selectedChat.avatarUrl) as string} />
+                        ) : (
+                          (selectedChat.groupName || 'GP').slice(0, 2).toUpperCase()
+                        )
+                      ) : selectedConversation && resolveAvatarUrl(selectedConversation.user?.avatar_url) ? (
+                        <img alt={selectedConversation.user?.full_name || ''} className="h-full w-full object-cover" src={resolveAvatarUrl(selectedConversation.user?.avatar_url) as string} />
                       ) : (
                         selectedConversation ? selectedConversation.initials : 'DM'
                       )}
                     </div>
-                    <ThemedText as="h3" className="mt-4 text-[24px] font-semibold text-slate-950">{selectedConversation ? selectedConversation.user.full_name : 'No profile selected'}</ThemedText>
-                    <ThemedText as="p" className="mt-2 text-sm leading-6 text-slate-600">{selectedConversation ? selectedConversation.bio : 'Chọn một cuộc trò chuyện để xem thêm ngữ cảnh người nhận.'}</ThemedText>
+                    <ThemedText as="h3" className="mt-4 text-[24px] font-semibold text-slate-950">
+                      {selectedChat?.isGroup
+                        ? (selectedChat.groupName || 'Nhóm Trò Chuyện')
+                        : selectedConversation
+                          ? (selectedConversation.user?.full_name || 'Unknown')
+                          : 'No profile selected'}
+                    </ThemedText>
+                    <ThemedText as="p" className="mt-2 text-sm leading-6 text-slate-600">
+                      {selectedChat?.isGroup
+                        ? `${selectedChat.memberCount || '—'} thành viên`
+                        : selectedConversation
+                          ? selectedConversation.bio
+                          : 'Chọn một cuộc trò chuyện để xem thêm ngữ cảnh người nhận.'}
+                    </ThemedText>
                   </div>
                 </div>
 
                 {/* Media đã gửi (Shared Media) */}
-                {selectedConversation && (
+                {(selectedConversation || selectedChat?.isGroup) && (
                   <div className="mt-6 border-t border-slate-100 pt-6">
                     <div className="flex items-center justify-between mb-3">
                       <ThemedText as="h4" className="text-base font-semibold text-slate-900">
                         Media đã gửi
                       </ThemedText>
                       <span className="text-xs font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                        {selectedConversation.messages.filter((msg) => msg.mediaUrl).length}
+                        {(selectedConversation?.messages ?? messages).filter((msg) => msg.mediaUrl).length}
                       </span>
                     </div>
 
-                    {selectedConversation.messages.filter((msg) => msg.mediaUrl).length > 0 ? (
+                    {(selectedConversation?.messages ?? messages).filter((msg) => msg.mediaUrl).length > 0 ? (
                       <div className="grid grid-cols-3 gap-2">
-                        {selectedConversation.messages
+                        {(selectedConversation?.messages ?? messages)
                           .filter((msg) => msg.mediaUrl)
                           .map((msg) => {
                             const isVideo = isVideoMedia(msg.mediaUrl, msg.mediaType);
@@ -1076,6 +1331,177 @@ export function InboxView() {
                   </p>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Create Group Chat Modal */}
+        {showCreateGroup && (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            onClick={() => {
+              setShowCreateGroup(false);
+              setGroupName('');
+              setGroupSearchQuery('');
+              setGroupSearchResults([]);
+              setSelectedGroupUserIds([]);
+            }}
+          >
+            <div
+              className="w-full max-w-[500px] rounded-[32px] bg-white p-6 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                <ThemedText as="h2" className="text-lg font-bold text-slate-900">Tạo nhóm chat</ThemedText>
+                <button
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 transition-colors"
+                  onClick={() => {
+                    setShowCreateGroup(false);
+                    setGroupName('');
+                    setGroupSearchQuery('');
+                    setGroupSearchResults([]);
+                    setSelectedGroupUserIds([]);
+                  }}
+                  type="button"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 256 256" fill="#475569">
+                    <path d="M205.66,194.34a8,8,0,0,1-11.32,0L128,128,61.66,194.34a8,8,0,0,1-11.32-11.32L116.68,116.68,50.34,50.34A8,8,0,0,1,61.66,39L128,105.34,194.34,39a8,8,0,0,1,11.32,11.32L139.32,116.68l66.34,66.34A8,8,0,0,1,205.66,194.34Z" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Group name input */}
+              <div className="mt-4">
+                <ThemedText as="p" className="text-xs font-semibold text-slate-500 mb-1.5 ml-1">Tên nhóm chat</ThemedText>
+                <input
+                  className="w-full text-[15px] leading-5 text-slate-900 px-4 py-3 bg-slate-50 rounded-[18px] border border-slate-100 outline-none focus:border-[#4A9FD8] transition-colors"
+                  onChange={(e) => setGroupName(e.target.value)}
+                  placeholder="Nhập tên nhóm..."
+                  value={groupName}
+                />
+              </div>
+
+              {/* Search members */}
+              <div className="mt-4">
+                <SearchInput onChange={handleGroupSearchChange} placeholder="Tìm thành viên..." value={groupSearchQuery} />
+              </div>
+
+              {/* Selected members count */}
+              {selectedGroupUserIds.length > 0 && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-xs font-medium text-[#4A9FD8] bg-[#EAF4FB] px-2 py-0.5 rounded-full">
+                    {selectedGroupUserIds.length} đã chọn
+                  </span>
+                </div>
+              )}
+
+              {/* Search results */}
+              <div className="mt-3 max-h-[240px] overflow-y-auto">
+                {isSearchingGroupUsers ? (
+                  <div className="py-6 text-center text-sm text-slate-500">Đang tìm...</div>
+                ) : groupSearchResults.length > 0 ? (
+                  groupSearchResults.map((user) => {
+                    const isSelected = selectedGroupUserIds.includes(user.id);
+                    return (
+                      <button
+                        key={user.id}
+                        className={`flex w-full items-center justify-between rounded-[22px] px-4 py-3.5 mb-2 border transition-colors ${
+                          isSelected ? 'bg-blue-50/50 border-blue-200' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'
+                        }`}
+                        onClick={() => toggleGroupUser(user.id)}
+                        type="button"
+                      >
+                        <div className="flex items-center gap-3 flex-1 mr-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] bg-[#DBEAFE] overflow-hidden">
+                            {resolveAvatarUrl(user.avatar_url) ? (
+                              <img alt={user.full_name} className="h-full w-full object-cover" src={resolveAvatarUrl(user.avatar_url) as string} />
+                            ) : (
+                              <span className="text-xs font-semibold text-slate-900">
+                                {buildInitials(user.first_name, user.last_name)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="min-w-0 text-left">
+                            <ThemedText as="p" className="text-[15px] font-semibold text-slate-900 truncate">{user.full_name}</ThemedText>
+                            <ThemedText as="p" className="text-xs text-slate-500 truncate">{user.bio || 'Chưa cập nhật giới thiệu.'}</ThemedText>
+                          </div>
+                        </div>
+                        <div className={`flex h-6 w-6 items-center justify-center rounded-full border transition-colors ${
+                          isSelected ? 'bg-[#4A9FD8] border-[#4A9FD8]' : 'border-slate-300'
+                        }`}>
+                          {isSelected && (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 256 256" fill="#FFFFFF">
+                              <path d="M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z" />
+                            </svg>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })
+                ) : groupSearchQuery.trim().length >= 2 ? (
+                  <div className="py-6 text-center text-sm text-slate-500">Không tìm thấy người dùng.</div>
+                ) : (
+                  <div className="py-6 text-center text-sm text-slate-500">Nhập ít nhất 2 ký tự để tìm.</div>
+                )}
+              </div>
+
+              {/* Create button */}
+              <button
+                className={`mt-4 w-full h-12 rounded-[18px] items-center justify-center flex gap-2 transition-all active:scale-[0.98] ${
+                  !groupName.trim() || selectedGroupUserIds.length === 0 || isCreatingGroup
+                    ? 'bg-slate-200 cursor-not-allowed'
+                    : 'bg-[#4A9FD8] hover:bg-[#2F8BC9]'
+                }`}
+                disabled={!groupName.trim() || selectedGroupUserIds.length === 0 || isCreatingGroup}
+                onClick={handleCreateGroup}
+                type="button"
+              >
+                {isCreatingGroup ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                ) : (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 256 256" fill="#FFFFFF">
+                      <path d="M244.8,150.4a8,8,0,0,1-11.2-1.6A51.6,51.6,0,0,0,192,128a8,8,0,0,1-7.37-4.89,8,8,0,0,1,0-6.22A8,8,0,0,1,192,112a24,24,0,1,0-23.56-30,8,8,0,1,1-15.1-4A40,40,0,1,1,219,117.36a51.71,51.71,0,0,0,27.4,22.24A8,8,0,0,1,244.8,150.4ZM190.92,212a8,8,0,1,1-13.84,8,57,57,0,0,0-98.16,0,8,8,0,1,1-13.84-8,72.06,72.06,0,0,1,33.74-29.92,44,44,0,1,1,58.32,0A72.06,72.06,0,0,1,190.92,212ZM128,172a28,28,0,1,0-28-28A28,28,0,0,0,128,172Z" />
+                    </svg>
+                    <span className="text-sm font-semibold text-white">
+                      Tạo nhóm ({selectedGroupUserIds.length} thành viên)
+                    </span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Chat Menu Dropdown */}
+        {showChatMenu && selectedChat?.isGroup && (
+          <div
+            className="fixed inset-0 z-[90]"
+            onClick={() => setShowChatMenu(false)}
+          >
+            <div
+              className="absolute right-4 top-24 rounded-[20px] bg-white shadow-2xl overflow-hidden min-w-[200px]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-5 py-4 border-b border-slate-100">
+                <ThemedText as="p" className="text-sm font-semibold text-slate-500">Tùy chọn</ThemedText>
+              </div>
+              <button
+                className="flex w-full items-center gap-3 px-5 py-4 hover:bg-orange-50 transition-colors"
+                onClick={handleLeaveGroup}
+                type="button"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-orange-50">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 256 256" fill="#F97316">
+                    <path d="M120,216a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V40a8,8,0,0,1,8-8h64a8,8,0,0,1,0,16H56V208h56A8,8,0,0,1,120,216Zm109.66-93.66-40-40a8,8,0,0,0-11.32,11.32L204.69,120H112a8,8,0,0,0,0,16h92.69l-26.35,26.34a8,8,0,0,0,11.32,11.32l40-40A8,8,0,0,0,229.66,122.34Z" />
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <ThemedText as="p" className="text-sm font-semibold text-orange-600">Rời nhóm</ThemedText>
+                  <ThemedText as="p" className="text-xs text-orange-400">Thoát khỏi nhóm này</ThemedText>
+                </div>
+              </button>
             </div>
           </div>
         )}

@@ -406,3 +406,15 @@ def delete_chat(db: Session, chat_id: int) -> None:
     db.delete(chat)
     db.commit()
 
+
+def remove_chat_member(db: Session, chat_id: int, user_id: int) -> bool:
+  """Xóa thành viên khỏi nhóm chat. Trả về True nếu xóa thành công."""
+  member = db.scalar(
+    select(ChatMember).where(ChatMember.chat_id == chat_id, ChatMember.user_id == user_id)
+  )
+  if member is None:
+    return False
+  db.delete(member)
+  db.commit()
+  return True
+

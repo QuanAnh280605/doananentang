@@ -415,6 +415,12 @@ export async function deleteChat(chatId: number): Promise<{ status: string; mess
   });
 }
 
+export async function leaveGroup(chatId: number): Promise<{ status: string; message: string }> {
+  return apiFetch<{ status: string; message: string }>(`/api/chats/${chatId}/leave`, {
+    method: 'POST',
+  });
+}
+
 export async function uploadChatMedia(uri: string): Promise<{ url: string; media_type: string }> {
   const formData = new FormData();
   const filename = uri.split('/').pop() || 'image.jpg';

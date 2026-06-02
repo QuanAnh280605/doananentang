@@ -188,8 +188,12 @@ export function ShareModal({ postId, authorName, onClose, onReposted }: ShareMod
             <div className="space-y-1">
               {chats.map((chat) => {
                 const participant = chat.user;
-                const initials = `${participant.first_name?.[0] || ''}${participant.last_name?.[0] || ''}`.toUpperCase();
-                const avatarUrl = resolveAvatarUrl(participant.avatar_url);
+                const isGroup = chat.isGroup === true;
+                const displayName = isGroup ? (chat.groupName || 'Nhóm') : (participant?.full_name || 'Unknown');
+                const initials = isGroup
+                  ? (chat.groupName || 'GP').slice(0, 2).toUpperCase()
+                  : `${participant?.first_name?.[0] || ''}${participant?.last_name?.[0] || ''}`.toUpperCase();
+                const avatarUrl = isGroup ? resolveAvatarUrl(chat.avatarUrl) : resolveAvatarUrl(participant?.avatar_url);
                 const isSending = sendingChatId === chat.chatId;
 
                 return (
@@ -202,7 +206,7 @@ export function ShareModal({ postId, authorName, onClose, onReposted }: ShareMod
                     {avatarUrl ? (
                       <img
                         src={avatarUrl as string}
-                        alt={participant.first_name || ''}
+                        alt={displayName}
                         className="h-9 w-9 shrink-0 rounded-full object-cover"
                       />
                     ) : (
@@ -212,7 +216,7 @@ export function ShareModal({ postId, authorName, onClose, onReposted }: ShareMod
                     )}
                     <div className="min-w-0 flex-1">
                       <ThemedText as="p" className="truncate text-[14px] font-semibold text-slate-900">
-                        {participant.first_name} {participant.last_name}
+                        {displayName}
                       </ThemedText>
                     </div>
                     <div className="shrink-0">

@@ -177,6 +177,7 @@ export type ChatMessageRead = {
   id: number;
   chat_id: number;
   sender_id: number;
+  sender_name?: string | null;
   content: string | null;
   media_url: string | null;
   media_type: string | null;
@@ -189,6 +190,7 @@ export type ChatListItemRead = {
   is_group?: boolean;
   group_name?: string | null;
   avatar_url?: string | null;
+  member_count?: number | null;
   latest_message: ChatMessageRead | null;
   updated_at: string;
   unread_count: number;
@@ -199,6 +201,7 @@ export type GroupChatRead = {
   group_name: string;
   is_group: boolean;
   avatar_url?: string | null;
+  member_count?: number | null;
   created_at: string;
 };
 

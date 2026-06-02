@@ -1,6 +1,6 @@
 'use client';
 
-import { GlobeHemisphereWest, ImageSquare, Smiley, UserPlus, X, DotsThree } from '@phosphor-icons/react';
+import { GlobeHemisphereWest, ImageSquare, Smiley, UserPlus, X, DotsThree, Users, Lock } from '@phosphor-icons/react';
 import { useState, useRef, useEffect } from 'react';
 import { createPost, uploadPostMedia, API_URL } from '@/lib/api';
 import { searchUsers } from '@/lib/auth';
@@ -19,6 +19,24 @@ const FEELINGS = [
     { label: 'Hài lòng', emoji: '😌' },
 ];
 
+type VisibilityOption = {
+    value: string;
+    label: string;
+    icon: typeof GlobeHemisphereWest;
+    color: string;
+    description: string;
+};
+
+const VISIBILITY_OPTIONS: VisibilityOption[] = [
+    { value: 'public', label: 'Công khai', icon: GlobeHemisphereWest, color: '#41A36D', description: 'Mọi người đều có thể xem' },
+    { value: 'followersonly', label: 'Người theo dõi', icon: Users, color: '#4A9FD8', description: 'Chỉ người theo dõi bạn' },
+    { value: 'onlyme', label: 'Chỉ mình tôi', icon: Lock, color: '#64748B', description: 'Chỉ bạn mới thấy bài này' },
+];
+
+function getVisibilityOption(value: string): VisibilityOption {
+    return VISIBILITY_OPTIONS.find((o) => o.value === value) ?? VISIBILITY_OPTIONS[0]!;
+}
+
 export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: () => void; currentUser?: AuthUser | null }) {
     const [text, setText] = useState('');
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -26,11 +44,13 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
     const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
     const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
     
-    // Feelings and tagging state
+    // Feelings, visibility and tagging state
     const [feeling, setFeeling] = useState<string | null>(null);
+    const [visibility, setVisibility] = useState<string>('public');
     const [taggedUsers, setTaggedUsers] = useState<SearchUser[]>([]);
     
     const [showFeelingSelector, setShowFeelingSelector] = useState(false);
+    const [showVisibilitySelector, setShowVisibilitySelector] = useState(false);
     const [showTagSelector, setShowTagSelector] = useState(false);
     const [tagSearchQuery, setTagSearchQuery] = useState('');
     const [tagSearchResults, setTagSearchResults] = useState<SearchUser[]>([]);
@@ -117,7 +137,9 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
                 text, 
                 mediaUrls, 
                 feeling, 
-                taggedUsers.length > 0 ? taggedUsers : null
+                taggedUsers.length > 0 ? taggedUsers : null,
+                undefined,
+                visibility
             );
 
             setText('');
@@ -126,6 +148,7 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
             setSelectedVideo(null);
             setSelectedVideoFile(null);
             setFeeling(null);
+            setVisibility('public');
             setTaggedUsers([]);
             setIsFocused(false);
             setShowFeelingSelector(false);
@@ -221,9 +244,13 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
                                             </span>
                                         )}
                                     </ThemedText>
-                                    <div className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider self-start">
-                                        <GlobeHemisphereWest size={13} weight="regular" />
-                                        Công khai
+                                    <div 
+                                        className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider self-start cursor-pointer hover:bg-slate-200 transition-colors"
+                                        style={{ color: getVisibilityOption(visibility).color }}
+                                        onClick={() => setShowVisibilitySelector(!showVisibilitySelector)}
+                                    >
+                                        {(() => { const VIcon = getVisibilityOption(visibility).icon; return <VIcon size={13} weight="regular" />; })()}
+                                        {getVisibilityOption(visibility).label}
                                     </div>
                                 </div>
                             </div>
@@ -320,11 +347,12 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
                                 </div>
 
                                 {showMoreOptions && (
-                                    <div className="mt-2 grid grid-cols-2 gap-2 border-t border-slate-100 pt-2 animate-in slide-in-from-top-2 duration-200">
+                                    <div className="mt-2 grid grid-cols-3 gap-2 border-t border-slate-100 pt-2 animate-in slide-in-from-top-2 duration-200">
                                         <button 
                                             onClick={() => {
                                                 setShowFeelingSelector(!showFeelingSelector);
                                                 setShowTagSelector(false);
+                                                setShowVisibilitySelector(false);
                                             }}
                                             className={`flex items-center gap-2 rounded-xl p-2 hover:bg-slate-100 transition-colors ${showFeelingSelector ? 'bg-slate-100' : ''}`}
                                         >
@@ -335,11 +363,23 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
                                             onClick={() => {
                                                 setShowTagSelector(!showTagSelector);
                                                 setShowFeelingSelector(false);
+                                                setShowVisibilitySelector(false);
                                             }}
                                             className={`flex items-center gap-2 rounded-xl p-2 hover:bg-slate-100 transition-colors ${showTagSelector ? 'bg-slate-100' : ''}`}
                                         >
                                             <UserPlus className="text-[#4A9FD8]" size={20} weight="regular" />
                                             <ThemedText as="span" className="text-[13px] font-bold text-slate-700">Gắn thẻ</ThemedText>
+                                        </button>
+                                        <button 
+                                            onClick={() => {
+                                                setShowVisibilitySelector(!showVisibilitySelector);
+                                                setShowFeelingSelector(false);
+                                                setShowTagSelector(false);
+                                            }}
+                                            className={`flex items-center gap-2 rounded-xl p-2 hover:bg-slate-100 transition-colors ${showVisibilitySelector ? 'bg-slate-100' : ''}`}
+                                        >
+                                            {(() => { const VIcon = getVisibilityOption(visibility).icon; return <VIcon className={`text-[${getVisibilityOption(visibility).color}]`} size={20} weight="regular" />; })()}
+                                            <ThemedText as="span" className="text-[13px] font-bold text-slate-700">Riêng tư</ThemedText>
                                         </button>
                                     </div>
                                 )}
@@ -379,6 +419,60 @@ export function ComposerCard({ onPostCreated, currentUser }: { onPostCreated?: (
                                                     <span>Xóa cảm xúc</span>
                                                 </button>
                                             )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Visibility Selector panel */}
+                                {showVisibilitySelector && (
+                                    <div className="mt-2.5 p-3 rounded-2xl border border-slate-100 bg-slate-50 animate-in slide-in-from-top-2 duration-200">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 pl-1">Ai có thể xem bài viết này?</span>
+                                            <button onClick={() => setShowVisibilitySelector(false)} className="text-slate-400 hover:text-slate-700 p-0.5 rounded-full hover:bg-slate-200">
+                                                <X size={14} weight="bold" />
+                                            </button>
+                                        </div>
+                                        <div className="flex flex-col gap-1.5">
+                                            {VISIBILITY_OPTIONS.map((option) => {
+                                                const isSelected = visibility === option.value;
+                                                const VIcon = option.icon;
+                                                return (
+                                                    <button
+                                                        key={option.value}
+                                                        onClick={() => {
+                                                            setVisibility(option.value);
+                                                            setShowVisibilitySelector(false);
+                                                        }}
+                                                        className="flex items-center gap-3 rounded-2xl px-3.5 py-3 transition-all text-left"
+                                                        style={{
+                                                            backgroundColor: isSelected ? `${option.color}14` : '#F7F8FA',
+                                                            borderWidth: isSelected ? 1.5 : 1,
+                                                            borderColor: isSelected ? option.color : '#E4E8EE',
+                                                        }}
+                                                    >
+                                                        <div 
+                                                            className="flex h-9 w-9 items-center justify-center rounded-xl"
+                                                            style={{ backgroundColor: `${option.color}1A`, color: option.color }}
+                                                        >
+                                                            <VIcon size={18} weight="regular" />
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <span 
+                                                                className="text-[14px] font-semibold block"
+                                                                style={{ color: isSelected ? option.color : '#0F172A' }}
+                                                            >
+                                                                {option.label}
+                                                            </span>
+                                                            <span className="text-[12px] text-slate-500">{option.description}</span>
+                                                        </div>
+                                                        {isSelected && (
+                                                            <div className="h-5 w-5 rounded-full flex items-center justify-center" style={{ backgroundColor: option.color }}>
+                                                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                                            </div>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}

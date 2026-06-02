@@ -18,6 +18,13 @@ const directChatProfileStats: InboxThreadData['profileStats'] = [
   { label: 'State', value: 'Live API thread' },
 ];
 
+const groupChatProfileStats: InboxThreadData['profileStats'] = [
+  { label: 'Source', value: 'Group chat' },
+  { label: 'Access', value: 'Group member' },
+  { label: 'Conversation', value: 'Backend sync' },
+  { label: 'State', value: 'Live API thread' },
+];
+
 function formatTimeLabel(date: Date): string {
   return new Intl.DateTimeFormat('en-GB', {
     hour: '2-digit',
@@ -45,8 +52,10 @@ function normalizeChatId(chatId: number | string): string {
   return String(chatId);
 }
 
-function trackParticipant(chatId: string, participantUserId: number): void {
-  participantUserIdByChatId.set(chatId, participantUserId);
+function trackParticipant(chatId: string, participantUserId: number | null): void {
+  if (participantUserId !== null) {
+    participantUserIdByChatId.set(chatId, participantUserId);
+  }
 }
 
 function mapDirectChatResponse(chat: DirectChatResponse): DirectChat {
@@ -69,6 +78,7 @@ function mapChatMessageResponse(message: ChatMessageResponse, participantUserId:
     time: formatTimeLabel(new Date(message.created_at)),
     incoming: participantUserId === null ? false : message.sender_id === participantUserId,
     senderUserId: message.sender_id,
+    senderName: message.sender_name ?? null,
     createdAt: message.created_at,
     mediaUrl: message.media_url ?? null,
     mediaType: message.media_type ?? null,
@@ -82,8 +92,50 @@ export function mapRealtimeMessage(message: ChatMessageResponse): ChatMessage {
   return mapChatMessageResponse(message, participantUserId);
 }
 
+export function isGroupChatThread(thread: InboxThreadData): boolean {
+  return thread.isGroup === true;
+}
+
 function mapDirectChatListItemToThread(item: DirectChatListItemResponse): InboxThreadData {
   const chatId = normalizeChatId(item.chat_id);
+
+  // Group chat
+  if (item.is_group) {
+    return {
+      id: `chat-${chatId}`,
+      chatId,
+      user: null,
+      isGroup: true,
+      groupName: item.group_name ?? 'Nhóm Trò Chuyện',
+      avatarUrl: item.avatar_url ?? null,
+      memberCount: item.member_count ?? null,
+      preview: item.latest_message?.sender_name
+        ? `${item.latest_message.sender_name}: ${item.latest_message.content?.trim() || '[Hình ảnh]'}`
+        : item.latest_message?.content?.trim() || 'Chưa có tin nhắn',
+      time: formatThreadTimeLabel(item.updated_at),
+      unread: item.unread_count,
+      activityLabel: `${item.member_count || '—'} thành viên`,
+      profileStats: groupChatProfileStats,
+      updatedAt: item.updated_at,
+    };
+  }
+
+  // Direct chat
+  if (!item.participant) {
+    // Skip invalid direct chats
+    return {
+      id: `chat-${chatId}`,
+      chatId,
+      user: null,
+      preview: 'Cuộc trò chuyện không hợp lệ',
+      time: formatThreadTimeLabel(item.updated_at),
+      unread: item.unread_count,
+      activityLabel: formatThreadActivityLabel(item.updated_at),
+      profileStats: directChatProfileStats,
+      updatedAt: item.updated_at,
+    };
+  }
+
   trackParticipant(chatId, item.participant.id);
 
   return {
@@ -307,8 +359,11 @@ export async function listDirectChatsPage(page = 1, pageSize = 20): Promise<{
   const { fetchDirectChats } = await import('./api');
   const response: PaginatedDirectChatsResponse = await fetchDirectChats(page, pageSize);
 
+  // Map all chats (both direct and group)
+  const allThreads = response.items.map(mapDirectChatListItemToThread).filter((t) => t.user !== null || t.isGroup);
+
   return {
-    items: response.items.map(mapDirectChatListItemToThread),
+    items: allThreads,
     total: response.total,
     page: response.page,
     pageSize: response.page_size,
@@ -320,6 +375,26 @@ export async function getOrCreateDirectChat(targetUserId: number): Promise<Direc
   const { createDirectChat } = await import('./api');
   const chat = await createDirectChat({ target_user_id: targetUserId });
   return mapDirectChatResponse(chat);
+}
+
+export async function createGroupChat(groupName: string, userIds: number[]): Promise<DirectChat> {
+  const { createGroupChat: apiCreateGroupChat } = await import('./api');
+  const chat = await apiCreateGroupChat({ group_name: groupName, user_ids: userIds });
+  return {
+    id: normalizeChatId(chat.chat_id),
+    participantUserId: null,
+    isGroup: true,
+    groupName: chat.group_name,
+    avatarUrl: chat.avatar_url ?? null,
+    memberCount: chat.member_count ?? null,
+    createdAt: chat.created_at,
+    updatedAt: chat.created_at,
+  };
+}
+
+export async function leaveGroupChat(chatId: string): Promise<void> {
+  const { leaveGroup } = await import('./api');
+  await leaveGroup(chatId);
 }
 
 export async function listMessages(chatId: string): Promise<ChatMessage[]> {

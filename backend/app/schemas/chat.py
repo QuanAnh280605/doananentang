@@ -21,6 +21,7 @@ class MessageRead(BaseModel):
   id: int
   chat_id: int
   sender_id: int
+  sender_name: str | None = None
   content: str | None = None
   media_url: str | None = None
   media_type: str | None = None
@@ -54,6 +55,7 @@ class GroupChatRead(BaseModel):
   group_name: str
   is_group: bool = True
   avatar_url: str | None = None
+  member_count: int | None = None
   created_at: datetime
 
   model_config = ConfigDict(from_attributes=True)
@@ -65,6 +67,7 @@ class ChatListItemRead(BaseModel):
   is_group: bool = False
   group_name: str | None = None
   avatar_url: str | None = None
+  member_count: int | None = None
   latest_message: MessageRead | None = None
   updated_at: datetime
   unread_count: int

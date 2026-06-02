@@ -1,9 +1,6 @@
 'use client';
 
-
-import type { ComponentType } from 'react';
-
-import { ArrowsClockwise, Article, BookmarkSimple, House } from '@phosphor-icons/react';
+import { Article } from '@phosphor-icons/react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
@@ -26,14 +23,6 @@ import type { InboxThreadData } from '@/lib/chat.types';
 import { patchPostMetrics as patchPostMetricsInFeed } from '@/lib/postMetrics';
 import { ROUTES } from '@/lib/routes';
 import type { Post } from '@/lib/types';
-
-type IconComponent = ComponentType<{ className?: string; size?: number; weight?: 'thin' | 'light' | 'regular' | 'bold' | 'fill' | 'duotone' }>;
-
-const shortcuts: { label: string; Icon: IconComponent }[] = [
-  { label: 'Home', Icon: House },
-  { label: 'Saved sets', Icon: BookmarkSimple },
-  { label: 'Circle updates', Icon: ArrowsClockwise },
-];
 
 function buildInitials(firstName?: string | null, lastName?: string | null): string {
   return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase() || 'US';
@@ -70,16 +59,39 @@ function SectionCard({ title, rightLabel, children }: { title: string; rightLabe
 }
 
 function MessengerRow({ item }: { item: InboxThreadData }) {
+  const isGroup = item.isGroup === true;
+
+  if (isGroup) {
+    const groupName = item.groupName || 'Nhóm Trò Chuyện';
+    const initials = groupName.slice(0, 2).toUpperCase();
+
+    return (
+      <Link
+        href={`/inbox?chatId=${item.chatId}`}
+        className="flex items-center gap-4 rounded-[24px] border border-slate-100 bg-white p-4 transition-all duration-300 hover:border-slate-200 hover:shadow-md group"
+      >
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[18px] bg-[#DBEAFE]">
+          {item.avatarUrl ? (
+            <img alt={groupName} className="h-full w-full object-cover" src={item.avatarUrl.startsWith('http') ? item.avatarUrl : `${API_URL}${item.avatarUrl}`} />
+          ) : (
+            <span className="text-sm font-semibold tracking-[0.6px] text-slate-900">{initials}</span>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <ThemedText as="p" className="truncate text-[16px] font-bold tracking-tight text-slate-950">{groupName}</ThemedText>
+          <ThemedText as="p" className="truncate text-[13px] font-medium text-slate-400">{item.preview || `${item.memberCount || '—'} thành viên`}</ThemedText>
+        </div>
+      </Link>
+    );
+  }
+
+  if (!item.user) return null;
+
   const initials = buildInitials(item.user.first_name, item.user.last_name);
 
   return (
     <Link
-      href={ROUTES.profileDetail(String(item.user.id), {
-        name: item.user.full_name,
-        initials,
-        preview: item.preview,
-        bio: item.user.bio?.trim() || item.preview,
-      })}
+      href={`/inbox?userId=${item.user.id}`}
       className="flex items-center gap-4 rounded-[24px] border border-slate-100 bg-white p-4 transition-all duration-300 hover:border-slate-200 hover:shadow-md group"
     >
       <UserAvatar user={item.user} initials={initials} />
@@ -340,18 +352,6 @@ export function HomeFeed() {
                     <Link href="/profile/edit" className="rounded-[18px] bg-slate-50 px-4 py-3.5 text-center text-[14px] font-bold text-slate-900 border border-slate-100 hover:bg-slate-100 transition-all active:scale-95">
                       Edit profile
                     </Link>
-                  </div>
-
-                  <div className="mt-5 border-t border-slate-100 pt-4 space-y-1">
-                    <ThemedText as="p" className="mb-3 text-[11px] font-bold text-slate-400 uppercase tracking-[0.15em]">Shortcuts</ThemedText>
-                    {shortcuts.map((item) => (
-                      <div key={item.label} className="flex items-center gap-3 rounded-[16px] px-3 py-2.5 hover:bg-slate-50 transition-colors cursor-pointer group">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-slate-100 text-slate-500 group-hover:bg-[#EAF4FB] group-hover:text-[#4A9FD8] transition-colors">
-                          <item.Icon size={18} weight="regular" />
-                        </div>
-                        <ThemedText as="p" className="text-[14px] font-semibold text-slate-700 group-hover:text-slate-900 transition-colors">{item.label}</ThemedText>
-                      </div>
-                    ))}
                   </div>
                 </div>
               </section>

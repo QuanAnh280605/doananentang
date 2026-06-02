@@ -8,7 +8,11 @@ export type ChatProfileStat = {
 export type InboxThreadData = {
   id: string;
   chatId: string | null;
-  user: SearchUser;
+  user: SearchUser | null;
+  isGroup?: boolean;
+  groupName?: string | null;
+  avatarUrl?: string | null;
+  memberCount?: number | null;
   preview: string;
   time: string;
   unread?: number;
@@ -19,7 +23,11 @@ export type InboxThreadData = {
 
 export type DirectChat = {
   id: string;
-  participantUserId: number;
+  participantUserId: number | null;
+  isGroup?: boolean;
+  groupName?: string | null;
+  avatarUrl?: string | null;
+  memberCount?: number | null;
   createdAt: string | null;
   updatedAt: string | null;
 };
@@ -32,6 +40,7 @@ export type ChatMessage = {
   incoming?: boolean;
   pending?: boolean;
   senderUserId: number | null;
+  senderName?: string | null;
   createdAt: string;
   mediaUrl?: string | null;
   mediaType?: string | null;
@@ -40,6 +49,11 @@ export type ChatMessage = {
 
 export type CreateDirectChatRequest = {
   target_user_id: number;
+};
+
+export type CreateGroupChatRequest = {
+  group_name: string;
+  user_ids: number[];
 };
 
 export type SendChatMessageRequest = {
@@ -53,10 +67,20 @@ export type DirectChatResponse = {
   created_at: string;
 };
 
+export type GroupChatResponse = {
+  chat_id: number;
+  group_name: string;
+  is_group: boolean;
+  avatar_url?: string | null;
+  member_count?: number | null;
+  created_at: string;
+};
+
 export type ChatMessageResponse = {
   id: number;
   chat_id: number;
   sender_id: number;
+  sender_name?: string | null;
   content: string | null;
   media_url?: string | null;
   media_type?: string | null;
@@ -82,7 +106,11 @@ export type PaginatedDirectChatsResponse = {
 
 export type DirectChatListItemResponse = {
   chat_id: number;
-  participant: SearchUser;
+  participant: SearchUser | null;
+  is_group?: boolean;
+  group_name?: string | null;
+  avatar_url?: string | null;
+  member_count?: number | null;
   latest_message: ChatMessageResponse | null;
   updated_at: string;
   unread_count: number;

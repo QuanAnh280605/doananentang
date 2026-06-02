@@ -11,6 +11,7 @@ export type MessageBubbleData = {
   body: string;
   time: string;
   incoming?: boolean;
+  senderName?: string | null;
   mediaUrl?: string | null;
   mediaType?: string | null;
   isRead?: boolean;
@@ -24,6 +25,7 @@ type MessageBubbleProps = {
   isLastRead?: boolean;
   recipientAvatarUrl?: string | null;
   recipientName?: string;
+  isGroup?: boolean;
 };
 
 function resolveMediaSrc(url: string): string {
@@ -65,7 +67,7 @@ function ReadReceiptIcon({ isRead, pending, avatarUrl }: { isRead?: boolean; pen
   }
 }
 
-export function MessageBubble({ item, showTimeSeparator, timeSeparatorLabel, isLastRead, recipientAvatarUrl, recipientName }: MessageBubbleProps) {
+export function MessageBubble({ item, showTimeSeparator, timeSeparatorLabel, isLastRead, recipientAvatarUrl, recipientName, isGroup }: MessageBubbleProps) {
   const router = useRouter();
   const hasMedia = Boolean(item.mediaUrl);
   const isVideo = hasMedia && (
@@ -99,6 +101,12 @@ export function MessageBubble({ item, showTimeSeparator, timeSeparatorLabel, isL
       )}
 
       <div className={`max-w-[78%] ${item.incoming ? 'self-start' : 'self-end'}`}>
+        {/* Sender name for group chat incoming messages */}
+        {isGroup && item.incoming && item.senderName ? (
+          <p className="text-xs font-semibold text-[#4A9FD8] mb-1 ml-3">
+            {item.senderName}
+          </p>
+        ) : null}
         <div
           className={`overflow-hidden rounded-[24px] ${
             hasMedia && !hasText && !sharedPost
