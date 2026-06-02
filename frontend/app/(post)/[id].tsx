@@ -14,6 +14,7 @@ import {
     View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FeedPost } from '@/components/post/FeedPost';
 import { ThemedText } from '@/components/themed-text';
@@ -201,8 +202,9 @@ function CommentItem({
 }
 
 export default function PostDetailScreen() {
-    const { id } = useLocalSearchParams();
+    const { id, focusComment } = useLocalSearchParams();
     const postId = String(id);
+    const insets = useSafeAreaInsets();
 
     const [post, setPost] = useState<Post | null>(null);
     const [comments, setComments] = useState<Comment[]>([]);
@@ -214,6 +216,7 @@ export default function PostDetailScreen() {
     const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
     const [currentUserId, setCurrentUserId] = useState<number | null>(null);
     const [refreshing, setRefreshing] = useState(false);
+    const commentInputRef = useRef<TextInput | null>(null);
 
     // ─── @mention state ─────────────────────────
     const [mentionQuery, setMentionQuery] = useState<string | null>(null);
@@ -248,6 +251,15 @@ export default function PostDetailScreen() {
     useEffect(() => {
         loadData();
     }, [loadData]);
+
+    useEffect(() => {
+        if (!loading && post && focusComment === 'true') {
+            const timer = setTimeout(() => {
+                commentInputRef.current?.focus();
+            }, 200);
+            return () => clearTimeout(timer);
+        }
+    }, [loading, post, focusComment]);
 
     const handleRefresh = async () => {
         setRefreshing(true);
@@ -356,11 +368,38 @@ export default function PostDetailScreen() {
                 );
             });
 
-            await createComment(postId, contentToSend, replyTo?.id);
+            const createdComment = await createComment(postId, contentToSend, replyTo?.id);
             setNewComment('');
             setReplyTo(null);
             pendingMentionsRef.current.clear();
-            loadData();
+            
+            // Cập nhật local state mượt mà, không cần tải lại toàn bộ trang từ server!
+            setComments((prevComments) => {
+                if (createdComment.parent_comment_id) {
+                    // Nếu là reply cấp 2, chèn vào comment cha
+                    return prevComments.map((c) => {
+                        if (String(c.id) === String(createdComment.parent_comment_id)) {
+                            return {
+                                ...c,
+                                replies: [...(c.replies || []), createdComment],
+                            };
+                        }
+                        return c;
+                    });
+                } else {
+                    // Nếu là bình luận chính cấp 1, append vào danh sách
+                    return [...prevComments, createdComment];
+                }
+            });
+
+            // Đồng thời tăng comment_count của post ngay lập tức để đồng bộ UI
+            setPost((prevPost) => {
+                if (!prevPost) return null;
+                return {
+                    ...prevPost,
+                    comment_count: prevPost.comment_count + 1,
+                };
+            });
         } catch (err) {
             console.error('Send comment error:', err);
         } finally {
@@ -368,21 +407,37 @@ export default function PostDetailScreen() {
         }
     };
 
-    const headerTitle = post
-        ? `${post.author.first_name} ${post.author.last_name}`
-        : 'Bài viết';
+    const headerTitle = 'Trở lại';
 
     const showMentionDropdown = mentionQuery !== null && (loadingMentions || mentionSuggestions.length > 0);
 
     return (
         <ThemedView className="flex-1 bg-[#EDF1F5]">
             <StatusBar style="dark" />
-            <Stack.Screen options={{ title: headerTitle }} />
+            <Stack.Screen options={{ headerShown: false }} />
+
+            {/* Custom Premium Header with Back Button */}
+            <View 
+                className="flex-row items-center gap-4 bg-white px-4 pb-3.5 border-b border-slate-100 shadow-sm"
+                style={{ paddingTop: Math.max(insets.top, 0) + 8 }}
+            >
+                <Pressable
+                    onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')}
+                    className="h-10 w-10 items-center justify-center rounded-full bg-slate-50 border border-slate-100 active:opacity-80"
+                >
+                    <MaterialIcons name="arrow-back" size={20} color="#475569" />
+                </Pressable>
+                <View className="flex-1">
+                    <ThemedText className="text-base font-bold text-slate-900" numberOfLines={1}>
+                        {headerTitle}
+                    </ThemedText>
+                </View>
+            </View>
 
             <KeyboardAvoidingView
                 className="flex-1"
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={90}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
             >
                 {loading ? (
                     <View className="flex-1 items-center justify-center">
@@ -449,7 +504,29 @@ export default function PostDetailScreen() {
                                                     key={String(comment.id)}
                                                     comment={comment}
                                                     onReply={(c) => setReplyTo(c)}
-                                                    onDelete={() => loadData()}
+                                                    onDelete={(commentId) => {
+                                                        // Xử lý xoá comment local không reload
+                                                        setComments((prevComments) => {
+                                                            return prevComments
+                                                                .filter((c) => String(c.id) !== String(commentId))
+                                                                .map((c) => {
+                                                                    if (c.replies) {
+                                                                        return {
+                                                                            ...c,
+                                                                            replies: c.replies.filter((r) => String(r.id) !== String(commentId)),
+                                                                        };
+                                                                    }
+                                                                    return c;
+                                                                });
+                                                        });
+                                                        setPost((prevPost) => {
+                                                            if (!prevPost) return null;
+                                                            return {
+                                                                ...prevPost,
+                                                                comment_count: Math.max(0, prevPost.comment_count - 1),
+                                                            };
+                                                        });
+                                                    }}
                                                     canDelete={
                                                         currentUserId !== null && (
                                                             String(comment.author_id) === String(currentUserId) ||
@@ -546,6 +623,7 @@ export default function PostDetailScreen() {
                                     avatarUrl={currentUser?.avatar_url}
                                 />
                                 <TextInput
+                                    ref={commentInputRef}
                                     className="flex-1 rounded-[22px] bg-[#F7F8FA] px-5 py-3 text-base text-slate-900"
                                     cursorColor="#0F172A"
                                 placeholder={replyTo ? `Trả lời ${replyTo.author.first_name}...` : 'Viết bình luận...'}

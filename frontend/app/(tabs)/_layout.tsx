@@ -7,6 +7,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { fetchCurrentUser } from '@/lib/auth';
 import type { AuthUser } from '@/lib/auth';
 import { API_URL } from '@/lib/api';
+import { HapticTab } from '@/components/haptic-tab';
 
 interface TabIconProps {
   name: any;
@@ -67,6 +68,7 @@ export default function TabLayout() {
         tabBarInactiveTintColor: '#94A3B8',
         headerShown: false,
         tabBarShowLabel: false,
+        tabBarButton: HapticTab,
         tabBarStyle: isDesktopOrTablet ? {
           display: 'none',
         } : {

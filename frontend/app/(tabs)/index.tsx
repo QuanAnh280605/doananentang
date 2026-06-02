@@ -3,6 +3,7 @@ import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, View, useWindowDimensions, RefreshControl, Image, DeviceEventEmitter } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ComposerCard } from '@/components/post/ComposerCard';
@@ -220,6 +221,7 @@ export default function HomeScreen() {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 1380;
   const isTablet = width >= 960;
+  const insets = useSafeAreaInsets();
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -329,6 +331,21 @@ export default function HomeScreen() {
   return (
     <ThemedView className="flex-1 bg-[#EDF1F5]">
       <StatusBar style="dark" />
+      
+      {/* AppTopNav đè nổi lên trên content */}
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 99 }}>
+        <AppTopNav
+          isTablet={isTablet}
+          searchPlaceholder="Tìm kiếm bài viết, bạn bè..."
+          avatarUrl={currentUser?.avatar_url}
+          avatarInitials={
+            currentUser
+              ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase()
+              : 'LE'
+          }
+        />
+      </View>
+
       <FlatList
         data={posts}
         keyExtractor={(item) => String(item.id)}
@@ -338,6 +355,7 @@ export default function HomeScreen() {
             onRefresh={handleRefresh}
             tintColor="#4A9FD8"
             colors={['#4A9FD8']}
+            progressViewOffset={isTablet ? 100 : (Math.max(insets.top, 0) + 72)}
           />
         }
         onEndReached={handleLoadMore}
@@ -345,17 +363,10 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 32 }}
         ListHeaderComponent={
-          <View className="mx-auto w-full max-w-[1720px] px-4 pt-4 md:px-6">
-            <AppTopNav
-              isTablet={isTablet}
-              searchPlaceholder="Search"
-              avatarUrl={currentUser?.avatar_url}
-              avatarInitials={
-                currentUser
-                  ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase()
-                  : 'LE'
-              }
-            />
+          <View 
+            className="mx-auto w-full max-w-[1720px] px-4 md:px-6"
+            style={{ paddingTop: isTablet ? 100 : (Math.max(insets.top, 0) + 72) }}
+          >
             <View className={`mt-4 gap-4 ${isDesktop ? 'flex-row items-start' : ''}`}>
               <View className={`${isDesktop ? 'flex-1' : 'w-full'} gap-4`}>
                 <ComposerCard onPostCreated={() => loadPosts(1, false)} currentUser={currentUser} />

@@ -1,7 +1,7 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState, useRef, useCallback, type ReactNode } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View, useWindowDimensions, Alert } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Image } from 'expo-image';
@@ -36,9 +36,6 @@ type ProfileViewModel = {
   contactPrivacy: VisibilityLevel;
   avatarUrl: string | null;
 };
-
-const surfaceClass = 'rounded-[32px] border border-app-border bg-app-surface';
-const mutedSurfaceClass = 'rounded-[32px] bg-[#F7F8FA]';
 
 const tabs: { key: ProfileTab; label: string; icon: keyof typeof MaterialIcons.glyphMap }[] = [
   { key: 'posts', label: 'All', icon: 'grid-view' },
@@ -145,10 +142,10 @@ function ActionButton({
   return (
     <Pressable
       onPress={onPress}
-      className={`min-w-[150px] flex-1 flex-row items-center justify-center gap-2 rounded-full px-4 py-[14px] active:opacity-90 ${filled ? 'bg-[#4A9FD8]' : 'bg-[#F7F8FA]'}`}
+      className={`min-w-[150px] flex-1 flex-row items-center justify-center gap-2 rounded-[16px] px-4 py-[12px] active:opacity-90 ${filled ? 'bg-[#4A9FD8]' : 'bg-[#F7F8FA]'}`}
     >
       <MaterialIcons color={filled ? '#FFFFFF' : '#0F172A'} name={icon} size={20} />
-      <ThemedText className={`text-base font-medium ${filled ? 'text-white' : 'text-slate-900'}`}>{label}</ThemedText>
+      <ThemedText className={`text-base font-semibold ${filled ? 'text-white' : 'text-slate-900'}`}>{label}</ThemedText>
     </Pressable>
   );
 }
@@ -166,11 +163,11 @@ function ProfileTabButton({
 }) {
   return (
     <Pressable
-      className={`min-w-[112px] flex-1 flex-row items-center justify-center gap-2 rounded-full px-4 py-[14px] active:opacity-90 ${active ? 'bg-[#0A0A0A]' : 'bg-[#F7F8FA]'}`}
+      className={`min-w-[112px] flex-1 flex-row items-center justify-center gap-2 rounded-[16px] px-4 py-[12px] active:opacity-90 ${active ? 'bg-[#0A0A0A]' : 'bg-[#F7F8FA]'}`}
       onPress={onPress}
     >
       <MaterialIcons color={active ? '#FFFFFF' : '#0F172A'} name={icon} size={18} />
-      <ThemedText className={`text-base font-medium ${active ? 'text-white' : 'text-slate-900'}`}>{label}</ThemedText>
+      <ThemedText className={`text-base font-semibold ${active ? 'text-white' : 'text-slate-900'}`}>{label}</ThemedText>
     </Pressable>
   );
 }
@@ -189,7 +186,7 @@ function SectionTitle({ title, subtitle, action }: { title: string; subtitle?: s
 
 function SidebarCard({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   return (
-    <ThemedView className="bg-white p-5 mb-2 shadow-sm md:rounded-[32px] md:border md:border-[#E4E8EE]">
+    <ThemedView className="bg-white p-5 mb-3.5 shadow-sm rounded-[24px] border border-slate-200/50">
       <SectionTitle title={title} action={action} />
       <View className="mt-5 gap-4">{children}</View>
     </ThemedView>
@@ -215,9 +212,9 @@ function MediaPanel({ posts, hideHeader }: { posts: Post[]; hideHeader?: boolean
   const mediaItems = (posts || []).flatMap((p) =>
     (p.media || []).map((m) => ({ media: m, post: p }))
   );
-
+ 
   return (
-    <ThemedView className={`bg-white mb-2 shadow-sm md:rounded-[32px] md:border md:border-[#E4E8EE] ${hideHeader ? 'p-2 pt-4' : 'p-5'}`}>
+    <ThemedView className={`bg-white mb-3.5 shadow-sm rounded-[24px] border border-slate-200/50 ${hideHeader ? 'p-2 pt-4' : 'p-5'}`}>
       {!hideHeader && <SectionTitle title="Featured media" subtitle="Ảnh và tài liệu đã chia sẻ" />}
       {mediaItems.length === 0 ? (
         <View className="mt-5 items-center py-8">
@@ -419,8 +416,8 @@ export default function ProfileScreen() {
 
 
             {/* Profile card */}
-            <ThemedView className="bg-white shadow-sm overflow-hidden md:rounded-[32px] md:border md:border-[#E4E8EE]">
-              <View className="h-[180px] bg-[#D9ECF8]" />
+            <ThemedView className="bg-white shadow-sm overflow-hidden rounded-[24px] border border-slate-200/50">
+              <View className="h-[180px] bg-[#D9ECF8] rounded-t-[24px]" />
               <View className="px-5 pb-5">
                 <View className="-mt-12 flex-row items-end justify-between gap-4">
                   <View className="flex-row items-end gap-4">
@@ -597,7 +594,7 @@ export default function ProfileScreen() {
                         <ThemedText className="mt-3 text-sm text-slate-500">Đang tải bài viết...</ThemedText>
                       </View>
                     ) : posts.length === 0 ? (
-                      <ThemedView className={`${surfaceClass} items-center py-10`}>
+                      <ThemedView className="bg-white shadow-sm rounded-[24px] border border-slate-200/50 items-center py-10">
                         <MaterialIcons name="article" size={40} color="#CBD5E1" />
                         <ThemedText className="mt-3 text-[20px] font-semibold text-slate-700">Chưa có bài viết</ThemedText>
                         <ThemedText className="mt-1 text-sm text-slate-400">Hãy tạo bài viết đầu tiên của bạn.</ThemedText>
