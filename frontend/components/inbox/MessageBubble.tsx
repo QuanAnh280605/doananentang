@@ -49,14 +49,14 @@ export function MessageBubble({ item, isGroup }: { item: MessageBubbleData; isGr
         {item.mediaUrl ? (
           <Image
             source={{ uri: getAbsoluteUrl(item.mediaUrl) }}
-            style={{ width: 240, height: 180 }}
+            style={{ width: 260, height: 195 }}
             contentFit="cover"
           />
         ) : null}
         
         {displayText ? (
-          <View className="px-4 py-3 pb-2">
-            <ThemedText className={`text-[15px] leading-6 ${item.incoming ? 'text-slate-700' : 'text-white'}`}>
+          <View className="px-4 py-3">
+            <ThemedText className={`text-[15px] leading-6 font-medium ${item.incoming ? 'text-slate-800' : 'text-white'}`}>
               {displayText}
             </ThemedText>
           </View>
@@ -68,7 +68,7 @@ export function MessageBubble({ item, isGroup }: { item: MessageBubbleData; isGr
           </View>
         )}
       </View>
-      <ThemedText className={`mt-2 text-xs text-slate-400 ${item.incoming ? 'text-left' : 'text-right'}`}>
+      <ThemedText className={`mt-1.5 text-[10px] font-bold text-slate-400 px-1 ${item.incoming ? 'text-left' : 'text-right'}`}>
         {item.time}
       </ThemedText>
     </View>

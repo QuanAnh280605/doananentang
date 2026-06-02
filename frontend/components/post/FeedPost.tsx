@@ -2,7 +2,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 import { Link, router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Platform, Image, Modal, Pressable, ScrollView, View, Alert, Share, TextInput, ActivityIndicator, DeviceEventEmitter } from 'react-native';
+import { Platform, Image, Modal, Pressable, ScrollView, View, Alert, TextInput, ActivityIndicator, DeviceEventEmitter } from 'react-native';
 import { ThumbsUp, ChatCircleDots, ShareNetwork, CaretRight } from 'phosphor-react-native';
 
 import { useToast } from '@/hooks/useToast';
@@ -12,7 +12,7 @@ import { ActionBubble, Avatar } from '@/components/ui/core';
 import { API_URL, likePost, unlikePost, deletePost, updatePost, fetchPostLikers, listDirectChats, sendChatMessage, createPost } from '@/lib/api';
 import type { PostLiker } from '@/lib/api';
 import { fetchCurrentUser } from '@/lib/auth';
-import type { Post, ReactionType } from '@/lib/types';
+import type { Post } from '@/lib/types';
 
 type VisibilityOption = {
     value: string;
@@ -25,7 +25,6 @@ type VisibilityOption = {
 const VISIBILITY_OPTIONS: VisibilityOption[] = [
     { value: 'public', label: 'Công khai', icon: 'public', color: '#41A36D', description: 'Mọi người đều có thể xem' },
     { value: 'followersonly', label: 'Người theo dõi', icon: 'people', color: '#4A9FD8', description: 'Chỉ người theo dõi bạn' },
-    { value: 'custom', label: 'Tùy chỉnh', icon: 'tune', color: '#F59E0B', description: 'Chọn người xem cụ thể' },
     { value: 'onlyme', label: 'Chỉ mình tôi', icon: 'lock', color: '#64748B', description: 'Chỉ bạn mới thấy bài này' },
 ];
 
@@ -176,10 +175,15 @@ export function FeedPost({ item, onDeleteSuccess, onDelete, isNested }: { item: 
         }
         try {
             const user = await fetchCurrentUser();
-            setIsAuthor(user.id.toString() === String(item.author_id) || user.id.toString() === String(item.author?.id));
-            setShowMenu(true);
+            const authorCheck = user.id.toString() === String(item.author_id) || user.id.toString() === String(item.author?.id);
+            setIsAuthor(authorCheck);
+            if (authorCheck) {
+                setShowMenu(true);
+            } else {
+                toast.error("Bạn không thể chỉnh sửa bài viết của người khác");
+            }
         } catch {
-            setShowMenu(true); // Still show menu, but they won't see "Xóa bài"
+            // Không làm gì
         }
     };
 
@@ -259,7 +263,7 @@ export function FeedPost({ item, onDeleteSuccess, onDelete, isNested }: { item: 
             const shareText = `[Bài viết] Xem bài viết của ${authorName} tại đây: doananentang://post/${item.id}`;
             await sendChatMessage(chatId, shareText);
             toast.success("Đã gửi bài viết qua tin nhắn!");
-        } catch (error) {
+        } catch {
             if (Platform.OS === 'web') {
                 window.alert("Lỗi khi gửi tin nhắn.");
             } else {
@@ -273,7 +277,10 @@ export function FeedPost({ item, onDeleteSuccess, onDelete, isNested }: { item: 
     if (isDeleted) return null;
 
     return (
-        <ThemedView className="bg-white mb-2 px-4 py-4" style={{ zIndex: showMenu ? 10 : 1 }}>
+        <ThemedView 
+            className="bg-white mb-3.5 px-4 py-4 rounded-[24px] border border-slate-200/50 shadow-sm" 
+            style={{ zIndex: showMenu ? 10 : 1 }}
+        >
             {/* Header */}
             <View className="flex-row items-start justify-between gap-4 relative" style={{ zIndex: showMenu ? 50 : 1 }}>
                 <Link href="/(tabs)/profile" asChild>
@@ -315,7 +322,21 @@ export function FeedPost({ item, onDeleteSuccess, onDelete, isNested }: { item: 
                                     </ThemedText>
                                 )}
                             </ThemedText>
-                            <ThemedText className="text-sm text-slate-500 mt-0.5">{timeAgo}</ThemedText>
+                            <View className="flex-row items-center gap-1.5 mt-0.5">
+                                <ThemedText className="text-sm text-slate-500">{timeAgo}</ThemedText>
+                                <ThemedText className="text-[10px] text-slate-300">•</ThemedText>
+                                {(() => {
+                                    const vc = getVisibilityConfig(displayVisibility);
+                                    return (
+                                        <View className="flex-row items-center gap-1">
+                                            <MaterialIcons name={vc.icon} size={12} color="#64748B" />
+                                            <ThemedText className="text-[11px] font-semibold text-slate-500">
+                                                {vc.label}
+                                            </ThemedText>
+                                        </View>
+                                    );
+                                })()}
+                            </View>
                         </View>
                     </Pressable>
                 </Link>
@@ -360,15 +381,12 @@ export function FeedPost({ item, onDeleteSuccess, onDelete, isNested }: { item: 
                                             <MaterialIcons name="edit" size={20} color="#64748B" />
                                             <ThemedText className="text-[15px] font-semibold text-slate-700">Sửa bài viết</ThemedText>
                                         </Pressable>
-                                        <Pressable onPress={handleDeleteConfirm} className="flex-row items-center gap-3 px-4 py-3.5 border-b border-slate-100 bg-white active:bg-red-50">
+                                        <Pressable onPress={handleDeleteConfirm} className="flex-row items-center gap-3 px-4 py-3.5 bg-white active:bg-red-50">
                                             <MaterialIcons name="delete-outline" size={20} color="#EF4444" />
                                             <ThemedText className="text-[15px] font-semibold text-red-500">Xóa bài viết</ThemedText>
                                         </Pressable>
                                     </>
                                 )}
-                                <Pressable onPress={() => setShowMenu(false)} className="px-4 py-3.5 active:bg-slate-50">
-                                    <ThemedText className="text-[15px] text-slate-500 font-medium">Báo cáo</ThemedText>
-                                </Pressable>
                             </View>
                         </View>
                     )}
@@ -536,37 +554,22 @@ export function FeedPost({ item, onDeleteSuccess, onDelete, isNested }: { item: 
                         
                         <View className="flex-row items-center gap-2">
                             {item.comment_count > 0 && (
-                                <Pressable className="flex-row items-center gap-1.5 active:opacity-70">
-                                    <ThemedText className="text-[14px] font-bold text-slate-500">
-                                        {item.comment_count} bình luận
-                                    </ThemedText>
-                                    <CaretRight size={16} weight="bold" color="#CBD5E1" />
-                                </Pressable>
-                            )}
-                            
-                            {/* Visibility chip */}
-                            {(() => {
-                                const vc = getVisibilityConfig(displayVisibility);
-                                return (
-                                    <View
-                                        style={{
-                                            flexDirection: 'row',
-                                            alignItems: 'center',
-                                            gap: 4,
-                                            borderRadius: 14,
-                                            paddingHorizontal: 8,
-                                            paddingVertical: 4,
-                                            backgroundColor: `${vc.color}14`,
-                                            marginLeft: item.comment_count > 0 ? 8 : 0,
-                                        }}
-                                    >
-                                        <MaterialIcons name={vc.icon} size={13} color={vc.color} />
-                                        <ThemedText style={{ fontSize: 12, fontWeight: '600', color: vc.color }}>
-                                            {vc.label}
+                                <Link
+                                    href={{
+                                        pathname: '/(post)/[id]',
+                                        params: { id: String(item.id), focusComment: 'true' }
+                                    }}
+                                    asChild
+                                >
+                                    <Pressable className="flex-row items-center gap-1.5 active:opacity-70">
+                                        <ThemedText className="text-[14px] font-bold text-slate-500">
+                                            {item.comment_count} bình luận
                                         </ThemedText>
-                                    </View>
-                                );
-                            })()}
+                                        <CaretRight size={16} weight="bold" color="#CBD5E1" />
+                                    </Pressable>
+                                </Link>
+                            )}
+
                         </View>
                     </View>
 
@@ -813,11 +816,33 @@ export function FeedPost({ item, onDeleteSuccess, onDelete, isNested }: { item: 
                         ) : (
                             <ScrollView className="px-5 pt-2">
                                 {shareChats.map((chat) => {
-                                    const participant = chat.participant;
-                                    const initials = `${participant.first_name?.[0] || ''}${participant.last_name?.[0] || ''}`.toUpperCase();
-                                    const avatarUrl = participant.avatar_url
-                                        ? (participant.avatar_url.startsWith('http') ? participant.avatar_url : `${API_URL}${participant.avatar_url}`)
-                                        : null;
+                                    const isGroup = chat.is_group === true;
+                                    const name = isGroup ? (chat.group_name || 'Nhóm Trò Chuyện') : (chat.participant?.full_name || 'Người dùng');
+                                    
+                                    let initials = '??';
+                                    if (isGroup) {
+                                        const parts = name.split(' ').filter(Boolean);
+                                        if (parts.length >= 2) {
+                                            initials = (parts[0][0] + parts[1][0]).toUpperCase();
+                                        } else {
+                                            initials = name.slice(0, 2).toUpperCase();
+                                        }
+                                    } else if (chat.participant) {
+                                        const first = chat.participant.first_name?.[0] || '';
+                                        const last = chat.participant.last_name?.[0] || '';
+                                        initials = (first + last).toUpperCase() || name.slice(0, 2).toUpperCase();
+                                    }
+
+                                    let avatarUrl: string | null = null;
+                                    if (isGroup) {
+                                        avatarUrl = chat.avatar_url
+                                            ? (chat.avatar_url.startsWith('http') ? chat.avatar_url : `${API_URL}${chat.avatar_url}`)
+                                            : null;
+                                    } else if (chat.participant) {
+                                        avatarUrl = chat.participant.avatar_url
+                                            ? (chat.participant.avatar_url.startsWith('http') ? chat.participant.avatar_url : `${API_URL}${chat.participant.avatar_url}`)
+                                            : null;
+                                    }
                                     
                                     const isSending = sendingChatIds[chat.chat_id];
 
@@ -826,7 +851,7 @@ export function FeedPost({ item, onDeleteSuccess, onDelete, isNested }: { item: 
                                             <View className="flex-row items-center gap-3 flex-1">
                                                 <Avatar initials={initials} soft avatarUrl={avatarUrl} />
                                                 <ThemedText className="font-semibold text-slate-900 flex-1" numberOfLines={1}>
-                                                    {participant.full_name}
+                                                    {name}
                                                 </ThemedText>
                                             </View>
                                             <Pressable

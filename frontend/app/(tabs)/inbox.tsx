@@ -21,7 +21,6 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { InboxListItem, type InboxListItemData } from '@/components/inbox/InboxListItem';
 import { MessageBubble, type MessageBubbleData } from '@/components/inbox/MessageBubble';
-import { AppTopNav } from '@/components/navigation/AppTopNav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { SearchInput } from '@/components/ui/SearchInput';
@@ -107,7 +106,6 @@ export default function InboxScreen() {
 
   // Layout breakpoints
   const useViewportLayout = width >= 1100;
-  const isTablet = width >= 768;
   const viewportPanelHeight = Math.max(height - 120, 560);
 
   // States
@@ -143,8 +141,8 @@ export default function InboxScreen() {
 
 
   // Search states
-  const [inboxNavSearchQuery, setInboxNavSearchQuery] = useState('');
   const [inboxSearchQuery, setInboxSearchQuery] = useState('');
+  const [filterTab, setFilterTab] = useState<'all' | 'personal' | 'groups'>('all');
 
   // Chat menu & media gallery states
   const [showChatMenu, setShowChatMenu] = useState(false);
@@ -382,20 +380,7 @@ export default function InboxScreen() {
     return activeChat?.participant || null;
   }, [activeChat]);
 
-  const currentUserAvatarUrl = useMemo(() => {
-    if (!currentUser?.avatar_url) return null;
-    return currentUser.avatar_url.startsWith('http')
-      ? currentUser.avatar_url
-      : `${API_URL}${currentUser.avatar_url}`;
-  }, [currentUser]);
 
-  const currentUserInitials = useMemo(() => {
-    if (!currentUser) return 'GP';
-    const first = currentUser.first_name ? currentUser.first_name[0] : '';
-    const last = currentUser.last_name ? currentUser.last_name[0] : '';
-    const emailFallback = currentUser.email ? currentUser.email.slice(0, 2).toUpperCase() : 'US';
-    return (first + last).toUpperCase() || emailFallback;
-  }, [currentUser]);
 
   // Get Initials for Avatar
   const getInitials = (participant: ChatParticipant | null | SearchUser): string => {
@@ -650,6 +635,10 @@ export default function InboxScreen() {
   // Filtered Chats
   const normalizedSearchQuery = inboxSearchQuery.trim().toLowerCase();
   const filteredChats = chats.filter((chat) => {
+    // Filter by tab
+    if (filterTab === 'personal' && chat.is_group) return false;
+    if (filterTab === 'groups' && !chat.is_group) return false;
+
     if (!normalizedSearchQuery) return true;
     const name = chat.is_group ? (chat.group_name || '') : (chat.participant?.full_name || '');
     return (
@@ -723,9 +712,28 @@ export default function InboxScreen() {
       title="Hộp thư"
       subtitle="Các cuộc trò chuyện gần đây"
       className="h-full"
-      contentClassName="min-h-0 flex-1"
+      contentClassName="min-h-0 flex-1 gap-3"
       headerAction={newChatButton}>
       <SearchInput onChangeText={setInboxSearchQuery} placeholder="Tìm kiếm hội thoại..." value={inboxSearchQuery} />
+
+      {/* Bộ lọc Tab ngang cao cấp */}
+      <View className="flex-row gap-2 my-0.5">
+        {(['all', 'personal', 'groups'] as const).map((tab) => {
+          const isActive = filterTab === tab;
+          const label = tab === 'all' ? 'Tất cả' : tab === 'personal' ? 'Cá nhân' : 'Nhóm';
+          return (
+            <Pressable
+              key={tab}
+              onPress={() => setFilterTab(tab)}
+              className={`rounded-full px-4 py-1.5 active:opacity-85 ${isActive ? 'bg-[#4A9FD8]' : 'bg-slate-100'}`}
+            >
+              <ThemedText className={`text-[13px] font-bold ${isActive ? 'text-white' : 'text-slate-600'}`}>
+                {label}
+              </ThemedText>
+            </Pressable>
+          );
+        })}
+      </View>
 
       <ScrollView
         className={useViewportLayout ? 'min-h-0 flex-1' : ''}
@@ -959,18 +967,8 @@ export default function InboxScreen() {
       <ThemedView className="flex-1 bg-[#F8FAFC]">
         <ThemedView 
           className="mx-auto w-full max-w-[1720px] px-4 pb-6 md:px-6 flex-1"
-          style={{ paddingTop: (!useViewportLayout && activeChatId !== null) ? (Math.max(insets.top, 0) + 6) : 0 }}
+          style={{ paddingTop: Math.max(insets.top, 0) + 12 }}
         >
-          {!useViewportLayout && activeChatId !== null ? null : (
-            <AppTopNav
-              isTablet={isTablet}
-              onSearchChange={setInboxNavSearchQuery}
-              searchPlaceholder="Tìm kiếm thư, liên lạc hoặc tệp tin..."
-              searchValue={inboxNavSearchQuery}
-              avatarUrl={currentUserAvatarUrl}
-              avatarInitials={currentUserInitials}
-            />
-          )}
 
           {useViewportLayout ? (
             // Desktop/Web Layout: 2 Columns

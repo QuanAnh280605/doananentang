@@ -113,14 +113,14 @@ function ActionButton({
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      className={`min-w-[150px] flex-1 flex-row items-center justify-center gap-2 rounded-full px-4 py-[14px] active:opacity-90 ${disabled ? 'opacity-70' : ''} ${filled ? 'bg-[#4A9FD8]' : 'bg-[#F7F8FA]'}`}
+      className={`min-w-[150px] flex-1 flex-row items-center justify-center gap-2 rounded-[16px] px-4 py-[12px] active:opacity-90 ${disabled ? 'opacity-70' : ''} ${filled ? 'bg-[#4A9FD8]' : 'bg-[#F7F8FA]'}`}
     >
       {loading ? (
         <ActivityIndicator color={filled ? '#FFFFFF' : '#0F172A'} size="small" />
       ) : (
         <MaterialIcons color={filled ? '#FFFFFF' : '#0F172A'} name={icon} size={20} />
       )}
-      <ThemedText className={`text-base font-medium ${filled ? 'text-white' : 'text-slate-900'}`}>{label}</ThemedText>
+      <ThemedText className={`text-base font-semibold ${filled ? 'text-white' : 'text-slate-900'}`}>{label}</ThemedText>
     </Pressable>
   );
 }
@@ -138,11 +138,11 @@ function ProfileTabButton({
 }) {
   return (
     <Pressable
-      className={`min-w-[112px] flex-1 flex-row items-center justify-center gap-2 rounded-full px-4 py-[14px] active:opacity-90 ${active ? 'bg-[#0A0A0A]' : 'bg-[#F7F8FA]'}`}
+      className={`min-w-[112px] flex-1 flex-row items-center justify-center gap-2 rounded-[16px] px-4 py-[12px] active:opacity-90 ${active ? 'bg-[#0A0A0A]' : 'bg-[#F7F8FA]'}`}
       onPress={onPress}
     >
       <MaterialIcons color={active ? '#FFFFFF' : '#0F172A'} name={icon} size={18} />
-      <ThemedText className={`text-base font-medium ${active ? 'text-white' : 'text-slate-900'}`}>{label}</ThemedText>
+      <ThemedText className={`text-base font-semibold ${active ? 'text-white' : 'text-slate-900'}`}>{label}</ThemedText>
     </Pressable>
   );
 }
@@ -161,7 +161,7 @@ function SectionTitle({ title, subtitle, action }: { title: string; subtitle?: s
 
 function SidebarCard({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   return (
-    <ThemedView className="bg-white p-5 mb-2 shadow-sm md:rounded-[32px] md:border md:border-[#E4E8EE]">
+    <ThemedView className="bg-white p-5 mb-3.5 shadow-sm rounded-[24px] border border-slate-200/50">
       <SectionTitle title={title} action={action} />
       <View className="mt-5 gap-4">{children}</View>
     </ThemedView>
@@ -174,7 +174,7 @@ function MediaPanel({ posts, hideHeader }: { posts: Post[]; hideHeader?: boolean
   );
 
   return (
-    <ThemedView className={`bg-white mb-2 shadow-sm md:rounded-[32px] md:border md:border-[#E4E8EE] ${hideHeader ? 'p-2 pt-4' : 'p-5'}`}>
+    <ThemedView className={`bg-white mb-3.5 shadow-sm rounded-[24px] border border-slate-200/50 ${hideHeader ? 'p-2 pt-4' : 'p-5'}`}>
       {!hideHeader && <SectionTitle title="Featured media" subtitle="Ảnh và tài liệu đã chia sẻ" />}
       {mediaItems.length === 0 ? (
         <View className="mt-5 items-center py-8">
@@ -397,7 +397,7 @@ export default function UserProfileScreen() {
           <ThemedView className="mx-auto w-full max-w-[1720px] gap-4 pb-6 md:px-6 md:pt-6">
 
             {/* Header / Back */}
-            <View className="mx-4 md:mx-0 flex-row items-center gap-3 bg-white shadow-sm rounded-full md:rounded-[32px] md:border md:border-[#E4E8EE] px-2 py-2 mt-4 md:mt-0">
+            <View className="mx-4 md:mx-0 flex-row items-center gap-3 bg-white shadow-sm rounded-[20px] border border-slate-200/50 px-2 py-2 mt-4 md:mt-0">
               <Pressable
                 onPress={() => router.back()}
                 className="h-11 w-11 items-center justify-center rounded-full bg-[#F7F8FA] active:opacity-80"
@@ -409,8 +409,8 @@ export default function UserProfileScreen() {
             </View>
 
             {/* Profile card */}
-            <ThemedView className="bg-white shadow-sm overflow-hidden md:rounded-[32px] md:border md:border-[#E4E8EE]">
-              <View className="h-[180px] bg-[#D9ECF8]" />
+            <ThemedView className="bg-white shadow-sm overflow-hidden rounded-[24px] border border-slate-200/50">
+              <View className="h-[180px] bg-[#D9ECF8] rounded-t-[24px]" />
               <View className="px-5 pb-5">
                 <View className="-mt-12 flex-row items-end justify-between gap-4">
                   <View className="flex-row items-end gap-4">
@@ -556,7 +556,7 @@ export default function UserProfileScreen() {
                         <ThemedText className="mt-3 text-sm text-slate-500">Đang tải bài viết...</ThemedText>
                       </View>
                     ) : posts.length === 0 ? (
-                      <ThemedView className="rounded-[32px] border border-app-border bg-app-surface items-center py-10">
+                      <ThemedView className="bg-white shadow-sm rounded-[24px] border border-slate-200/50 items-center py-10">
                         <MaterialIcons name="article" size={40} color="#CBD5E1" />
                         <ThemedText className="mt-3 text-[20px] font-semibold text-slate-700">Chưa có bài viết</ThemedText>
                       </ThemedView>

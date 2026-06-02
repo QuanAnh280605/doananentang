@@ -1,4 +1,4 @@
-import { Aperture, EnvelopeSimple, Bell, SquaresFour, IconWeight } from 'phosphor-react-native';
+import { Aperture, EnvelopeSimple, Bell } from 'phosphor-react-native';
 import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -88,17 +88,16 @@ export function AppTopNav({
 
   return (
     <ThemedView
-      className={`bg-white ${isTablet ? 'rounded-surface border border-app-border px-5 pb-4' : 'px-4 pb-3'}`}
+      className={`bg-white/90 ${isTablet ? 'rounded-surface px-5 pb-4' : 'px-4 pb-3.5'}`}
       style={[
-        { paddingTop: Math.max(insets.top, 0) + (isTablet ? 16 : 10) },
+        { paddingTop: Math.max(insets.top, 0) + (isTablet ? 16 : 12) },
         !isTablet && {
-          borderBottomWidth: 1,
-          borderBottomColor: '#F1F5F9',
-          shadowColor: '#0F172A',
+          borderRadius: 20,
+          shadowColor: '#000000',
           shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.03,
-          shadowRadius: 8,
-          elevation: 2,
+          shadowOpacity: 0.04,
+          shadowRadius: 12,
+          elevation: 3,
         }
       ]}
     >
@@ -152,7 +151,6 @@ export function AppTopNav({
                 )}
               </View>
             </Pressable>
-            <NavActionBubble icon={SquaresFour} />
             <Pressable onPress={() => router.push('/profile')} className="active:opacity-70">
               <NavAvatar initials={avatarInitials} avatarUrl={avatarUrl} />
             </Pressable>
@@ -162,58 +160,51 @@ export function AppTopNav({
         /* Mobile Header */
         <View className="flex-row items-center justify-between h-12 pb-0.5">
           {/* Left Brand Logo Squircle */}
-          <View className="flex-row items-center">
+          <View className="flex-row items-center gap-2">
             <View
               className="h-10 w-10 items-center justify-center bg-[#4A9FD8]"
               style={{
-                borderRadius: 12,
+                borderRadius: 14,
                 shadowColor: '#4A9FD8',
-                shadowOffset: { width: 0, height: 3 },
-                shadowOpacity: 0.25,
-                shadowRadius: 5,
-                elevation: 3,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.2,
+                shadowRadius: 4,
+                elevation: 2,
               }}
             >
-              <Aperture color="#FFFFFF" size={21} weight="bold" />
+              <Aperture color="#FFFFFF" size={20} weight="bold" />
             </View>
+            <ThemedText className="text-[18px] font-bold tracking-[-0.3px] text-slate-900">
+              Northfeed
+            </ThemedText>
           </View>
 
           {/* Right Action Icons & Avatar */}
-          <View className="flex-row items-center gap-2.5">
+          <View className="flex-row items-center gap-2">
             <Pressable
               onPress={() => router.push('/(tabs)/notifications')}
-              className="h-10 w-10 items-center justify-center bg-white border border-[#E2E8F0] active:opacity-75"
+              className="h-10 w-10 items-center justify-center bg-[#F7F8FA] active:opacity-75"
               style={{
-                borderRadius: 12,
-                shadowColor: '#0F172A',
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.03,
-                shadowRadius: 3,
-                elevation: 1,
+                borderRadius: 14,
               }}
             >
-              <Bell color="#334155" size={21} weight="regular" />
+              <Bell color="#475569" size={20} weight="regular" />
               {unreadCount > 0 && (
                 <View
-                  className="absolute h-2.5 w-2.5 rounded-full bg-[#EF4444] border-2 border-white"
-                  style={{ top: -1, right: -1 }}
+                  className="absolute h-2.5 w-2.5 rounded-full bg-[#EF4444] border-[1.5px] border-white"
+                  style={{ top: 2, right: 2 }}
                 />
               )}
             </Pressable>
 
             <Pressable
               onPress={() => router.push('/(tabs)/inbox')}
-              className="h-10 w-10 items-center justify-center bg-white border border-[#E2E8F0] active:opacity-75"
+              className="h-10 w-10 items-center justify-center bg-[#F7F8FA] active:opacity-75"
               style={{
-                borderRadius: 12,
-                shadowColor: '#0F172A',
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.03,
-                shadowRadius: 3,
-                elevation: 1,
+                borderRadius: 14,
               }}
             >
-              <EnvelopeSimple color="#334155" size={21} weight="regular" />
+              <EnvelopeSimple color="#475569" size={20} weight="regular" />
             </Pressable>
 
             <Pressable
