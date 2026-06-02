@@ -7,7 +7,6 @@ type PostMetricsLikeTarget = Pick<Post, 'id' | 'like_count' | 'is_liked'>;
 type RunOptimisticPostLikeOptions = {
   post: PostMetricsLikeTarget;
   mutate: () => Promise<LikeStatus>;
-  refetch: () => Promise<void>;
   applyPatch: (patch: Pick<PostMetricsPatch, 'like_count' | 'is_liked'>) => void;
 };
 
@@ -28,7 +27,6 @@ export function patchPostMetrics<TPost extends Post>(
 export async function runOptimisticPostLike({
   post,
   mutate,
-  refetch,
   applyPatch,
 }: RunOptimisticPostLikeOptions): Promise<{
   optimisticPatch: Pick<PostMetricsPatch, 'like_count' | 'is_liked'>;
@@ -57,7 +55,5 @@ export async function runOptimisticPostLike({
       like_count: clampMetricCount(post.like_count),
     });
     throw error;
-  } finally {
-    await refetch();
   }
 }

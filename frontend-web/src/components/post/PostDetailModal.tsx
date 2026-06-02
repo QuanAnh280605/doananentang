@@ -250,13 +250,11 @@ export function PostDetailModal({
   onClose,
   currentUser,
   onPostMetricsChange,
-  onPostMetricsSettled,
 }: {
   postId: string;
   onClose: () => void;
   currentUser: AuthUser | null;
   onPostMetricsChange?: (postId: number, patch: Partial<Pick<Post, 'like_count' | 'comment_count' | 'is_liked'>>) => void;
-  onPostMetricsSettled?: () => void | Promise<void>;
 }) {
   const [post, setPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<PostComment[]>([]);
@@ -429,9 +427,6 @@ export function PostDetailModal({
           like_count: likeCount,
         },
         mutate: () => (liked ? unlikePost(postId) : likePost(postId)),
-        refetch: async () => {
-          await onPostMetricsSettled?.();
-        },
         applyPatch: (patch) => {
           syncPostMetrics(patch);
         },

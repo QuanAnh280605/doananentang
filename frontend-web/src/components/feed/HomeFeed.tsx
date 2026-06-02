@@ -303,7 +303,6 @@ export function HomeFeed() {
             onClose={handleClosePostModal}
             currentUser={currentUser}
             onPostMetricsChange={patchPostMetrics}
-            onPostMetricsSettled={loadPosts}
           />
         )}
         <div className="mx-auto w-full max-w-[1720px] px-4 pb-6 pt-4 md:px-6">
@@ -390,7 +389,6 @@ export function HomeFeed() {
                       currentUser={currentUser}
                       onPostClick={(id) => setSelectedPostId(id)}
                       onOptimisticMetricsChange={patchPostMetrics}
-                      onPostMetricsSettled={loadPosts}
                     />
                   ))}
                 </div>

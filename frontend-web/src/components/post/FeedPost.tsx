@@ -38,13 +38,11 @@ export function FeedPost({
     currentUser,
     onPostClick,
     onOptimisticMetricsChange,
-    onPostMetricsSettled,
 }: {
     item: Post;
     currentUser?: AuthUser | null;
     onPostClick?: (id: string) => void;
     onOptimisticMetricsChange?: (postId: number, patch: Partial<Pick<Post, 'like_count' | 'comment_count' | 'is_liked'>>) => void;
-    onPostMetricsSettled?: () => void | Promise<void>;
 }) {
     const [liked, setLiked] = useState(item.is_liked);
     const [count, setCount] = useState(item.like_count);
@@ -88,9 +86,6 @@ export function FeedPost({
                     like_count: resolvedCount,
                 },
                 mutate: () => (resolvedLiked ? unlikePost(String(item.id)) : likePost(String(item.id))),
-                refetch: async () => {
-                    await onPostMetricsSettled?.();
-                },
                 applyPatch: (patch) => {
                     if (typeof patch.is_liked === 'boolean') {
                         setLiked(patch.is_liked);

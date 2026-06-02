@@ -84,9 +84,6 @@ test('runOptimisticPostLike patches liked state and increments like_count before
       eventLog.push('mutate');
       return mutationPromise;
     },
-    refetch: async () => {
-      eventLog.push('refetch');
-    },
   });
 
   await Promise.resolve();
@@ -102,7 +99,7 @@ test('runOptimisticPostLike patches liked state and increments like_count before
   await runPromise;
 });
 
-test('runOptimisticPostLike reconciles server count and refetches exactly once after settle', async () => {
+test('runOptimisticPostLike reconciles server count without refetching the feed', async () => {
   const post = createPost({ like_count: 1, is_liked: false });
   const eventLog: string[] = [];
 
@@ -119,12 +116,9 @@ test('runOptimisticPostLike reconciles server count and refetches exactly once a
         like_count: 5,
       };
     },
-    refetch: async () => {
-      eventLog.push('refetch');
-    },
   });
 
-  assert.deepEqual(eventLog, ['patch:true:2', 'mutate', 'patch:true:5', 'refetch']);
+  assert.deepEqual(eventLog, ['patch:true:2', 'mutate', 'patch:true:5']);
   assert.equal(result.optimisticPatch.like_count, 2);
   assert.equal(result.serverPatch.like_count, 5);
 });
@@ -143,12 +137,9 @@ test('runOptimisticPostLike rolls back failure and never creates a negative like
         eventLog.push('mutate');
         throw new Error('request failed');
       },
-      refetch: async () => {
-        eventLog.push('refetch');
-      },
     }),
     /request failed/,
   );
 
-  assert.deepEqual(eventLog, ['patch:false:0', 'mutate', 'patch:true:0', 'refetch']);
+  assert.deepEqual(eventLog, ['patch:false:0', 'mutate', 'patch:true:0']);
 });

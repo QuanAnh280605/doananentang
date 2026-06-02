@@ -29,7 +29,6 @@ import {
   isGroupChatThread,
   leaveGroupChat,
   listDirectChatsPage,
-  listMessages,
   listMessagesPage,
   markDirectChatRead,
   mapRealtimeMessage,
@@ -78,11 +77,11 @@ function isVideoMedia(mediaUrl: string | null | undefined, mediaType: string | n
   const typeLower = mediaType?.toLowerCase() || '';
   if (typeLower.includes('video')) return true;
   const urlLower = mediaUrl.toLowerCase();
-  return urlLower.endsWith('.mp4') || 
-         urlLower.endsWith('.webm') || 
-         urlLower.endsWith('.mov') || 
-         urlLower.endsWith('.avi') || 
-         urlLower.endsWith('.mkv');
+  return urlLower.endsWith('.mp4') ||
+    urlLower.endsWith('.webm') ||
+    urlLower.endsWith('.mov') ||
+    urlLower.endsWith('.avi') ||
+    urlLower.endsWith('.mkv');
 }
 
 function buildOptimisticMessage(chatId: string, body: string): ChatMessage {
@@ -171,6 +170,7 @@ export function InboxView() {
   const composerTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const messagesScrollRef = useRef<HTMLDivElement | null>(null);
   const shouldScrollToLatestRef = useRef(false);
+  const isNearBottomRef = useRef(true);
   const sendMessageGuardRef = useRef(createSingleFlightMessageSender(sendMessage));
   const selectedChatIdRef = useRef<string | null>(null);
   const currentUserIdRef = useRef<number | null>(null);
@@ -318,6 +318,12 @@ export function InboxView() {
     )));
   }, []);
 
+  const scrollToBottomIfNeeded = useCallback((force = false) => {
+    if (force || isNearBottomRef.current) {
+      shouldScrollToLatestRef.current = true;
+    }
+  }, []);
+
   useEffect(() => {
     selectedChatIdRef.current = selectedChat?.id ?? null;
   }, [selectedChat?.id]);
@@ -337,7 +343,7 @@ export function InboxView() {
       const nextMessage = mapRealtimeMessage(payload);
 
       if (selectedChatIdRef.current === nextMessage.chatId) {
-        shouldScrollToLatestRef.current = true;
+        scrollToBottomIfNeeded();
         setMessages((currentMessages) => appendMessageById(currentMessages, nextMessage));
 
         if (nextMessage.senderUserId !== null && nextMessage.senderUserId !== currentUserIdRef.current) {
@@ -370,7 +376,7 @@ export function InboxView() {
     return () => {
       socket.off('message-created', handleMessageCreated);
     };
-  }, [clearThreadUnread, refreshThreads, setHasNewMessage]);
+  }, [clearThreadUnread, refreshThreads, scrollToBottomIfNeeded, setHasNewMessage]);
 
   useEffect(() => {
     const chatId = selectedChat?.id ?? null;
@@ -690,11 +696,14 @@ export function InboxView() {
   };
 
   const handleMessagesScroll = (event: UIEvent<HTMLDivElement>) => {
+    const element = event.currentTarget;
+    const distanceFromBottom = element.scrollHeight - element.scrollTop - element.clientHeight;
+    isNearBottomRef.current = distanceFromBottom < 120;
+
     if (!selectedChat || isLoadingMessages || isLoadingMoreMessages || messagesPage >= messagesTotalPages) {
       return;
     }
 
-    const element = event.currentTarget;
     const isNearTop = element.scrollTop <= 96;
 
     if (!isNearTop) {
@@ -772,8 +781,7 @@ export function InboxView() {
         if (composerTextareaRef.current) {
           composerTextareaRef.current.style.height = '40px';
         }
-        shouldScrollToLatestRef.current = true;
-        await refreshThreads();
+        scrollToBottomIfNeeded(true);
       } else {
         // Text-only message
         let normalizedContent: string;
@@ -797,18 +805,15 @@ export function InboxView() {
           currentMessages: messages,
           optimisticMessage,
           send: sendMessageGuardRef.current,
-          reloadMessages: listMessages,
-          onOptimisticApplied: setMessages,
-          onServerApplied: setMessages,
+          reloadMessages: async () => messages,
         });
 
-        setMessages(workflowResult.finalMessages);
-        setMessagesPage(1);
+        setMessages(workflowResult.replacedMessages);
         setThreads((currentThreads) => applyMessagePreviewToThreads(currentThreads, workflowResult.serverMessage, {
           currentUserId: currentUser?.id ?? null,
           selectedChatId: selectedChat.id,
         }));
-        await refreshThreads();
+        scrollToBottomIfNeeded(true);
       }
     } catch (error: unknown) {
       setIsUploadingMedia(false);
@@ -994,7 +999,7 @@ export function InboxView() {
                     {messageError}
                   </div>
                 ) : messages.length ? (
-                    <div className="flex min-h-full flex-col">
+                  <div className="flex min-h-full flex-col">
                     {isLoadingMoreMessages ? (
                       <div className="rounded-[18px] bg-[#F8FAFC] px-4 py-3 text-center text-sm text-slate-500">
                         Đang tải thêm tin nhắn...
@@ -1007,58 +1012,58 @@ export function InboxView() {
                         .find((msg) => !msg.incoming && msg.isRead)?.id;
 
                       return messages.map((item, index, allMessages) => {
-                      const TIME_GAP_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
-                      const currentDate = new Date(item.createdAt);
-                      const previousMessage = index > 0 ? allMessages[index - 1] : null;
-                      const previousDate = previousMessage ? new Date(previousMessage.createdAt) : null;
+                        const TIME_GAP_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
+                        const currentDate = new Date(item.createdAt);
+                        const previousMessage = index > 0 ? allMessages[index - 1] : null;
+                        const previousDate = previousMessage ? new Date(previousMessage.createdAt) : null;
 
-                      const isFirstMessage = index === 0;
-                      const hasLargeGap = previousDate
-                        ? currentDate.getTime() - previousDate.getTime() >= TIME_GAP_THRESHOLD_MS
-                        : false;
-                      const showTimeSeparator = isFirstMessage || hasLargeGap;
+                        const isFirstMessage = index === 0;
+                        const hasLargeGap = previousDate
+                          ? currentDate.getTime() - previousDate.getTime() >= TIME_GAP_THRESHOLD_MS
+                          : false;
+                        const showTimeSeparator = isFirstMessage || hasLargeGap;
 
-                      let timeSeparatorLabel = '';
-                      if (showTimeSeparator) {
-                        const now = new Date();
-                        const isToday = currentDate.toDateString() === now.toDateString();
-                        const yesterday = new Date(now);
-                        yesterday.setDate(yesterday.getDate() - 1);
-                        const isYesterday = currentDate.toDateString() === yesterday.toDateString();
+                        let timeSeparatorLabel = '';
+                        if (showTimeSeparator) {
+                          const now = new Date();
+                          const isToday = currentDate.toDateString() === now.toDateString();
+                          const yesterday = new Date(now);
+                          yesterday.setDate(yesterday.getDate() - 1);
+                          const isYesterday = currentDate.toDateString() === yesterday.toDateString();
 
-                        const timeStr = new Intl.DateTimeFormat('en-GB', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          hour12: false,
-                        }).format(currentDate);
-
-                        if (isToday) {
-                          timeSeparatorLabel = timeStr;
-                        } else if (isYesterday) {
-                          timeSeparatorLabel = `Hôm qua, ${timeStr}`;
-                        } else {
-                          const dateStr = new Intl.DateTimeFormat('vi-VN', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
+                          const timeStr = new Intl.DateTimeFormat('en-GB', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false,
                           }).format(currentDate);
-                          timeSeparatorLabel = `${dateStr}, ${timeStr}`;
-                        }
-                      }
 
-                      return (
-                        <MessageBubble
-                          key={item.id}
-                          item={item}
-                          showTimeSeparator={showTimeSeparator}
-                          timeSeparatorLabel={timeSeparatorLabel}
-                          isLastRead={item.id === lastReadMessageId}
-                          recipientAvatarUrl={selectedConversation?.user?.avatar_url ?? selectedChat?.avatarUrl ?? null}
-                          recipientName={selectedConversation?.user?.full_name ?? selectedChat?.groupName ?? ''}
-                          isGroup={selectedChat?.isGroup ?? false}
-                        />
-                      );
-                    });
+                          if (isToday) {
+                            timeSeparatorLabel = timeStr;
+                          } else if (isYesterday) {
+                            timeSeparatorLabel = `Hôm qua, ${timeStr}`;
+                          } else {
+                            const dateStr = new Intl.DateTimeFormat('vi-VN', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                            }).format(currentDate);
+                            timeSeparatorLabel = `${dateStr}, ${timeStr}`;
+                          }
+                        }
+
+                        return (
+                          <MessageBubble
+                            key={item.id}
+                            item={item}
+                            showTimeSeparator={showTimeSeparator}
+                            timeSeparatorLabel={timeSeparatorLabel}
+                            isLastRead={item.id === lastReadMessageId}
+                            recipientAvatarUrl={selectedConversation?.user?.avatar_url ?? selectedChat?.avatarUrl ?? null}
+                            recipientName={selectedConversation?.user?.full_name ?? selectedChat?.groupName ?? ''}
+                            isGroup={selectedChat?.isGroup ?? false}
+                          />
+                        );
+                      });
                     })()}
                   </div>
                 ) : (
@@ -1148,8 +1153,8 @@ export function InboxView() {
                   />
                   <button
                     className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white transition-all active:scale-[0.95] ${(normalizedDraftMessage.length === 0 && !mediaFile) || isSendingMessage || !selectedChat
-                        ? 'cursor-not-allowed bg-slate-300'
-                        : 'bg-slate-900 hover:bg-[#4A9FD8]'
+                      ? 'cursor-not-allowed bg-slate-300'
+                      : 'bg-slate-900 hover:bg-[#4A9FD8]'
                       }`}
                     disabled={(normalizedDraftMessage.length === 0 && !mediaFile) || isSendingMessage || !selectedChat}
                     onClick={handleSendMessage}
@@ -1292,7 +1297,7 @@ export function InboxView() {
                 title="Mở trong tab mới"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" fill="currentColor">
-                  <path d="M224,104a8,8,0,0,1-16,0V59.31l-68.69,68.69a8,8,0,0,1-11.31-11.31L196.69,48H152a8,8,0,0,1,0-16h72a8,8,0,0,1,8,8ZM112,40a8,8,0,0,0-8,8H48V208H208V152a8,8,0,0,0-16,0v40H64V64h40A8,8,0,0,0,112,40Z"/>
+                  <path d="M224,104a8,8,0,0,1-16,0V59.31l-68.69,68.69a8,8,0,0,1-11.31-11.31L196.69,48H152a8,8,0,0,1,0-16h72a8,8,0,0,1,8,8ZM112,40a8,8,0,0,0-8,8H48V208H208V152a8,8,0,0,0-16,0v40H64V64h40A8,8,0,0,0,112,40Z" />
                 </svg>
               </button>
               <button
@@ -1406,9 +1411,8 @@ export function InboxView() {
                     return (
                       <button
                         key={user.id}
-                        className={`flex w-full items-center justify-between rounded-[22px] px-4 py-3.5 mb-2 border transition-colors ${
-                          isSelected ? 'bg-blue-50/50 border-blue-200' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'
-                        }`}
+                        className={`flex w-full items-center justify-between rounded-[22px] px-4 py-3.5 mb-2 border transition-colors ${isSelected ? 'bg-blue-50/50 border-blue-200' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'
+                          }`}
                         onClick={() => toggleGroupUser(user.id)}
                         type="button"
                       >
@@ -1427,9 +1431,8 @@ export function InboxView() {
                             <ThemedText as="p" className="text-xs text-slate-500 truncate">{user.bio || 'Chưa cập nhật giới thiệu.'}</ThemedText>
                           </div>
                         </div>
-                        <div className={`flex h-6 w-6 items-center justify-center rounded-full border transition-colors ${
-                          isSelected ? 'bg-[#4A9FD8] border-[#4A9FD8]' : 'border-slate-300'
-                        }`}>
+                        <div className={`flex h-6 w-6 items-center justify-center rounded-full border transition-colors ${isSelected ? 'bg-[#4A9FD8] border-[#4A9FD8]' : 'border-slate-300'
+                          }`}>
                           {isSelected && (
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 256 256" fill="#FFFFFF">
                               <path d="M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z" />
@@ -1448,11 +1451,10 @@ export function InboxView() {
 
               {/* Create button */}
               <button
-                className={`mt-4 w-full h-12 rounded-[18px] items-center justify-center flex gap-2 transition-all active:scale-[0.98] ${
-                  !groupName.trim() || selectedGroupUserIds.length === 0 || isCreatingGroup
+                className={`mt-4 w-full h-12 rounded-[18px] items-center justify-center flex gap-2 transition-all active:scale-[0.98] ${!groupName.trim() || selectedGroupUserIds.length === 0 || isCreatingGroup
                     ? 'bg-slate-200 cursor-not-allowed'
                     : 'bg-[#4A9FD8] hover:bg-[#2F8BC9]'
-                }`}
+                  }`}
                 disabled={!groupName.trim() || selectedGroupUserIds.length === 0 || isCreatingGroup}
                 onClick={handleCreateGroup}
                 type="button"

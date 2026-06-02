@@ -153,6 +153,7 @@ export default function InboxScreen() {
 
   const scrollViewRef = useRef<ScrollView>(null);
   const messagesRef = useRef<ChatMessageRead[]>([]);
+  const isNearBottomRef = useRef(true);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -214,6 +215,7 @@ export default function InboxScreen() {
         // API returns descending messages, we reverse them to display in chronological order
         const reversed = [...res.items].reverse();
         setMessages(reversed);
+        isNearBottomRef.current = true;
         scrollToBottom();
         // Mark as read in DB
         markChatAsRead(activeChatId).catch((err) => console.error('Failed to mark read:', err));
@@ -272,7 +274,7 @@ export default function InboxScreen() {
         setMessages((prevMsgs) => {
           if (prevMsgs.some(m => Number(m.id) === Number(nextMessage.id))) return prevMsgs;
           const newMsgs = [...prevMsgs, nextMessage];
-          scrollToBottom();
+          scrollToBottomIfNeeded();
           return newMsgs;
         });
 
@@ -353,6 +355,20 @@ export default function InboxScreen() {
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 100);
+  };
+
+  const scrollToBottomIfNeeded = (force = false) => {
+    if (force || isNearBottomRef.current) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  };
+
+  const handleScroll = (event: any) => {
+    const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
+    const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
+    isNearBottomRef.current = distanceFromBottom < 150;
   };
 
   // Find active chat participant
@@ -550,7 +566,7 @@ export default function InboxScreen() {
         });
       }
 
-      scrollToBottom();
+      scrollToBottomIfNeeded(true);
       loadChats();
     } catch (err: any) {
       setDraftMessage(messageText); // khôi phục lại chữ đã nhập
@@ -851,7 +867,8 @@ export default function InboxScreen() {
               ref={scrollViewRef}
               className="min-h-0 flex-1"
               contentContainerClassName="gap-3.5 py-2 px-1"
-              onContentSizeChange={scrollToBottom}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
               showsVerticalScrollIndicator={false}>
               {mappedMessages.map((item) => (
                 <MessageBubble key={item.id} item={item} isGroup={isGroup} />
