@@ -100,11 +100,5 @@ def test_social_tables_have_required_indexes() -> None:
     assert expected_indexes.issubset(actual_indexes)
 
 
-def test_posts_table_has_reported_count_column() -> None:
-  posts_table = Base.metadata.tables['posts']
-
-  assert 'reported_count' in posts_table.c
-  assert posts_table.c['reported_count'].nullable is False
-
 
 

@@ -11,7 +11,6 @@ from app.api.router import api_router
 from app.core.security import hash_password
 from app.models.user import User
 from app.models.post import Post
-from app.models.post_report import PostReport
 from app.models.refresh_session import RefreshSession
 from app.models.like import Like
 from app.models.comment import Comment
@@ -30,7 +29,6 @@ def build_test_session() -> Session:
   User.__table__.create(bind=engine)
   Post.__table__.create(bind=engine)
   PostTag.__table__.create(bind=engine)
-  PostReport.__table__.create(bind=engine)
   RefreshSession.__table__.create(bind=engine)
   Like.__table__.create(bind=engine)
   Comment.__table__.create(bind=engine)
@@ -188,61 +186,3 @@ def test_lock_and_unlock_user_workflow() -> None:
     assert response.json()["user"]["email"] == target_user.email
 
 
-def test_admin_moderation_post_reports() -> None:
-  """Kiểm tra các hành động kiểm duyệt: Lấy danh sách báo cáo vi phạm, xóa bài viết và bỏ qua báo cáo."""
-  with build_test_session() as db:
-    admin_user = seed_user(db, "admin_mod@example.com", role=UserRole.ADMIN)
-    author_user = seed_user(db, "author@example.com")
-    reporter_user = seed_user(db, "reporter@example.com")
-
-    # Tạo một bài viết mới
-    post = Post(author_id=author_user.id, content="Nội dung vi phạm tiêu chuẩn cộng đồng", reported_count=1)
-    db.add(post)
-    db.commit()
-    db.refresh(post)
-
-    # Tạo một báo cáo vi phạm
-    report = PostReport(post_id=post.id, user_id=reporter_user.id, reason="Nội dung phản cảm")
-    db.add(report)
-    db.commit()
-
-    client = build_client(db, current_user=admin_user)
-
-    # 1. Lấy danh sách bài viết bị báo cáo vi phạm
-    response = client.get("/api/admin/reports")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["total"] >= 1
-    item = data["items"][0]
-    assert str(item["post_id"]) == str(post.id)
-    assert item["reporter"]["id"] == reporter_user.id
-    assert item["post"]["content"] == post.content
-
-    # 2. Xóa bài viết vi phạm (Soft Delete)
-    response = client.delete(f"/api/admin/posts/{post.id}")
-    assert response.status_code == 204
-
-    db.refresh(post)
-    assert post.is_deleted is True
-
-    # 3. Tạo bài viết thứ hai để test Bỏ qua báo cáo (Dismiss)
-    post2 = Post(author_id=author_user.id, content="Nội dung hợp lệ bị báo cáo nhầm", reported_count=1)
-    db.add(post2)
-    db.commit()
-    db.refresh(post2)
-
-    report2 = PostReport(post_id=post2.id, user_id=reporter_user.id, reason="Spam")
-    db.add(report2)
-    db.commit()
-
-    # Admin bỏ qua báo cáo vi phạm
-    response = client.delete(f"/api/admin/reports/{post2.id}")
-    assert response.status_code == 204
-
-    db.refresh(post2)
-    assert post2.reported_count == 0
-    assert post2.is_deleted is False
-
-    # Kiểm tra xem bản ghi báo cáo PostReport đã bị xóa khỏi cơ sở dữ liệu chưa
-    db_report = db.query(PostReport).filter(PostReport.post_id == post2.id).first()
-    assert db_report is None

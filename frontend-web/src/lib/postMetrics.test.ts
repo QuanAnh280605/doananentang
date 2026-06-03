@@ -14,7 +14,6 @@ function createPost(overrides: Partial<Post> = {}): Post {
     author_id: 'author-1',
     content: 'Hello',
     visibility: 'public',
-    reported_count: 0,
     is_deleted: false,
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
