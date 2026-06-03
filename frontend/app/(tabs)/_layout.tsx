@@ -3,11 +3,13 @@ import React, { useEffect, useState } from 'react';
 import { useWindowDimensions, Platform, View } from 'react-native';
 import { Image } from 'expo-image';
 
+import { GlobalSearchProvider } from '@/components/search/GlobalSearchProvider';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { fetchCurrentUser } from '@/lib/auth';
 import type { AuthUser } from '@/lib/auth';
 import { API_URL } from '@/lib/api';
 import { HapticTab } from '@/components/haptic-tab';
+import { NotificationsProvider } from '@/hooks/useNotifications';
 
 interface TabIconProps {
   name: any;
@@ -62,86 +64,89 @@ export default function TabLayout() {
     : null;
 
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: '#4A9FD8',
-        tabBarInactiveTintColor: '#94A3B8',
-        headerShown: false,
-        tabBarShowLabel: false,
-        tabBarButton: HapticTab,
-        tabBarStyle: isDesktopOrTablet ? {
-          display: 'none',
-        } : {
-          display: isChatActive ? 'none' : 'flex',
-          borderTopWidth: 1,
-          borderTopColor: '#E4E8EE', // Bám sát token border trong DESIGN_SYSTEM_RULES.md
-          backgroundColor: '#FFFFFF',
-          height: Platform.OS === 'ios' ? 84 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
-          paddingTop: 8,
-          // Đổ bóng siêu nhẹ phía trên thanh tab
-          shadowColor: '#000000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.03,
-          shadowRadius: 8,
-          elevation: 4,
-        },
-        tabBarItemStyle: {
-          justifyContent: 'center',
-          alignItems: 'center',
-        },
-        tabBarIconStyle: {
-          marginBottom: 0,
-          marginTop: 0,
-        }
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="house.fill" color={color} focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Khám phá',
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="magnifyingglass" color={color} focused={focused} />
-          ),
-        }}
-      />
-      {/* Sử dụng href: null để loại bỏ hoàn toàn khỏi tính toán Flexbox của Tab Bar */}
-      <Tabs.Screen
-        name="inbox"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="notifications"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon
-              name="person.fill"
-              color={color}
-              focused={focused}
-              isProfile={true}
-              avatarUrl={userAvatarUrl}
-            />
-          ),
-        }}
-      />
-    </Tabs>
+    <NotificationsProvider>
+      <GlobalSearchProvider>
+        <Tabs
+          screenOptions={{
+            tabBarActiveTintColor: '#4A9FD8',
+            tabBarInactiveTintColor: '#94A3B8',
+            headerShown: false,
+            tabBarShowLabel: false,
+            tabBarButton: HapticTab,
+            tabBarStyle: isDesktopOrTablet ? {
+              display: 'none',
+            } : {
+              display: isChatActive ? 'none' : 'flex',
+              borderTopWidth: 1,
+              borderTopColor: '#E4E8EE', // Bám sát token border trong DESIGN_SYSTEM_RULES.md
+              backgroundColor: '#FFFFFF',
+              height: Platform.OS === 'ios' ? 84 : 64,
+              paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+              paddingTop: 8,
+              // Đổ bóng siêu nhẹ phía trên thanh tab
+              shadowColor: '#000000',
+              shadowOffset: { width: 0, height: -2 },
+              shadowOpacity: 0.03,
+              shadowRadius: 8,
+              elevation: 4,
+            },
+            tabBarItemStyle: {
+              justifyContent: 'center',
+              alignItems: 'center',
+            },
+            tabBarIconStyle: {
+              marginBottom: 0,
+              marginTop: 0,
+            }
+          }}>
+          <Tabs.Screen
+            name="index"
+            options={{
+              title: 'Home',
+              tabBarIcon: ({ color, focused }) => (
+                <TabIcon name="house.fill" color={color} focused={focused} />
+              ),
+            }}
+          />
+          <Tabs.Screen
+            name="explore"
+            options={{
+              title: 'Khám phá',
+              tabBarIcon: ({ color, focused }) => (
+                <TabIcon name="magnifyingglass" color={color} focused={focused} />
+              ),
+            }}
+          />
+          {/* Sử dụng href: null để loại bỏ hoàn toàn khỏi tính toán Flexbox của Tab Bar */}
+          <Tabs.Screen
+            name="inbox"
+            options={{
+              href: null,
+            }}
+          />
+          <Tabs.Screen
+            name="notifications"
+            options={{
+              href: null,
+            }}
+          />
+          <Tabs.Screen
+            name="profile"
+            options={{
+              title: 'Profile',
+              tabBarIcon: ({ color, focused }) => (
+                <TabIcon
+                  name="person.fill"
+                  color={color}
+                  focused={focused}
+                  isProfile={true}
+                  avatarUrl={userAvatarUrl}
+                />
+              ),
+            }}
+          />
+        </Tabs>
+      </GlobalSearchProvider>
+    </NotificationsProvider>
   );
 }
-

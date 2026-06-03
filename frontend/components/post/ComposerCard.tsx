@@ -135,9 +135,9 @@ export function ComposerCard({
     });
     if (!result.canceled) {
       const newAssets = result.assets.map((a: any) => ({
-        uri: a.uri,
-        type: a.type === 'video' ? 'video' : 'image',
-        mimeType: a.mimeType || (a.type === 'video' ? 'video/mp4' : 'image/jpeg')
+        uri: a.uri as string,
+        type: (a.type === 'video' ? 'video' : 'image') as 'video' | 'image',
+        mimeType: (a.mimeType || (a.type === 'video' ? 'video/mp4' : 'image/jpeg')) as string
       }));
       setSelectedMedia((prev) => [...prev, ...newAssets].slice(0, 4));
     }

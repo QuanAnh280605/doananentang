@@ -58,14 +58,35 @@ function mapFollowUserToContact(user: FollowUser): Contact {
 }
 
 function mapChatToInboxItem(thread: ChatListItemRead): InboxItem {
+  const p = thread.participant;
+  const isGroup = thread.is_group === true;
+  const name = isGroup ? (thread.group_name || 'Nhóm Trò Chuyện') : (p?.full_name || 'Người dùng');
+  
+  let initials = 'GP';
+  if (!isGroup && p) {
+    initials = buildInitials(p.first_name, p.last_name);
+  } else if (thread.group_name) {
+    const parts = thread.group_name.split(' ').filter(Boolean);
+    if (parts.length >= 2) {
+      initials = (parts[0][0] + parts[1][0]).toUpperCase();
+    } else {
+      initials = thread.group_name.slice(0, 2).toUpperCase();
+    }
+  }
+
+  const bio = isGroup
+    ? `${thread.member_count || '—'} thành viên`
+    : (p?.bio?.trim() || 'Hội thoại trực tiếp');
+  const avatarUrl = isGroup ? (thread.avatar_url || null) : (p?.avatar_url || null);
+
   return {
     id: thread.chat_id,
-    participantId: thread.participant.id,
-    name: thread.participant.full_name,
+    participantId: p?.id ?? 0,
+    name,
     message: thread.latest_message?.content || 'Chưa có tin nhắn',
-    initials: buildInitials(thread.participant.first_name, thread.participant.last_name),
-    bio: thread.participant.bio?.trim() || 'Hội thoại trực tiếp',
-    avatarUrl: thread.participant.avatar_url,
+    initials,
+    bio,
+    avatarUrl,
   };
 }
 function SectionCard({ title, rightLabel, children }: { title: string; rightLabel?: string; children: React.ReactNode }) {
@@ -111,16 +132,25 @@ function MessengerRow({ item }: { item: InboxItem }) {
   return (
     <Link
       asChild
-      href={{
-        pathname: '/profile/[userId]',
-        params: {
-          userId: item.participantId,
-          name: item.name,
-          initials: item.initials,
-          preview: item.message,
-          bio: item.bio,
-        },
-      }}>
+      href={
+        item.participantId > 0
+          ? {
+              pathname: '/profile/[userId]',
+              params: {
+                userId: item.participantId,
+                name: item.name,
+                initials: item.initials,
+                preview: item.message,
+                bio: item.bio,
+              },
+            }
+          : {
+              pathname: '/(tabs)/inbox',
+              params: {
+                openChatId: item.id,
+              },
+            }
+      }>
       <Pressable className="flex-row items-center gap-4 rounded-[22px] bg-[#F7F8FA] px-4 py-4 active:opacity-90">
         <Avatar initials={item.initials} avatarUrl={item.avatarUrl} soft />
         <View className="flex-1 gap-1">
