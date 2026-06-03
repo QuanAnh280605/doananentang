@@ -277,6 +277,10 @@ export function fetchPosts(page = 1, pageSize = 10, authorId?: string | number):
   return apiFetch<PaginatedPosts>(url);
 }
 
+export function fetchFeedPosts(page = 1, pageSize = 10): Promise<PaginatedPosts> {
+  return apiFetch<PaginatedPosts>(`/api/posts/feed?page=${page}&page_size=${pageSize}`);
+}
+
 export function fetchPostDetail(postId: string): Promise<Post> {
   return apiFetch<Post>(`/api/posts/${postId}`);
 }

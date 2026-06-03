@@ -450,23 +450,13 @@ export default function HomeScreen() {
           );
         }}
         ListFooterComponent={
-          !loading && !error && posts.length > 0 ? (
+          !isDesktop && !isTablet && !loading && !error && posts.length > 0 ? (
             hasMore ? (
-              <View className="mx-auto w-full max-w-[1720px] px-4 md:px-6">
-                <View className={isDesktop ? 'ml-[366px] mr-[376px]' : 'w-full'}>
-                  <Pressable
-                    onPress={handleLoadMore}
-                    disabled={loadingMore}
-                    className="mt-2 items-center justify-center rounded-[20px] bg-[#F7F8FA] py-4 active:opacity-80"
-                  >
-                    {loadingMore ? (
-                      <ActivityIndicator size="small" color="#4A9FD8" />
-                    ) : (
-                      <ThemedText className="text-sm font-medium text-slate-600">Tải thêm</ThemedText>
-                    )}
-                  </Pressable>
+              loadingMore ? (
+                <View className="py-6 items-center">
+                  <ActivityIndicator size="small" color="#4A9FD8" />
                 </View>
-              </View>
+              ) : null
             ) : (
               <View className="py-6 items-center">
                 <ThemedText className="text-sm text-slate-400">Bạn đã xem hết bài viết.</ThemedText>
