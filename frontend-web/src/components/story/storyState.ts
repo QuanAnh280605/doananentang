@@ -5,6 +5,7 @@ export type StoryItem = {
   authorInitials: string;
   avatarUrl: string | null;
   mediaUrl: string;
+  type: 'image' | 'video';
   text: string;
   timeLabel: string;
   ringClass: string;
@@ -24,6 +25,7 @@ type CreateLocalStoryInput = {
   authorInitials: string;
   avatarUrl: string | null;
   mediaUrl: string;
+  type: 'image' | 'video';
   text: string;
 };
 
@@ -34,6 +36,7 @@ type ApiStoryLike = {
   id: string | number;
   file_url: string;
   caption: string | null;
+  type?: string;
   view_count: number;
   is_viewed: boolean;
   author: {
@@ -62,6 +65,7 @@ export function getDefaultStories(): StoryItem[] {
       authorInitials: 'ML',
       avatarUrl: 'https://picsum.photos/seed/story-mai-linh-avatar/96/96',
       mediaUrl: 'https://picsum.photos/seed/story-mai-linh/720/1280',
+      type: 'image',
       text: 'Một buổi sáng chậm, đủ cà phê và đủ ánh nắng.',
       timeLabel: '8 phút trước',
       ringClass: STORY_RING_CLASS,
@@ -73,6 +77,7 @@ export function getDefaultStories(): StoryItem[] {
       authorInitials: 'BA',
       avatarUrl: 'https://picsum.photos/seed/story-bao-an-avatar/96/96',
       mediaUrl: 'https://picsum.photos/seed/story-bao-an/720/1280',
+      type: 'image',
       text: 'Một góc phố sáng đèn sau cơn mưa.',
       timeLabel: '21 phút trước',
       ringClass: STORY_RING_CLASS,
@@ -84,6 +89,7 @@ export function getDefaultStories(): StoryItem[] {
       authorInitials: 'KV',
       avatarUrl: 'https://picsum.photos/seed/story-khanh-vy-avatar/96/96',
       mediaUrl: 'https://picsum.photos/seed/story-khanh-vy/720/1280',
+      type: 'image',
       text: 'Chợ hoa mở sớm hơn mọi ngày.',
       timeLabel: '42 phút trước',
       ringClass: STORY_RING_CLASS,
@@ -95,6 +101,7 @@ export function getDefaultStories(): StoryItem[] {
       authorInitials: 'MD',
       avatarUrl: 'https://picsum.photos/seed/story-minh-duy-avatar/96/96',
       mediaUrl: 'https://picsum.photos/seed/story-minh-duy/720/1280',
+      type: 'image',
       text: 'Đường trống, nhạc vừa đủ lớn.',
       timeLabel: '1 giờ trước',
       ringClass: STORY_RING_CLASS,
@@ -110,6 +117,7 @@ export function createLocalStory(stories: StoryItem[], input: CreateLocalStoryIn
     authorInitials: input.authorInitials,
     avatarUrl: input.avatarUrl,
     mediaUrl: input.mediaUrl,
+    type: input.type,
     text: input.text,
     timeLabel: 'Vừa xong',
     ringClass: STORY_RING_CLASS,
@@ -129,6 +137,7 @@ export function mapApiStoryToStoryItem(story: ApiStoryLike, apiUrl = DEFAULT_API
     authorInitials,
     avatarUrl: resolveStoryUrl(story.author.avatar_url, apiUrl),
     mediaUrl: resolveStoryUrl(story.file_url, apiUrl) ?? story.file_url,
+    type: story.type === 'video' ? 'video' : 'image',
     text: story.caption?.trim() || 'Tin mới vừa được chia sẻ.',
     timeLabel: story.is_viewed ? 'Đã xem' : 'Mới cập nhật',
     ringClass: STORY_RING_CLASS,

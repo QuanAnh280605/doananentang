@@ -27,11 +27,11 @@ function PromoPanel() {
           Stay in touch
         </ThemedText>
         <ThemedText as="h2" className="mt-4 text-[26px] font-bold leading-8 text-slate-900 md:text-5xl md:leading-[56px]">
-          Connect with the people and moments that matter.
+          Kết nối với những người và khoảnh khắc quan trọng.
         </ThemedText>
         <ThemedText as="p" className="mt-3 max-w-[460px] text-sm leading-6 text-slate-600 md:text-lg md:leading-8">
-          <span className="md:hidden">Catch up fast with the people you care about most.</span>
-          <span className="hidden md:inline">A calm place to catch up, share updates, and keep your close circle only one tap away.</span>
+          <span className="md:hidden">Kết nối nhanh với những người bạn quan tâm nhất.</span>
+          <span className="hidden md:inline">Một không gian yên tĩnh để kết nối, chia sẻ cập nhật và giữ vòng tròn thân thiết chỉ một chạm.</span>
         </ThemedText>
       </div>
 
@@ -40,7 +40,7 @@ function PromoPanel() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <ThemedText as="p" className="text-xs font-semibold uppercase tracking-[1.6px] text-[#4A9FD8]">
-                Shared today
+                Đã chia sẻ hôm nay
               </ThemedText>
               <ThemedText as="p" className="mt-1 text-xl font-bold text-slate-900">
                 24 stories
@@ -58,9 +58,9 @@ function PromoPanel() {
 
         <div className="hidden md:block">
           <div className="absolute left-0 top-8 w-[240px] -rotate-6 rounded-[28px] border border-white/70 bg-white px-5 py-4 shadow-sm shadow-sky-200">
-            <ThemedText type="defaultSemiBold">Friends online</ThemedText>
+            <ThemedText type="defaultSemiBold">Bạn bè trực tuyến</ThemedText>
             <ThemedText as="p" className="mt-2 text-slate-600">
-              See new photos, replies, and quick updates from your favorite people.
+              Xem ảnh mới, phản hồi và cập nhật nhanh từ những người bạn yêu quý.
             </ThemedText>
           </div>
 
@@ -168,7 +168,7 @@ export function RegisterForm() {
                   setFirstName(event.target.value);
                   clearErrorOnChange();
                 }}
-                placeholder="First name"
+                placeholder="Tên"
                 value={firstName}
               />
               <input
@@ -177,7 +177,7 @@ export function RegisterForm() {
                   setLastName(event.target.value);
                   clearErrorOnChange();
                 }}
-                placeholder="Last name"
+                placeholder="Họ"
                 value={lastName}
               />
             </div>
@@ -189,7 +189,7 @@ export function RegisterForm() {
                 setContact(event.target.value);
                 clearErrorOnChange();
               }}
-              placeholder="Email or mobile number"
+              placeholder="Email hoặc số điện thoại"
               value={contact}
             />
 
@@ -200,7 +200,7 @@ export function RegisterForm() {
                 setPassword(event.target.value);
                 clearErrorOnChange();
               }}
-              placeholder="Password"
+              placeholder="Mật khẩu"
               type="password"
               value={password}
             />
@@ -211,7 +211,7 @@ export function RegisterForm() {
                 setBirthDate(event.target.value);
                 clearErrorOnChange();
               }}
-              placeholder="Date of birth (DD/MM/YYYY or YYYY-MM-DD)"
+              placeholder="Ngày sinh (DD/MM/YYYY hoặc YYYY-MM-DD)"
               value={birthDate}
             />
 

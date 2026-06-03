@@ -808,22 +808,22 @@ export default function InboxScreen() {
       <ThemedView className={`flex-1 h-full min-h-[350px] bg-[#FCFDFE] px-4 pb-4 ${useViewportLayout ? 'rounded-surface border border-app-border pt-2.5' : ''}`}
         style={!useViewportLayout ? { paddingTop: Math.max(insets.top, 0) + 10 } : undefined}>
         {/* Header tinh gọn ở phía trên */}
-        <View className="flex-row items-center gap-3 pb-3 mb-2 border-b border-slate-100">
+        <View className="flex-row items-center gap-2 pb-2 mb-1.5 border-b border-slate-100">
           {!useViewportLayout && (
             <Pressable
-              hitSlop={20}
+              hitSlop={16}
               style={{ zIndex: 50, elevation: 50 }}
-              className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 active:opacity-80"
+              className="h-9 w-9 items-center justify-center rounded-full bg-slate-100 active:opacity-80"
               onPress={() => {
                 setActiveChatId(null);
               }}>
-              <MaterialIcons color="#475569" name="arrow-back" size={20} />
+              <MaterialIcons color="#475569" name="arrow-back" size={18} />
             </Pressable>
           )}
 
           {/* Avatar & Tên người nhắn (Ấn vào để mở profile) */}
           <Pressable
-            className="flex-row items-center gap-3 active:opacity-80 flex-1"
+            className="flex-row items-center gap-2 active:opacity-80 flex-1"
             onPress={() => {
               if (isGroup) {
                 toast.success('Đây là nhóm chat: ' + title);
@@ -834,19 +834,19 @@ export default function InboxScreen() {
             {avatarUrl ? (
               <Image
                 source={{ uri: getAbsoluteAvatarUrl(avatarUrl)! }}
-                className="h-11 w-11 rounded-full bg-slate-200 border border-slate-200"
+                className="h-9 w-9 rounded-full bg-slate-200 border border-slate-200"
               />
             ) : (
-              <View className="h-11 w-11 items-center justify-center rounded-full bg-[#EAF4FB]">
-                <ThemedText className="text-sm font-semibold text-[#4A9FD8]">{initials}</ThemedText>
+              <View className="h-9 w-9 items-center justify-center rounded-full bg-[#EAF4FB]">
+                <ThemedText className="text-xs font-semibold text-[#4A9FD8]">{initials}</ThemedText>
               </View>
             )}
             <View className="flex-1">
-              <ThemedText className="text-base font-bold text-slate-900 truncate">
+              <ThemedText className="text-[15px] font-bold text-slate-900 truncate">
                 {title}
               </ThemedText>
-              <View className="flex-row items-center gap-1.5 mt-0.5">
-                <View className={`h-2 w-2 rounded-full ${isGroup ? 'bg-[#4A9FD8]' : 'bg-green-500'}`} />
+              <View className="flex-row items-center gap-1 mt-0.5">
+                <View className={`h-1.5 w-1.5 rounded-full ${isGroup ? 'bg-[#4A9FD8]' : 'bg-green-500'}`} />
                 <ThemedText className="text-[11px] font-medium text-slate-400">
                   {isGroup
                     ? `${activeChat.member_count || '—'} thành viên`
@@ -858,9 +858,9 @@ export default function InboxScreen() {
 
           {/* Nút ba chấm - menu tùy chọn */}
           <Pressable
-            className="h-10 w-10 items-center justify-center rounded-full bg-slate-100 active:opacity-80"
+            className="h-9 w-9 items-center justify-center rounded-full bg-slate-100 active:opacity-80"
             onPress={() => setShowChatMenu(true)}>
-            <MaterialIcons color="#475569" name="more-vert" size={20} />
+            <MaterialIcons color="#475569" name="more-vert" size={18} />
           </Pressable>
         </View>
 

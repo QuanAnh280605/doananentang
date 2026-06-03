@@ -25,6 +25,7 @@ test('createLocalStory prepends a temporary story with current user metadata', (
     authorInitials: 'QP',
     avatarUrl: null,
     mediaUrl: 'blob:story-image',
+    type: 'image',
     text: 'Một buổi sáng chậm',
   });
 

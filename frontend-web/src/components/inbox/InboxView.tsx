@@ -25,6 +25,7 @@ import {
   applyMessagePreviewToThreads,
   createGroupChat,
   createSingleFlightMessageSender,
+  deleteChatConversation,
   getOrCreateDirectChat,
   isGroupChatThread,
   leaveGroupChat,
@@ -45,10 +46,10 @@ import { ROUTES } from '@/lib/routes';
 import { connectAppSocket, joinChatRoom, leaveChatRoom } from '@/lib/socket';
 
 const followedUserProfileDetails: InboxThreadData['profileStats'] = [
-  { label: 'Source', value: 'Following search' },
-  { label: 'Access', value: 'Followed user only' },
-  { label: 'Conversation', value: 'Direct message' },
-  { label: 'State', value: 'Live backend sync' },
+  { label: 'Nguồn', value: 'Tìm kiếm người theo dõi' },
+  { label: 'Truy cập', value: 'Chỉ người theo dõi' },
+  { label: 'Hội thoại', value: 'Tin nhắn trực tiếp' },
+  { label: 'Trạng thái', value: 'Đồng bộ trực tiếp' },
 ];
 
 const MESSAGES_PAGE_SIZE = 30;
@@ -161,6 +162,16 @@ export function InboxView() {
 
   // Chat menu state
   const [showChatMenu, setShowChatMenu] = useState(false);
+
+  // Confirm dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    type: 'leave' | 'delete';
+    chatId: string;
+    title: string;
+    description: string;
+    confirmLabel: string;
+    isLoading: boolean;
+  } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const searchTimeoutRef = useRef<number | null>(null);
@@ -647,17 +658,52 @@ export function InboxView() {
     }
   };
 
-  const handleLeaveGroup = async () => {
+  const requestLeaveGroup = () => {
     if (!selectedChat?.id || !selectedChat.isGroup) return;
+    setShowChatMenu(false);
+    setConfirmDialog({
+      type: 'leave',
+      chatId: selectedChat.id,
+      title: 'Rời khỏi nhóm',
+      description: `Bạn có chắc muốn rời nhóm "${selectedChat.groupName || 'Nhóm Trò Chuyện'}"? Bạn sẽ không nhận được tin nhắn mới từ nhóm này.`,
+      confirmLabel: 'Rời nhóm',
+      isLoading: false,
+    });
+  };
 
+  const requestDeleteChat = () => {
+    if (!selectedChat?.id) return;
+    setShowChatMenu(false);
+    const chatName = selectedChat.isGroup
+      ? (selectedChat.groupName || 'Nhóm Trò Chuyện')
+      : (selectedConversation?.user?.full_name || 'cuộc trò chuyện này');
+    setConfirmDialog({
+      type: 'delete',
+      chatId: selectedChat.id,
+      title: 'Xóa cuộc trò chuyện',
+      description: `Bạn có chắc muốn xóa toàn bộ cuộc trò chuyện với "${chatName}"? Hành động này không thể hoàn tác.`,
+      confirmLabel: 'Xóa',
+      isLoading: false,
+    });
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmDialog) return;
+    setConfirmDialog((prev) => prev ? { ...prev, isLoading: true } : null);
     try {
-      await leaveGroupChat(selectedChat.id);
+      if (confirmDialog.type === 'leave') {
+        await leaveGroupChat(confirmDialog.chatId);
+      } else {
+        await deleteChatConversation(confirmDialog.chatId);
+      }
       setSelectedChat(null);
+      setSelectedUser(null);
       setMessages([]);
-      setShowChatMenu(false);
+      setConfirmDialog(null);
       await refreshThreads();
     } catch (error: unknown) {
-      setMessageError(error instanceof Error ? error.message : 'Rời nhóm thất bại.');
+      setMessageError(error instanceof Error ? error.message : 'Thao tác thất bại.');
+      setConfirmDialog(null);
     }
   };
 
@@ -860,7 +906,7 @@ export function InboxView() {
     <ProtectedPage>
       <main className="min-h-[100dvh] bg-[#F8FAFC] xl:h-[100dvh] xl:overflow-hidden">
         <div className="mx-auto flex min-h-[100dvh] w-full max-w-[1720px] flex-col px-4 pb-4 pt-4 md:px-6 xl:h-full xl:min-h-0">
-          <AppTopNav searchPlaceholder="Search people, notes, or screenshots" currentUser={currentUser} hideInboxAction />
+          <AppTopNav searchPlaceholder="Tìm kiếm người dùng, ghi chú..." currentUser={currentUser} hideInboxAction />
           <div className="mt-4 grid min-h-0 flex-1 gap-4 xl:h-[calc(100dvh-112px)] xl:grid-cols-[336px_minmax(0,1fr)_248px]">
             <section className={`${surfaceClass} min-h-0 overflow-hidden p-5`}>
               <div className="flex items-center justify-between">
@@ -937,9 +983,9 @@ export function InboxView() {
                       : 'Chọn một cuộc trò chuyện hoặc tìm người bạn đang theo dõi để bắt đầu.'}
                 </ThemedText>
               </div>
-              <div className="mt-4 flex shrink-0 items-center justify-between gap-3 rounded-[22px] bg-[#F8FAFC] px-4 py-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[18px] bg-[#DBEAFE]">
+              <div className="mt-4 flex shrink-0 items-center justify-between gap-3 rounded-[24px] border border-[#E4E8EE] bg-[#F1F5F9] px-5 py-4 shadow-[0_2px_8px_-3px_rgba(15,23,42,0.07)]">
+                <div className="flex min-w-0 items-center gap-4">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#DBEAFE]">
                     {selectedChat?.isGroup ? (
                       selectedChat.avatarUrl ? (
                         <img alt={selectedChat.groupName || 'Group'} className="h-full w-full object-cover" src={resolveAvatarUrl(selectedChat.avatarUrl) as string} />
@@ -957,14 +1003,14 @@ export function InboxView() {
                     )}
                   </div>
                   <div className="min-w-0">
-                    <ThemedText as="p" className="text-base font-semibold text-slate-950">
+                    <ThemedText as="p" className="text-[17px] font-semibold leading-tight text-slate-950">
                       {selectedChat?.isGroup
                         ? (selectedChat.groupName || 'Nhóm Trò Chuyện')
                         : selectedConversation
                           ? (selectedConversation.user?.full_name || 'Unknown')
                           : 'No conversation selected'}
                     </ThemedText>
-                    <ThemedText as="p" className="truncate text-sm text-slate-500">
+                    <ThemedText as="p" className="mt-0.5 truncate text-sm text-slate-500">
                       {selectedChat?.isGroup
                         ? `${selectedChat.memberCount || '—'} thành viên`
                         : selectedThread
@@ -974,10 +1020,22 @@ export function InboxView() {
                   </div>
                 </div>
                 {selectedConversation && !selectedChat?.isGroup ? (
-                  <Link className="shrink-0 rounded-[18px] bg-white px-4 py-3 text-sm font-semibold text-slate-900" href={selectedConversation.profileHref}>View profile</Link>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Link className="rounded-[18px] bg-white border border-[#E4E8EE] px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors" href={selectedConversation.profileHref}>View profile</Link>
+                    <button
+                      className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-white border border-[#E4E8EE] text-slate-500 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-500 transition-all"
+                      onClick={requestDeleteChat}
+                      title="Xóa cuộc trò chuyện"
+                      type="button"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 256 256" fill="currentColor">
+                        <path d="M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z"/>
+                      </svg>
+                    </button>
+                  </div>
                 ) : selectedChat?.isGroup ? (
                   <button
-                    className="shrink-0 rounded-[18px] bg-white px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50 transition-colors"
+                    className="shrink-0 rounded-[18px] border border-[#E4E8EE] bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
                     onClick={() => setShowChatMenu(!showChatMenu)}
                     type="button"
                   >
@@ -1491,7 +1549,7 @@ export function InboxView() {
               </div>
               <button
                 className="flex w-full items-center gap-3 px-5 py-4 hover:bg-orange-50 transition-colors"
-                onClick={handleLeaveGroup}
+                onClick={requestLeaveGroup}
                 type="button"
               >
                 <div className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-orange-50">
@@ -1504,6 +1562,73 @@ export function InboxView() {
                   <ThemedText as="p" className="text-xs text-orange-400">Thoát khỏi nhóm này</ThemedText>
                 </div>
               </button>
+              <button
+                className="flex w-full items-center gap-3 px-5 py-4 hover:bg-rose-50 transition-colors border-t border-slate-50"
+                onClick={requestDeleteChat}
+                type="button"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-rose-50">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 256 256" fill="#EF4444">
+                    <path d="M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z"/>
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <ThemedText as="p" className="text-sm font-semibold text-rose-600">Xóa cuộc trò chuyện</ThemedText>
+                  <ThemedText as="p" className="text-xs text-rose-400">Xóa toàn bộ tin nhắn</ThemedText>
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Confirm Dialog */}
+        {confirmDialog && (
+          <div
+            className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            onClick={() => setConfirmDialog(null)}
+          >
+            <div
+              className="w-full max-w-[400px] rounded-[28px] bg-white p-6 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[18px] ${
+                confirmDialog.type === 'delete' ? 'bg-rose-50' : 'bg-orange-50'
+              }`}>
+                {confirmDialog.type === 'delete' ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 256 256" fill="#EF4444">
+                    <path d="M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z"/>
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 256 256" fill="#F97316">
+                    <path d="M120,216a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V40a8,8,0,0,1,8-8h64a8,8,0,0,1,0,16H56V208h56A8,8,0,0,1,120,216Zm109.66-93.66-40-40a8,8,0,0,0-11.32,11.32L204.69,120H112a8,8,0,0,0,0,16h92.69l-26.35,26.34a8,8,0,0,0,11.32,11.32l40-40A8,8,0,0,0,229.66,122.34Z" />
+                  </svg>
+                )}
+              </div>
+              <ThemedText as="h3" className="text-center text-lg font-bold text-slate-900">{confirmDialog.title}</ThemedText>
+              <ThemedText as="p" className="mt-2 text-center text-sm leading-6 text-slate-500">{confirmDialog.description}</ThemedText>
+              <div className="mt-6 flex gap-3">
+                <button
+                  className="flex-1 rounded-[18px] border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                  disabled={confirmDialog.isLoading}
+                  onClick={() => setConfirmDialog(null)}
+                  type="button"
+                >
+                  Huỷ
+                </button>
+                <button
+                  className={`flex flex-1 items-center justify-center rounded-[18px] py-3 text-sm font-semibold text-white transition-all active:scale-[0.98] ${
+                    confirmDialog.isLoading ? 'cursor-not-allowed opacity-60' :
+                    confirmDialog.type === 'delete' ? 'bg-rose-500 hover:bg-rose-600' : 'bg-orange-500 hover:bg-orange-600'
+                  }`}
+                  disabled={confirmDialog.isLoading}
+                  onClick={handleConfirmAction}
+                  type="button"
+                >
+                  {confirmDialog.isLoading ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  ) : confirmDialog.confirmLabel}
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -8,6 +8,7 @@ import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { FeedPost } from '@/components/post/FeedPost';
+import { useToast } from '@/hooks/useToast';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { API_URL, fetchPosts } from '@/lib/api';
@@ -252,6 +253,7 @@ function MediaPanel({ posts, hideHeader }: { posts: Post[]; hideHeader?: boolean
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
 export default function ProfileScreen() {
+  const toast = useToast();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
@@ -294,7 +296,11 @@ export default function ProfileScreen() {
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'Không thể tải ảnh lên. Vui lòng thử lại sau.';
       console.error('Failed to upload avatar:', error);
+<<<<<<< HEAD
       toast.error(msg);
+=======
+      toast.error(error.message || 'Không thể tải ảnh lên. Vui lòng thử lại sau.');
+>>>>>>> a4e4391aabc7c1c58ba458b9e842024f1a9fe9ae
     } finally {
       setIsUploadingAvatar(false);
     }
