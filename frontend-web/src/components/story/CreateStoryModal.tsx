@@ -32,6 +32,7 @@ function getInitials(user: AuthUser | null): string {
 export function CreateStoryModal({ currentUser, onClose, onCreateStory }: CreateStoryModalProps) {
   const [text, setText] = useState('Một buổi sáng chậm, đủ cà phê và đủ ánh nắng.');
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<'image' | 'video'>('image');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +42,42 @@ export function CreateStoryModal({ currentUser, onClose, onCreateStory }: Create
   const avatarUrl = resolveAvatarUrl(currentUser?.avatar_url);
   const previewMediaUrl = mediaUrl ?? 'https://picsum.photos/seed/story-local-preview/720/1280';
   const canCreate = text.trim().length > 0 || Boolean(selectedFile);
+
+  /** Resize image to 9:16 aspect ratio using Canvas, returns a Blob */
+  async function resizeImageToStory(file: File): Promise<Blob> {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = reject;
+      image.src = URL.createObjectURL(file);
+    });
+
+    const targetRatio = 9 / 16;
+    const actualRatio = img.width / img.height;
+    let sw: number, sh: number, sx: number, sy: number;
+
+    if (actualRatio > targetRatio) {
+      // Ảnh quá rộng — crop chiều rộng
+      sh = img.height;
+      sw = Math.round(img.height * targetRatio);
+      sx = Math.round((img.width - sw) / 2);
+      sy = 0;
+    } else {
+      sw = img.width;
+      sh = Math.round(img.width / targetRatio);
+      sx = 0;
+      sy = Math.round((img.height - sh) / 2);
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = sw;
+    canvas.height = sh;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+    URL.revokeObjectURL(img.src);
+
+    return new Promise((resolve) => canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.8));
+  }
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -72,6 +109,8 @@ export function CreateStoryModal({ currentUser, onClose, onCreateStory }: Create
       URL.revokeObjectURL(mediaUrl);
     }
 
+    const isVideo = file.type.startsWith('video/');
+    setMediaType(isVideo ? 'video' : 'image');
     setMediaUrl(URL.createObjectURL(file));
     setSelectedFile(file);
     setError(null);
@@ -84,11 +123,16 @@ export function CreateStoryModal({ currentUser, onClose, onCreateStory }: Create
     setError(null);
 
     try {
-      const uploadedMedia = selectedFile ? await uploadStoryMedia(selectedFile) : { file_url: previewMediaUrl };
+      let uploadFile = selectedFile;
+      const storyType: 'image' | 'video' = mediaType;
+
+      // Không resize/crop ảnh về 9:16 để giữ nguyên tỷ lệ gốc của người dùng
+
+      const uploadedMedia = uploadFile ? await uploadStoryMedia(uploadFile) : { file_url: previewMediaUrl };
       const story = await createStory({
         file_url: uploadedMedia.file_url,
         caption: text.trim() || 'Tin mới vừa được chia sẻ.',
-        type: 'image',
+        type: storyType,
         visibility: 'public',
       });
 
@@ -157,10 +201,10 @@ export function CreateStoryModal({ currentUser, onClose, onCreateStory }: Create
               </span>
               <span>
                 <ThemedText as="span" className="block text-[15px] font-bold text-[var(--text)]">
-                  Tạo tin ảnh
+                  Tạo tin ảnh / video
                 </ThemedText>
                 <ThemedText as="span" className="block text-[13px] font-medium text-[var(--text-muted)]">
-                  Tải ảnh lên để làm nền story
+                  Tải ảnh hoặc video lên để làm nền story
                 </ThemedText>
               </span>
             </button>
@@ -202,12 +246,16 @@ export function CreateStoryModal({ currentUser, onClose, onCreateStory }: Create
             </ThemedText>
           ) : null}
 
-          <input accept="image/*" className="hidden" onChange={handleFileChange} ref={fileInputRef} type="file" />
+          <input accept="image/*,video/*" className="hidden" onChange={handleFileChange} ref={fileInputRef} type="file" />
         </aside>
 
         <main className="flex min-h-[820px] items-center justify-center rounded-[32px] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)] lg:p-6">
           <div className="relative h-[768px] w-[432px] max-w-full overflow-hidden rounded-[24px] border border-[var(--border)] bg-[var(--surface-muted)] shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
-            <img alt="Xem trước tin" className="h-full w-full object-cover" src={previewMediaUrl} />
+            {mediaType === 'video' ? (
+              <video autoPlay className="h-full w-full object-contain" loop muted playsInline src={previewMediaUrl} />
+            ) : (
+              <img alt="Xem trước tin" className="h-full w-full object-contain" src={previewMediaUrl} />
+            )}
             <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-slate-950/75 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-slate-950/85 to-transparent" />
             {/*

@@ -152,7 +152,7 @@ export type Story = {
 export type StoryCreatePayload = {
   file_url: string;
   caption?: string | null;
-  type?: 'image';
+  type?: 'image' | 'video';
   visibility?: 'public' | 'followersonly' | 'custom' | 'onlyme';
 };
 

@@ -192,7 +192,11 @@ export function StoryViewerModal({ currentUser, stories, selectedStoryId, onClos
         </button>
 
         <article className="relative h-[calc(100dvh-8.5rem)] max-h-[868px] w-full max-w-[488px] overflow-hidden rounded-[24px] border border-[var(--border)] bg-[var(--surface-muted)] shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
-          <img alt={`Tin của ${selectedStory.authorName}`} className="h-full w-full object-cover" src={selectedStory.mediaUrl} />
+          {selectedStory.type === 'video' ? (
+            <video autoPlay className="h-full w-full object-contain" loop muted playsInline src={selectedStory.mediaUrl} />
+          ) : (
+            <img alt={`Tin của ${selectedStory.authorName}`} className="h-full w-full object-contain" src={selectedStory.mediaUrl} />
+          )}
           <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-slate-950/80 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 h-52 bg-gradient-to-t from-slate-950/85 to-transparent" />
 

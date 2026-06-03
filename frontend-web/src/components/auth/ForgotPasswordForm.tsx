@@ -37,21 +37,21 @@ function PromoPanel() {
             Reset in 2 simple steps
           </ThemedText>
           <ThemedText as="p" className="mt-2 text-sm text-slate-600">
-            Enter email, then follow the link sent to your inbox.
+            Nhập email, sau đó làm theo liên kết được gửi đến hộp thư của bạn.
           </ThemedText>
         </div>
 
         <div className="hidden md:block">
           <div className="absolute left-0 top-8 w-[240px] -rotate-6 rounded-[28px] border border-white/70 bg-white px-5 py-4 shadow-sm shadow-sky-200">
-            <ThemedText type="defaultSemiBold">Secure reset</ThemedText>
+            <ThemedText type="defaultSemiBold">Đặt lại an toàn</ThemedText>
             <ThemedText as="p" className="mt-2 text-slate-600">
-              Each reset link is time-limited to keep your account safe.
+              Mỗi liên kết đặt lại có thời hạn để bảo vệ tài khoản của bạn.
             </ThemedText>
           </div>
 
           <div className="absolute right-8 top-0 w-[250px] rotate-6 rounded-[28px] border border-slate-200 bg-slate-900 px-5 py-4 shadow-sm shadow-slate-300">
             <ThemedText as="p" className="text-xs font-semibold uppercase tracking-[1.6px] text-slate-400">
-              Step 1
+              Bước 1
             </ThemedText>
             <ThemedText as="p" className="mt-3 text-2xl font-bold text-white">
               Enter email
@@ -63,7 +63,7 @@ function PromoPanel() {
 
           <div className="absolute bottom-0 left-24 w-[280px] rounded-[28px] border border-[#C9DCFB] bg-[#DCEAFF] px-5 py-4">
             <ThemedText type="defaultSemiBold" className="text-slate-900">
-              Step 2: Open the email and set a new password.
+              Bước 2: Mở email và đặt mật khẩu mới.
             </ThemedText>
           </div>
         </div>
@@ -98,12 +98,12 @@ export function ForgotPasswordForm() {
       promo={<PromoPanel />}
       card={
         <section className="w-full rounded-[32px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200 md:min-h-[736px] md:max-w-[420px] md:px-8 md:py-9">
-          <ThemedText type="eyebrow">Forgot password</ThemedText>
+          <ThemedText type="eyebrow">Quên mật khẩu</ThemedText>
           <ThemedText as="h1" className="mt-2 text-[28px] font-bold leading-8 text-slate-900 md:mt-3 md:text-[30px] md:leading-9">
-            Find your account
+            Tìm tài khoản của bạn
           </ThemedText>
           <ThemedText as="p" className="mt-2 text-sm leading-6 text-slate-600 md:mt-3 md:text-base md:leading-6">
-            Enter your email address and we will send you a link to reset your password.
+            Nhập địa chỉ email và chúng tôi sẽ gửi liên kết đặt lại mật khẩu.
           </ThemedText>
 
           <div className="mt-5 grid gap-4 md:mt-6">
@@ -116,7 +116,7 @@ export function ForgotPasswordForm() {
                   setErrorMessage(null);
                 }
               }}
-              placeholder="Email address"
+              placeholder="Địa chỉ email"
               value={email}
             />
           </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Modal, Pressable, Dimensions, Animated, StyleSheet, SafeAreaView, Platform } from 'react-native';
 import { Image } from 'expo-image';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -146,17 +147,31 @@ export function StoryViewerModal({ visible, stories, initialStoryId, onClose, on
     setIsPaused(false);
   };
 
+  const videoPlayer = useVideoPlayer(currentStory?.type === 'video' ? currentStory.mediaUrl : '', (player) => {
+    player.loop = true;
+    if (currentStory?.type === 'video') player.play();
+  });
+
   if (!currentStory || !currentGroup) return null;
 
   return (
     <Modal visible={visible} animationType="fade" transparent={true} onRequestClose={onClose}>
       <View style={styles.container}>
         {/* Background media */}
-        <Image 
-          source={{ uri: currentStory.mediaUrl }} 
-          style={StyleSheet.absoluteFillObject} 
-          contentFit="cover" 
-        />
+        {currentStory.type === 'video' ? (
+          <VideoView
+            player={videoPlayer}
+            style={StyleSheet.absoluteFill}
+            contentFit="contain"
+            nativeControls={false}
+          />
+        ) : (
+          <Image
+            source={{ uri: currentStory.mediaUrl }}
+            style={StyleSheet.absoluteFillObject}
+            contentFit="contain"
+          />
+        )}
         
         {/* Overlay gradient top */}
         <View style={styles.gradientTop} />

@@ -30,10 +30,10 @@ def upload_story_media(
   current_user: User = Depends(get_current_user),
 ):
   content_type = file.content_type or ''
-  if not content_type.startswith('image/'):
+  if not content_type.startswith('image/') and not content_type.startswith('video/'):
     raise HTTPException(
       status_code=status.HTTP_400_BAD_REQUEST,
-      detail=f"File '{file.filename}' không phải là ảnh hợp lệ.",
+      detail=f"File '{file.filename}' không phải là ảnh hoặc video hợp lệ.",
     )
 
   STORY_MEDIA_DIR.mkdir(parents=True, exist_ok=True)

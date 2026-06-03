@@ -89,7 +89,13 @@ export function StoryStrip({ currentUser, stories, onCreateStory, onOpenStory }:
               className="mr-3 h-[200px] w-[116px] overflow-hidden rounded-[20px] bg-slate-900 active:opacity-90"
               onPress={() => onOpenStory(storyToOpen.id)}
             >
-              <Image source={{ uri: story.mediaUrl }} className="absolute h-full w-full opacity-90" contentFit="cover" />
+              {story.type === 'video' ? (
+                <View className="absolute h-full w-full bg-slate-800 items-center justify-center">
+                  <MaterialIcons name="play-circle-outline" size={40} color="rgba(255,255,255,0.8)" />
+                </View>
+              ) : (
+                <Image source={{ uri: story.mediaUrl }} className="absolute h-full w-full opacity-90" contentFit="cover" />
+              )}
               <View className="absolute bottom-0 left-0 right-0 h-28" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} />
               
               <View className="absolute left-2.5 top-2.5 h-11 w-11 items-center justify-center rounded-full bg-white border-[3px]" style={{ borderColor: story.ringColor || '#4A9FD8' }}>

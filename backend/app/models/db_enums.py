@@ -18,6 +18,15 @@ class VisibilityLevel(str, Enum):
   CUSTOM = 'custom'
   ONLY_ME = 'onlyme'
 
+  @classmethod
+  def _missing_(cls, value):
+    if isinstance(value, str):
+      normalized = value.lower().replace('_', '').replace(' ', '')
+      for member in cls:
+        if member.value.lower().replace('_', '').replace(' ', '') == normalized:
+          return member
+    return None
+
 
 class MediaType(str, Enum):
   IMAGE = 'image'
