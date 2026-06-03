@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: doananentang-backend
+    restart: unless-stopped
     env_file:
       - .env
     depends_on:
@@ -20,11 +21,12 @@ services:
       - '${APP_PORT}:${APP_PORT}'
     volumes:
       - .:/app
-    command: sh -c "python -c \"import socket, time; host, port = 'db', 5432; print('Waiting for database to accept connections...'); s = socket.socket(socket.AF_INET, socket.SOCK_STREAM); s.settimeout(1); while s.connect_ex((host, port)) != 0: time.sleep(1); s = socket.socket(socket.AF_INET, socket.SOCK_STREAM); s.settimeout(1); print('Database is ready!')\" && alembic upgrade head && uvicorn app.main:app --host ${APP_HOST} --port ${APP_PORT} --reload --reload-dir app --reload-include '.env'"
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host ${APP_HOST} --port ${APP_PORT} --reload --reload-dir app --reload-include '.env'"
 
   db:
     image: postgres:16-alpine
     container_name: doananentang-postgres
+    restart: unless-stopped
     env_file:
       - .env
     environment:
