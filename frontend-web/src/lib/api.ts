@@ -432,6 +432,12 @@ export function leaveGroup(chatId: string): Promise<{ status: string; message: s
   });
 }
 
+export function deleteChat(chatId: string): Promise<{ status: string; message: string }> {
+  return apiFetch<{ status: string; message: string }>(`/api/chats/${chatId}`, {
+    method: 'DELETE',
+  });
+}
+
 export function markChatRead(chatId: string): Promise<ChatReadStatusResponse> {
   return apiFetch<ChatReadStatusResponse>(`/api/chats/${chatId}/read`, { method: 'POST' });
 }
