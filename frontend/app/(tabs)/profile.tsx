@@ -12,6 +12,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { API_URL, fetchPosts } from '@/lib/api';
 import { fetchCurrentUser, fetchFollowStatus, uploadUserAvatar, updateUserProfile } from '@/lib/auth';
+import { useToast } from '@/hooks/useToast';
 import type { AuthUser, FollowStatus } from '@/lib/auth';
 import type { Post, VisibilityLevel } from '@/lib/types';
 
@@ -208,6 +209,7 @@ function SuccessBanner({ message, onDismiss }: { message: string; onDismiss: () 
   );
 }
 
+
 function MediaPanel({ posts, hideHeader }: { posts: Post[]; hideHeader?: boolean }) {
   const mediaItems = (posts || []).flatMap((p) =>
     (p.media || []).map((m) => ({ media: m, post: p }))
@@ -260,6 +262,7 @@ export default function ProfileScreen() {
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [avatarPickerActive, setAvatarPickerActive] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const toast = useToast();
   const [followStatus, setFollowStatus] = useState<FollowStatus | null>(null);
   const [isEditingIntro, setIsEditingIntro] = useState(false);
   const [tempIntro, setTempIntro] = useState('');
@@ -288,9 +291,10 @@ export default function ProfileScreen() {
           setUser({ ...user, avatar_url });
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Không thể tải ảnh lên. Vui lòng thử lại sau.';
       console.error('Failed to upload avatar:', error);
-      Alert.alert('Lỗi', error.message || 'Không thể tải ảnh lên. Vui lòng thử lại sau.');
+      toast.error(msg);
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -385,8 +389,9 @@ export default function ProfileScreen() {
       setIsEditingIntro(false);
       setIntroSaved(true);
       setTimeout(() => setIntroSaved(false), 3000);
-    } catch {
-      // Xử lý lỗi
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Không thể lưu giới thiệu. Vui lòng thử lại.';
+      toast.error(msg);
     } finally {
       setIsSavingIntro(false);
     }
@@ -514,6 +519,13 @@ export default function ProfileScreen() {
                         label="Chỉnh sửa hồ sơ"
                         filled
                         onPress={() => router.push('/edit-profile')}
+                      />
+                    </View>
+                    <View className="flex-row flex-wrap gap-3">
+                      <ActionButton
+                        icon="bug-report"
+                        label="Kiểm thử API"
+                        onPress={() => router.push('/debug-test')}
                       />
                     </View>
                   </View>
