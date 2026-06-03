@@ -1,6 +1,6 @@
 'use client';
 
-import { CaretRight, ChatCircleDots, DotsThree, GlobeHemisphereWest, ShareNetwork, ThumbsUp, Trash, WarningCircle, X, Users, Lock, PencilSimple, Check, Spinner } from '@phosphor-icons/react';
+import { CaretRight, ChatCircleDots, DotsThree, GlobeHemisphereWest, ShareNetwork, ThumbsUp, Trash, X, Users, Lock, PencilSimple, Check, Spinner } from '@phosphor-icons/react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { API_URL, likePost, unlikePost, deletePost, updatePost, resolveAvatarUrl } from '@/lib/api';
@@ -221,10 +221,6 @@ export function FeedPost({
                                         </button>
                                     </>
                                 )}
-                                <button onClick={() => setShowMenu(false)} className="flex w-full items-center gap-3.5 px-4 py-3.5 text-left text-[15px] font-bold text-slate-600 hover:bg-slate-50 rounded-[16px] transition-all">
-                                    <WarningCircle size={20} weight="regular" />
-                                    Báo cáo nội dung
-                                </button>
                             </div>
                         </div>
                     )}
