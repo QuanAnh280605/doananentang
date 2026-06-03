@@ -31,7 +31,6 @@ export type Post = {
   author_id: string;
   content: string | null;
   visibility: string;
-  reported_count: number;
   is_deleted: boolean;
   created_at: string;
   updated_at: string;

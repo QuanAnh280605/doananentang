@@ -55,7 +55,6 @@ class PostTagRead(BaseModel):
 class PostRead(PostBase):
   id: int | UUID
   author_id: int | UUID
-  reported_count: int
   is_deleted: bool
   created_at: datetime
   updated_at: datetime

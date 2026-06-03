@@ -36,7 +36,6 @@ class Post(Base):
     server_default='public',
   )
   feeling: Mapped[str | None] = mapped_column(Text(), nullable=True)
-  reported_count: Mapped[int] = mapped_column(Integer(), nullable=False, default=0, server_default=text('0'))
   is_deleted: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False, server_default=text('false'))
   gif_url: Mapped[str | None] = mapped_column(Text(), nullable=True)
   location_name: Mapped[str | None] = mapped_column(Text(), nullable=True)

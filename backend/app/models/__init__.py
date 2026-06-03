@@ -9,7 +9,6 @@ from app.models.message_read import MessageRead, MessageStatus
 from app.models.notification import Notification
 from app.models.post import Post
 from app.models.post_media import PostMedia
-from app.models.post_report import PostReport
 from app.models.post_viewer import PostViewer
 from app.models.post_tag import PostTag
 from app.models.refresh_session import LoginSession, RefreshSession
@@ -35,7 +34,6 @@ __all__ = [
   'Notification',
   'Post',
   'PostMedia',
-  'PostReport',
   'PostViewer',
   'PostTag',
   'RefreshSession',
