@@ -16,7 +16,7 @@ import { CreateStoryModal } from '@/components/story/CreateStoryModal';
 import { StoryStrip } from '@/components/story/StoryStrip';
 import { StoryViewerModal } from '@/components/story/StoryViewerModal';
 import { mapApiStoryToStoryItem, type StoryItem } from '@/components/story/storyState';
-import { API_URL, fetchPosts, fetchStories, markStoryViewed, resolveAvatarUrl } from '@/lib/api';
+import { API_URL, fetchPosts, fetchFeedPosts, fetchStories, markStoryViewed, resolveAvatarUrl } from '@/lib/api';
 import { fetchCurrentUser, fetchFollowStatus, type AuthUser } from '@/lib/auth';
 import { listDirectChats } from '@/lib/chat';
 import type { InboxThreadData } from '@/lib/chat.types';
@@ -196,12 +196,17 @@ export function HomeFeed() {
     router.replace(newUrl, { scroll: false });
   }, [pathname, searchParams, router]);
 
+  const stateRef = useRef({ hasMore, loadingMore, loading, currentPage });
+  useEffect(() => {
+    stateRef.current = { hasMore, loadingMore, loading, currentPage };
+  }, [hasMore, loadingMore, loading, currentPage]);
+
   const loadPosts = useCallback(async () => {
     setLoading(true);
     setCurrentPage(1);
     setHasMore(true);
     try {
-      const res = await fetchPosts(1, PAGE_SIZE);
+      const res = await fetchFeedPosts(1, PAGE_SIZE);
       if (res) {
         setPosts(res.items || []);
         setHasMore((res.items?.length ?? 0) >= PAGE_SIZE && res.total > PAGE_SIZE);
@@ -214,11 +219,12 @@ export function HomeFeed() {
   }, []);
 
   const loadMorePosts = useCallback(async () => {
-    if (loadingMore || !hasMore) return;
+    const { hasMore: currentHasMore, loadingMore: currentLoadingMore, loading: currentLoading, currentPage: currentCP } = stateRef.current;
+    if (currentLoadingMore || !currentHasMore || currentLoading) return;
     setLoadingMore(true);
     try {
-      const nextPage = currentPage + 1;
-      const res = await fetchPosts(nextPage, PAGE_SIZE);
+      const nextPage = currentCP + 1;
+      const res = await fetchFeedPosts(nextPage, PAGE_SIZE);
       if (res && res.items && res.items.length > 0) {
         setPosts((prev) => [...prev, ...res.items]);
         setCurrentPage(nextPage);
@@ -231,7 +237,7 @@ export function HomeFeed() {
     } finally {
       setLoadingMore(false);
     }
-  }, [currentPage, hasMore, loadingMore]);
+  }, []);
 
   // Intersection Observer for infinite scroll
   useEffect(() => {
@@ -239,7 +245,7 @@ export function HomeFeed() {
     if (!el) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting && hasMore && !loadingMore && !loading) {
+        if (entries[0]?.isIntersecting) {
           void loadMorePosts();
         }
       },
@@ -247,7 +253,7 @@ export function HomeFeed() {
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [hasMore, loadingMore, loading, loadMorePosts]);
+  }, [loadMorePosts]);
 
   const patchPostMetrics = useCallback((postId: number, patch: Partial<Pick<Post, 'like_count' | 'comment_count' | 'is_liked'>>) => {
     setPosts((currentPosts) => patchPostMetricsInFeed(currentPosts, String(postId), patch));
@@ -257,7 +263,7 @@ export function HomeFeed() {
 
   useEffect(() => {
     let isMounted = true;
-    void fetchPosts(1, PAGE_SIZE)
+    void fetchFeedPosts(1, PAGE_SIZE)
       .then((res) => {
         if (isMounted) {
           setPosts(res.items || []);
