@@ -1,19 +1,19 @@
-import { Stack } from 'expo-router';
+import { Stack, SplashScreen } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
 import 'react-native-reanimated';
 
-import { GlobalSearchProvider } from '@/components/search/GlobalSearchProvider';
 import { ToastProvider } from '@/components/toast/ToastProvider';
-import { NotificationsProvider } from '@/hooks/useNotifications';
 import { restoreAuthSession } from '@/lib/api';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import '../global.css';
 
+// Prevent splash screen from auto-hiding until auth is ready
+SplashScreen.preventAutoHideAsync();
+
 export const unstable_settings = {
-  anchor: 'index',
+  initialRouteName: '(tabs)',
 };
 
 export default function RootLayout() {
@@ -33,29 +33,28 @@ export default function RootLayout() {
     };
   }, []);
 
-  if (!isAuthReady) {
-    return <View className="flex-1 bg-[#F4F8FF]" />;
-  }
+  useEffect(() => {
+    if (isAuthReady) {
+      SplashScreen.hideAsync();
+    }
+  }, [isAuthReady]);
 
   return (
     <SafeAreaProvider>
       <ToastProvider>
-        <GlobalSearchProvider>
-          <NotificationsProvider>
-            <>
-              <Stack>
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                <Stack.Screen name="profile/[userId]" options={{ headerShown: false }} />
-                <Stack.Screen name="profile/follows" options={{ headerShown: false }} />
-                <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
-                <Stack.Screen name="(post)" options={{ headerShown: false }} />
-              </Stack>
-              <StatusBar style="dark" />
-            </>
-          </NotificationsProvider>
-        </GlobalSearchProvider>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="inbox" />
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="profile/[userId]" />
+          <Stack.Screen name="profile/follows" />
+          <Stack.Screen name="edit-profile" />
+          <Stack.Screen name="(post)" />
+        </Stack>
+        <StatusBar style="dark" />
       </ToastProvider>
     </SafeAreaProvider>
   );
 }
+

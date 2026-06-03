@@ -11,7 +11,6 @@ import {
   View,
   useWindowDimensions,
   ActivityIndicator,
-  Modal,
   KeyboardAvoidingView,
   Platform,
   Alert,
@@ -31,7 +30,6 @@ import {
   markChatAsRead,
   uploadChatMedia,
   createDirectChat,
-  createGroupChat,
   deleteChat,
   leaveGroup,
   uploadGroupAvatar,
@@ -133,11 +131,7 @@ export default function InboxScreen() {
   const [newChatSearchResults, setNewChatSearchResults] = useState<SearchUser[]>([]);
   const [isSearchingUsers, setIsSearchingUsers] = useState(false);
 
-  // Group chat states
-  const [isGroupMode, setIsGroupMode] = useState(false);
-  const [groupName, setGroupName] = useState('');
-  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
-  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+  // Group chat is handled via separate screen /inbox/create-group
 
 
 
@@ -362,7 +356,7 @@ export default function InboxScreen() {
     };
   }, [activeChatId]);
 
-  // 5. Debounced User Search for starting new chats
+  // Debounced search for direct chat is handled inline in the modal
   useEffect(() => {
     if (!showNewChatModal) return;
 
@@ -447,47 +441,6 @@ export default function InboxScreen() {
     } catch (err: any) {
       toast.error('Không thể bắt đầu cuộc trò chuyện: ' + err.message);
     }
-  };
-
-  // Handle Create Group Chat
-  const handleCreateGroup = async () => {
-    if (!groupName.trim()) {
-      toast.error('Vui lòng nhập tên nhóm.');
-      return;
-    }
-    if (selectedUserIds.length === 0) {
-      toast.error('Vui lòng chọn ít nhất 1 thành viên.');
-      return;
-    }
-
-    setIsCreatingGroup(true);
-    try {
-      const chat = await createGroupChat(groupName.trim(), selectedUserIds);
-      toast.success('Đã tạo nhóm thành công!');
-      setShowNewChatModal(false);
-      // Reset group states
-      setGroupName('');
-      setSelectedUserIds([]);
-      setIsGroupMode(false);
-      setNewChatSearchQuery('');
-      setNewChatSearchResults([]);
-
-      await loadChats();
-      setActiveChatId(chat.chat_id);
-    } catch (err: any) {
-      toast.error('Tạo nhóm thất bại: ' + err.message);
-    } finally {
-      setIsCreatingGroup(false);
-    }
-  };
-
-  const toggleSelectUserForGroup = (userId: number) => {
-    setSelectedUserIds((prev) => {
-      if (prev.includes(userId)) {
-        return prev.filter((id) => id !== userId);
-      }
-      return [...prev, userId];
-    });
   };
 
   const handleDeleteChat = () => {
@@ -763,7 +716,7 @@ export default function InboxScreen() {
   const newChatButton = (
     <Pressable
       className="h-10 w-10 items-center justify-center rounded-[14px] bg-slate-100 active:opacity-90 border border-slate-200"
-      onPress={() => setShowNewChatModal(true)}>
+      onPress={() => router.push('/inbox/create-group')}>
       <MaterialIcons color="#4A9FD8" name="chat" size={20} />
     </Pressable>
   );
@@ -813,7 +766,7 @@ export default function InboxScreen() {
             </ThemedText>
             <Pressable
               className="rounded-[18px] bg-slate-900 px-4 py-3 active:opacity-90 flex-row items-center gap-2"
-              onPress={() => setShowNewChatModal(true)}>
+              onPress={() => router.push('/inbox/create-group')}>
               <MaterialIcons color="#FFFFFF" name="add" size={16} />
               <ThemedText className="text-xs font-semibold text-white">Bắt đầu trò chuyện</ThemedText>
             </Pressable>
@@ -847,7 +800,7 @@ export default function InboxScreen() {
           </ThemedText>
           <Pressable
             className="mt-5 rounded-[18px] bg-[#4A9FD8] px-5 py-3 active:opacity-90 flex-row items-center gap-2"
-            onPress={() => setShowNewChatModal(true)}>
+            onPress={() => router.push('/inbox/create-group')}>
             <MaterialIcons color="#FFFFFF" name="chat" size={18} />
             <ThemedText className="text-sm font-semibold text-white">Tin nhắn mới</ThemedText>
           </Pressable>
@@ -1029,7 +982,7 @@ export default function InboxScreen() {
   };
 
   return (
-    <>
+    <View style={{ flex: 1, position: 'relative' }}>
       <StatusBar style="dark" />
       <ThemedView className="flex-1 bg-[#F8FAFC]">
         <ThemedView 
@@ -1063,19 +1016,9 @@ export default function InboxScreen() {
         </ThemedView>
       </ThemedView>
 
-      {/* NEW CHAT MODAL - Allows starting direct chat or creating groups */}
-      <Modal
-        animationType="fade"
-        onRequestClose={() => {
-          setShowNewChatModal(false);
-          setGroupName('');
-          setSelectedUserIds([]);
-          setIsGroupMode(false);
-          setNewChatSearchQuery('');
-          setNewChatSearchResults([]);
-        }}
-        transparent={true}
-        visible={showNewChatModal}>
+      {/* NEW CHAT MODAL - Allows starting direct chat only (group chat moved to /inbox/create-group) */}
+      {showNewChatModal && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000 }}>
         <View className="flex-1 items-center justify-center bg-black/50 px-4">
           <ThemedView className="w-full max-w-[500px] rounded-[32px] bg-white p-6 shadow-2xl">
             {/* Header */}
@@ -1085,9 +1028,6 @@ export default function InboxScreen() {
                 className="h-9 w-9 items-center justify-center rounded-full bg-slate-100 active:opacity-80"
                 onPress={() => {
                   setShowNewChatModal(false);
-                  setGroupName('');
-                  setSelectedUserIds([]);
-                  setIsGroupMode(false);
                   setNewChatSearchQuery('');
                   setNewChatSearchResults([]);
                 }}>
@@ -1095,51 +1035,41 @@ export default function InboxScreen() {
               </Pressable>
             </View>
 
-            {/* Chuyển đổi Direct Chat / Group Chat */}
-            <View className="flex-row rounded-[18px] bg-slate-100 p-1 mt-4">
-              <Pressable
-                className={`flex-1 py-2.5 rounded-[14px] items-center justify-center ${!isGroupMode ? 'bg-white shadow-sm' : ''}`}
-                onPress={() => setIsGroupMode(false)}>
-                <ThemedText className={`text-sm font-semibold ${!isGroupMode ? 'text-[#4A9FD8]' : 'text-slate-500'}`}>
-                  Nhắn tin 1-1
-                </ThemedText>
-              </Pressable>
-              <Pressable
-                className={`flex-1 py-2.5 rounded-[14px] items-center justify-center ${isGroupMode ? 'bg-white shadow-sm' : ''}`}
-                onPress={() => setIsGroupMode(true)}>
-                <ThemedText className={`text-sm font-semibold ${isGroupMode ? 'text-[#4A9FD8]' : 'text-slate-500'}`}>
-                  Tạo nhóm chat
-                </ThemedText>
-              </Pressable>
+            {/* Group chat button - navigates to separate screen */}
+            <Pressable
+              className="mt-4 flex-row items-center gap-3 rounded-[22px] bg-[#EAF4FB] border border-[#B3DDF5] px-4 py-3.5 active:opacity-80"
+              onPress={() => {
+                setShowNewChatModal(false);
+                router.push('/inbox/create-group');
+              }}>
+              <View className="h-10 w-10 items-center justify-center rounded-[14px] bg-[#4A9FD8]">
+                <MaterialIcons color="#FFFFFF" name="group-add" size={20} />
+              </View>
+              <View className="flex-1">
+                <ThemedText className="text-[15px] font-semibold text-slate-900">Tạo nhóm chat</ThemedText>
+                <ThemedText className="text-xs text-slate-500 mt-0.5">Nhắn tin với nhiều người cùng lúc</ThemedText>
+              </View>
+              <MaterialIcons color="#4A9FD8" name="chevron-right" size={20} />
+            </Pressable>
+
+            {/* Divider */}
+            <View className="flex-row items-center gap-3 mt-5 mb-1">
+              <View className="flex-1 h-px bg-slate-100" />
+              <ThemedText className="text-xs font-medium text-slate-400">hoặc nhắn tin 1-1</ThemedText>
+              <View className="flex-1 h-px bg-slate-100" />
             </View>
 
-            {/* Nhập tên nhóm nếu ở chế độ Tạo nhóm */}
-            {isGroupMode && (
-              <View className="mt-4">
-                <ThemedText className="text-xs font-semibold text-slate-500 mb-1.5 ml-1">Tên nhóm chat</ThemedText>
-                <TextInput
-                  className="w-full text-[15px] leading-5 text-slate-900 px-4 py-3 bg-slate-50 rounded-[18px] border border-slate-100"
-                  cursorColor="#4A9FD8"
-                  onChangeText={setGroupName}
-                  placeholder="Nhập tên nhóm..."
-                  placeholderTextColor="#94A3B8"
-                  selectionColor="rgba(74, 159, 216, 0.24)"
-                  value={groupName}
-                />
-              </View>
-            )}
-
-            {/* Tìm kiếm thành viên */}
-            <View className="mt-4">
+            {/* Search users for direct chat */}
+            <View className="mt-3">
               <SearchInput
                 onChangeText={setNewChatSearchQuery}
-                placeholder={isGroupMode ? "Tìm thành viên..." : "Tìm tên hoặc email bạn bè..."}
+                placeholder="Tìm tên hoặc email bạn bè..."
                 value={newChatSearchQuery}
               />
             </View>
 
-            {/* Kết quả tìm kiếm */}
-            <ScrollView className="mt-4 max-h-[240px]" showsVerticalScrollIndicator={false}>
+            {/* Search results */}
+            <ScrollView className="mt-4 max-h-[280px]" showsVerticalScrollIndicator={false}>
               {isSearchingUsers ? (
                 <View className="py-6 justify-center items-center">
                   <ActivityIndicator color="#4A9FD8" size="small" />
@@ -1153,8 +1083,7 @@ export default function InboxScreen() {
               ) : (
                 newChatSearchResults.map((user) => {
                   const initials = getInitials(user);
-                  const isSelected = selectedUserIds.includes(user.id);
-                  const getAbsoluteAvatarUrl = (url: string | null) => {
+                  const getAbsoluteUrl = (url: string | null) => {
                     if (!url) return null;
                     if (url.startsWith('http://') || url.startsWith('https://')) return url;
                     return `${API_URL}${url}`;
@@ -1163,18 +1092,12 @@ export default function InboxScreen() {
                   return (
                     <Pressable
                       key={user.id}
-                      className={`flex-row items-center justify-between rounded-[22px] px-4 py-3.5 mb-2 border active:bg-slate-100 ${isSelected ? 'bg-blue-50/50 border-blue-200' : 'bg-slate-50 border-slate-100'}`}
-                      onPress={() => {
-                        if (isGroupMode) {
-                          toggleSelectUserForGroup(user.id);
-                        } else {
-                          handleStartNewChat(user.id);
-                        }
-                      }}>
+                      className="flex-row items-center justify-between rounded-[22px] px-4 py-3.5 mb-2 border bg-slate-50 border-slate-100 active:bg-slate-100"
+                      onPress={() => handleStartNewChat(user.id)}>
                       <View className="flex-row items-center gap-3 flex-1 mr-3">
                         {user.avatar_url ? (
                           <Image
-                            source={{ uri: getAbsoluteAvatarUrl(user.avatar_url)! }}
+                            source={{ uri: getAbsoluteUrl(user.avatar_url)! }}
                             className="h-10 w-10 rounded-[14px] bg-slate-200"
                           />
                         ) : (
@@ -1190,49 +1113,21 @@ export default function InboxScreen() {
                         </View>
                       </View>
 
-                      {isGroupMode ? (
-                        <View className={`h-6 w-6 items-center justify-center rounded-full border ${isSelected ? 'bg-[#4A9FD8] border-[#4A9FD8]' : 'border-slate-300'}`}>
-                          {isSelected && <MaterialIcons color="#FFFFFF" name="check" size={14} />}
-                        </View>
-                      ) : (
-                        <View className="rounded-[14px] bg-[#4A9FD8] px-3.5 py-2">
-                          <ThemedText className="text-xs font-semibold text-white">Nhắn tin</ThemedText>
-                        </View>
-                      )}
+                      <View className="rounded-[14px] bg-[#4A9FD8] px-3.5 py-2">
+                        <ThemedText className="text-xs font-semibold text-white">Nhắn tin</ThemedText>
+                      </View>
                     </Pressable>
                   );
                 })
               )}
             </ScrollView>
-
-            {/* Nút Tạo Nhóm (chỉ hiển thị ở chế độ nhóm) */}
-            {isGroupMode && (
-              <Pressable
-                className={`mt-4 w-full h-12 rounded-[18px] items-center justify-center ${(!groupName.trim() || selectedUserIds.length === 0 || isCreatingGroup) ? 'bg-slate-200' : 'bg-[#4A9FD8]'} active:opacity-90 flex-row gap-2`}
-                disabled={!groupName.trim() || selectedUserIds.length === 0 || isCreatingGroup}
-                onPress={handleCreateGroup}>
-                {isCreatingGroup ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <>
-                    <MaterialIcons color="#FFFFFF" name="group-add" size={18} />
-                    <ThemedText className="text-sm font-semibold text-white">
-                      Tạo nhóm ({selectedUserIds.length} thành viên)
-                    </ThemedText>
-                  </>
-                )}
-              </Pressable>
-            )}
           </ThemedView>
         </View>
-      </Modal>
+      </View>)}
 
       {/* CHAT MENU MODAL - Ba chấm dropdown */}
-      <Modal
-        animationType="fade"
-        onRequestClose={() => setShowChatMenu(false)}
-        transparent={true}
-        visible={showChatMenu}>
+      {showChatMenu && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000 }}>
         <Pressable
           className="flex-1 bg-black/30"
           onPress={() => setShowChatMenu(false)}>
@@ -1316,20 +1211,11 @@ export default function InboxScreen() {
             </Pressable>
           </Pressable>
         </Pressable>
-      </Modal>
+      </View>)}
 
       {/* MEDIA GALLERY MODAL - Xem tất cả ảnh đã gửi trong cuộc hội thoại */}
-      <Modal
-        animationType="slide"
-        onRequestClose={() => {
-          if (fullscreenImageUrl) {
-            setFullscreenImageUrl(null);
-          } else {
-            setShowMediaGallery(false);
-          }
-        }}
-        transparent={false}
-        visible={showMediaGallery}>
+      {showMediaGallery && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000 }}>
         <View className="flex-1 bg-[#F8FAFC]" style={{ paddingTop: Math.max(insets.top, 0) }}>
           {/* Gallery Header */}
           <View className="flex-row items-center gap-3 px-5 py-4 bg-white border-b border-slate-100">
@@ -1401,7 +1287,7 @@ export default function InboxScreen() {
             </ScrollView>
           )}
         </View>
-      </Modal>
-    </>
+      </View>)}
+    </View>
   );
 }

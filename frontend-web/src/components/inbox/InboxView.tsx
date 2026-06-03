@@ -292,6 +292,87 @@ export function InboxView() {
     };
   }, []);
 
+  const clearThreadUnread = useCallback((chatId: string) => {
+    setThreads((currentThreads) => currentThreads.map((thread) => (
+      thread.chatId === chatId ? { ...thread, unread: 0 } : thread
+    )));
+  }, []);
+
+  const clearChatIdFromUrl = useCallback(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('chatId')) {
+      url.searchParams.delete('chatId');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, []);
+
+  const handleSelectUser = (user: SearchUser) => {
+    if (selectedUserId === user.id) {
+      return;
+    }
+
+    clearChatIdFromUrl();
+    setIsLoadingMessages(true);
+    setMessageError(null);
+    setSelectedChat(null);
+    setMessages([]);
+    setMessagesPage(1);
+    setMessagesTotalPages(0);
+    setIsLoadingMoreMessages(false);
+    setSelectedUser(user);
+  };
+
+  const handleSelectGroupThread = (thread: InboxThreadData) => {
+    const chatId = thread.chatId;
+    if (!chatId || !thread.isGroup) return;
+
+    clearChatIdFromUrl();
+    setIsLoadingMessages(true);
+    setMessageError(null);
+    setSelectedUser(null);
+    setSelectedChat({
+      id: chatId,
+      participantUserId: null,
+      isGroup: true,
+      groupName: thread.groupName ?? null,
+      avatarUrl: thread.avatarUrl ?? null,
+      memberCount: thread.memberCount ?? null,
+      createdAt: null,
+      updatedAt: null,
+    });
+    setMessages([]);
+    setMessagesPage(1);
+    setMessagesTotalPages(0);
+    setIsLoadingMoreMessages(false);
+
+    // Đánh dấu đã đọc cho group chat
+    void markDirectChatRead(chatId)
+      .then(() => {
+        clearThreadUnread(chatId);
+        hasUnreadMessages().then(setHasNewMessage).catch(() => undefined);
+        void refreshThreads({ preserveLoadedPages: true, silent: true });
+      })
+      .catch(() => {
+        void refreshThreads({ preserveLoadedPages: true, silent: true });
+      });
+
+    // Load messages for group chat
+    listMessagesPage(chatId, 1, MESSAGES_PAGE_SIZE)
+      .then((response) => {
+        shouldScrollToLatestRef.current = true;
+        setMessages(response.items);
+        setMessagesPage(response.page);
+        setMessagesTotalPages(response.totalPages);
+      })
+      .catch((error: unknown) => {
+        const nextMessage = error instanceof Error ? error.message : 'Không thể tải tin nhắn nhóm lúc này.';
+        setMessageError(nextMessage);
+      })
+      .finally(() => {
+        setIsLoadingMessages(false);
+      });
+  };
+
   useEffect(() => {
     if (isLoadingThreads) return;
 
@@ -299,7 +380,9 @@ export function InboxView() {
       const uId = Number(queryUserId);
       const existingThread = threads.find((t) => t.user?.id === uId);
       if (existingThread?.user) {
-        setSelectedUser(existingThread.user);
+        queueMicrotask(() => {
+          setSelectedUser(existingThread.user);
+        });
       } else {
         // Tải thông tin người dùng từ API và tự động chọn
         import('@/lib/auth').then(({ fetchUserById }) => {
@@ -315,20 +398,16 @@ export function InboxView() {
     } else if (queryChatId) {
       const existingThread = threads.find((t) => t.chatId === queryChatId);
       if (existingThread) {
-        if (existingThread.isGroup) {
-          handleSelectGroupThread(existingThread);
-        } else if (existingThread.user) {
-          handleSelectUser(existingThread.user);
-        }
+        queueMicrotask(() => {
+          if (existingThread.isGroup) {
+            handleSelectGroupThread(existingThread);
+          } else if (existingThread.user) {
+            handleSelectUser(existingThread.user);
+          }
+        });
       }
     }
   }, [queryUserId, queryChatId, threads, isLoadingThreads]);
-
-  const clearThreadUnread = useCallback((chatId: string) => {
-    setThreads((currentThreads) => currentThreads.map((thread) => (
-      thread.chatId === chatId ? { ...thread, unread: 0 } : thread
-    )));
-  }, []);
 
   const scrollToBottomIfNeeded = useCallback((force = false) => {
     if (force || isNearBottomRef.current) {
@@ -562,80 +641,6 @@ export function InboxView() {
           }
         });
     }, 300);
-  };
-
-  const clearChatIdFromUrl = useCallback(() => {
-    const url = new URL(window.location.href);
-    if (url.searchParams.has('chatId')) {
-      url.searchParams.delete('chatId');
-      window.history.replaceState({}, '', url.toString());
-    }
-  }, []);
-
-  const handleSelectUser = (user: SearchUser) => {
-    if (selectedUserId === user.id) {
-      return;
-    }
-
-    clearChatIdFromUrl();
-    setIsLoadingMessages(true);
-    setMessageError(null);
-    setSelectedChat(null);
-    setMessages([]);
-    setMessagesPage(1);
-    setMessagesTotalPages(0);
-    setIsLoadingMoreMessages(false);
-    setSelectedUser(user);
-  };
-
-  const handleSelectGroupThread = (thread: InboxThreadData) => {
-    if (!thread.chatId || !thread.isGroup) return;
-
-    clearChatIdFromUrl();
-    setIsLoadingMessages(true);
-    setMessageError(null);
-    setSelectedUser(null);
-    setSelectedChat({
-      id: thread.chatId,
-      participantUserId: null,
-      isGroup: true,
-      groupName: thread.groupName ?? null,
-      avatarUrl: thread.avatarUrl ?? null,
-      memberCount: thread.memberCount ?? null,
-      createdAt: null,
-      updatedAt: null,
-    });
-    setMessages([]);
-    setMessagesPage(1);
-    setMessagesTotalPages(0);
-    setIsLoadingMoreMessages(false);
-
-    // Đánh dấu đã đọc cho group chat
-    void markDirectChatRead(thread.chatId)
-      .then(() => {
-        clearThreadUnread(thread.chatId);
-        hasUnreadMessages().then(setHasNewMessage).catch(() => undefined);
-        void refreshThreads({ preserveLoadedPages: true, silent: true });
-      })
-      .catch(() => {
-        void refreshThreads({ preserveLoadedPages: true, silent: true });
-      });
-
-    // Load messages for group chat
-    listMessagesPage(thread.chatId, 1, MESSAGES_PAGE_SIZE)
-      .then((response) => {
-        shouldScrollToLatestRef.current = true;
-        setMessages(response.items);
-        setMessagesPage(response.page);
-        setMessagesTotalPages(response.totalPages);
-      })
-      .catch((error: unknown) => {
-        const nextMessage = error instanceof Error ? error.message : 'Không thể tải tin nhắn nhóm lúc này.';
-        setMessageError(nextMessage);
-      })
-      .finally(() => {
-        setIsLoadingMessages(false);
-      });
   };
 
   const handleGroupSearchChange = (value: string) => {
