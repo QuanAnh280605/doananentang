@@ -27,10 +27,13 @@ from app.crud.chat import (
   create_group_chat,
   delete_chat,
   remove_chat_member,
+  get_read_message_ids_for_sender,
 )
 from app.crud.user import get_user_by_id
 from app.models.group_member import ChatMember
 from app.models.message_media import MessageMedia
+from app.models.message_read import MessageStatus
+from app.models.db_enums import MessageStatusType
 from app.models.user import User
 from app.realtime import socket_server
 from app.schemas.chat import (
@@ -264,7 +267,31 @@ def list_chat_messages_endpoint(
     users = db.scalars(select(User).where(User.id.in_(sender_ids))).all()
     sender_map = {u.id: f"{u.first_name} {u.last_name}".strip() for u in users}
 
-  items = [_build_message_read(db, message, sender_name=sender_map.get(message.sender_id)) for message in messages]
+  # Batch-fetch read message IDs sent by current_user
+  my_message_ids = [msg.id for msg in messages if msg.sender_id == current_user.id]
+  read_message_ids = get_read_message_ids_for_sender(db, my_message_ids, current_user.id)
+
+  # Batch-fetch read statuses for incoming messages to current_user
+  other_message_ids = [msg.id for msg in messages if msg.sender_id != current_user.id]
+  user_read_message_ids = set()
+  if other_message_ids:
+    user_read_message_ids = set(db.scalars(
+      select(MessageStatus.message_id)
+      .where(
+        MessageStatus.message_id.in_(other_message_ids),
+        MessageStatus.user_id == current_user.id,
+        MessageStatus.status == MessageStatusType.READ,
+      )
+    ).all())
+
+  items = []
+  for message in messages:
+    msg_read = _build_message_read(db, message, sender_name=sender_map.get(message.sender_id))
+    if message.sender_id == current_user.id:
+      msg_read.is_read = message.id in read_message_ids
+    else:
+      msg_read.is_read = message.id in user_read_message_ids
+    items.append(msg_read)
 
   return PaginatedMessagesResponse(
     items=items,

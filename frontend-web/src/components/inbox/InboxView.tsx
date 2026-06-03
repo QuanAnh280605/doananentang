@@ -579,6 +579,17 @@ export function InboxView() {
     setMessagesTotalPages(0);
     setIsLoadingMoreMessages(false);
 
+    // Đánh dấu đã đọc cho group chat
+    void markDirectChatRead(thread.chatId)
+      .then(() => {
+        clearThreadUnread(thread.chatId);
+        hasUnreadMessages().then(setHasNewMessage).catch(() => undefined);
+        void refreshThreads({ preserveLoadedPages: true, silent: true });
+      })
+      .catch(() => {
+        void refreshThreads({ preserveLoadedPages: true, silent: true });
+      });
+
     // Load messages for group chat
     listMessagesPage(thread.chatId, 1, MESSAGES_PAGE_SIZE)
       .then((response) => {
@@ -1034,13 +1045,61 @@ export function InboxView() {
                     </button>
                   </div>
                 ) : selectedChat?.isGroup ? (
-                  <button
-                    className="shrink-0 rounded-[18px] border border-[#E4E8EE] bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-                    onClick={() => setShowChatMenu(!showChatMenu)}
-                    type="button"
-                  >
-                    Tùy chọn
-                  </button>
+                  <div className="relative">
+                    <button
+                      className="shrink-0 rounded-[18px] border border-[#E4E8EE] bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                      onClick={() => setShowChatMenu(!showChatMenu)}
+                      type="button"
+                    >
+                      Tùy chọn
+                    </button>
+                    {showChatMenu && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-[90]"
+                          onClick={() => setShowChatMenu(false)}
+                        />
+                        <div
+                          className="absolute right-0 top-full mt-2 rounded-[20px] bg-white shadow-2xl overflow-hidden min-w-[200px] border border-slate-100 z-[100]"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="px-5 py-4 border-b border-slate-100">
+                            <ThemedText as="p" className="text-sm font-semibold text-slate-500">Tùy chọn</ThemedText>
+                          </div>
+                          <button
+                            className="flex w-full items-center gap-3 px-5 py-4 hover:bg-orange-50 transition-colors"
+                            onClick={requestLeaveGroup}
+                            type="button"
+                          >
+                            <div className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-orange-50">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 256 256" fill="#F97316">
+                                <path d="M120,216a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V40a8,8,0,0,1,8-8h64a8,8,0,0,1,0,16H56V208h56A8,8,0,0,1,120,216Zm109.66-93.66-40-40a8,8,0,0,0-11.32,11.32L204.69,120H112a8,8,0,0,0,0,16h92.69l-26.35,26.34a8,8,0,0,0,11.32,11.32l40-40A8,8,0,0,0,229.66,122.34Z" />
+                              </svg>
+                            </div>
+                            <div className="text-left">
+                              <ThemedText as="p" className="text-sm font-semibold text-orange-600">Rời nhóm</ThemedText>
+                              <ThemedText as="p" className="text-xs text-orange-400">Thoát khỏi nhóm này</ThemedText>
+                            </div>
+                          </button>
+                          <button
+                            className="flex w-full items-center gap-3 px-5 py-4 hover:bg-rose-50 transition-colors border-t border-slate-50"
+                            onClick={requestDeleteChat}
+                            type="button"
+                          >
+                            <div className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-rose-50">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 256 256" fill="#EF4444">
+                                <path d="M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z"/>
+                              </svg>
+                            </div>
+                            <div className="text-left">
+                              <ThemedText as="p" className="text-sm font-semibold text-rose-600">Xóa cuộc trò chuyện</ThemedText>
+                              <ThemedText as="p" className="text-xs text-rose-400">Xóa toàn bộ tin nhắn</ThemedText>
+                            </div>
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 ) : null}
               </div>
               <div className="mt-3 flex min-h-0 flex-1 overflow-y-auto flex-col rounded-[24px] bg-[#FCFDFE] px-4 py-4" onScroll={handleMessagesScroll} ref={messagesScrollRef}>
@@ -1065,11 +1124,18 @@ export function InboxView() {
                     ) : null}
                     <div className="mt-auto" aria-hidden="true" />
                     {(() => {
-                      const lastReadMessageId = [...messages]
+                      const processedMessages = messages.map((msg) => ({
+                        ...msg,
+                        incoming: msg.senderUserId !== null && currentUser !== null
+                          ? msg.senderUserId !== currentUser.id
+                          : msg.incoming,
+                      }));
+
+                      const lastReadMessageId = [...processedMessages]
                         .reverse()
                         .find((msg) => !msg.incoming && msg.isRead)?.id;
 
-                      return messages.map((item, index, allMessages) => {
+                      return processedMessages.map((item, index, allMessages) => {
                         const TIME_GAP_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
                         const currentDate = new Date(item.createdAt);
                         const previousMessage = index > 0 ? allMessages[index - 1] : null;
@@ -1534,52 +1600,7 @@ export function InboxView() {
           </div>
         )}
 
-        {/* Chat Menu Dropdown */}
-        {showChatMenu && selectedChat?.isGroup && (
-          <div
-            className="fixed inset-0 z-[90]"
-            onClick={() => setShowChatMenu(false)}
-          >
-            <div
-              className="absolute right-4 top-24 rounded-[20px] bg-white shadow-2xl overflow-hidden min-w-[200px]"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="px-5 py-4 border-b border-slate-100">
-                <ThemedText as="p" className="text-sm font-semibold text-slate-500">Tùy chọn</ThemedText>
-              </div>
-              <button
-                className="flex w-full items-center gap-3 px-5 py-4 hover:bg-orange-50 transition-colors"
-                onClick={requestLeaveGroup}
-                type="button"
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-orange-50">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 256 256" fill="#F97316">
-                    <path d="M120,216a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V40a8,8,0,0,1,8-8h64a8,8,0,0,1,0,16H56V208h56A8,8,0,0,1,120,216Zm109.66-93.66-40-40a8,8,0,0,0-11.32,11.32L204.69,120H112a8,8,0,0,0,0,16h92.69l-26.35,26.34a8,8,0,0,0,11.32,11.32l40-40A8,8,0,0,0,229.66,122.34Z" />
-                  </svg>
-                </div>
-                <div className="text-left">
-                  <ThemedText as="p" className="text-sm font-semibold text-orange-600">Rời nhóm</ThemedText>
-                  <ThemedText as="p" className="text-xs text-orange-400">Thoát khỏi nhóm này</ThemedText>
-                </div>
-              </button>
-              <button
-                className="flex w-full items-center gap-3 px-5 py-4 hover:bg-rose-50 transition-colors border-t border-slate-50"
-                onClick={requestDeleteChat}
-                type="button"
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-rose-50">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 256 256" fill="#EF4444">
-                    <path d="M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z"/>
-                  </svg>
-                </div>
-                <div className="text-left">
-                  <ThemedText as="p" className="text-sm font-semibold text-rose-600">Xóa cuộc trò chuyện</ThemedText>
-                  <ThemedText as="p" className="text-xs text-rose-400">Xóa toàn bộ tin nhắn</ThemedText>
-                </div>
-              </button>
-            </div>
-          </div>
-        )}
+
 
         {/* Confirm Dialog */}
         {confirmDialog && (
