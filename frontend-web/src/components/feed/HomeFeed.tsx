@@ -3,7 +3,7 @@
 import { Article } from '@phosphor-icons/react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 
 import { ProtectedPage } from '@/components/app/ProtectedPage';
 import { AppTopNav } from '@/components/navigation/AppTopNav';
@@ -17,7 +17,7 @@ import { StoryStrip } from '@/components/story/StoryStrip';
 import { StoryViewerModal } from '@/components/story/StoryViewerModal';
 import { mapApiStoryToStoryItem, type StoryItem } from '@/components/story/storyState';
 import { API_URL, fetchPosts, fetchStories, markStoryViewed, resolveAvatarUrl } from '@/lib/api';
-import { fetchCurrentUser, type AuthUser } from '@/lib/auth';
+import { fetchCurrentUser, fetchFollowStatus, type AuthUser } from '@/lib/auth';
 import { listDirectChats } from '@/lib/chat';
 import type { InboxThreadData } from '@/lib/chat.types';
 import { patchPostMetrics as patchPostMetricsInFeed } from '@/lib/postMetrics';
@@ -173,15 +173,23 @@ export function HomeFeed() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
-  // Initialize from URL param — only read once on mount
   const [selectedPostId, setSelectedPostId] = useState<string | null>(postIdFromUrl);
   const [stories, setStories] = useState<StoryItem[]>([]);
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
   const [isCreateStoryOpen, setIsCreateStoryOpen] = useState(false);
 
+  // Infinite scroll state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const PAGE_SIZE = 10;
+
+  // Followers count
+  const [followersCount, setFollowersCount] = useState(0);
+
   const handleClosePostModal = useCallback(() => {
     setSelectedPostId(null);
-    // Remove postId from URL without page reload
     const params = new URLSearchParams(searchParams.toString());
     params.delete('postId');
     const newUrl = params.toString() ? `${pathname}?${params}` : pathname;
@@ -190,10 +198,13 @@ export function HomeFeed() {
 
   const loadPosts = useCallback(async () => {
     setLoading(true);
+    setCurrentPage(1);
+    setHasMore(true);
     try {
-      const res = await fetchPosts(1, 20);
+      const res = await fetchPosts(1, PAGE_SIZE);
       if (res) {
         setPosts(res.items || []);
+        setHasMore((res.items?.length ?? 0) >= PAGE_SIZE && res.total > PAGE_SIZE);
       }
     } catch (err) {
       console.error(err);
@@ -201,6 +212,42 @@ export function HomeFeed() {
       setLoading(false);
     }
   }, []);
+
+  const loadMorePosts = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = currentPage + 1;
+      const res = await fetchPosts(nextPage, PAGE_SIZE);
+      if (res && res.items && res.items.length > 0) {
+        setPosts((prev) => [...prev, ...res.items]);
+        setCurrentPage(nextPage);
+        setHasMore(res.items.length >= PAGE_SIZE && nextPage * PAGE_SIZE < res.total);
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [currentPage, hasMore, loadingMore]);
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const el = bottomRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && hasMore && !loadingMore && !loading) {
+          void loadMorePosts();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, loading, loadMorePosts]);
 
   const patchPostMetrics = useCallback((postId: number, patch: Partial<Pick<Post, 'like_count' | 'comment_count' | 'is_liked'>>) => {
     setPosts((currentPosts) => patchPostMetricsInFeed(currentPosts, String(postId), patch));
@@ -210,10 +257,11 @@ export function HomeFeed() {
 
   useEffect(() => {
     let isMounted = true;
-    void fetchPosts(1, 20)
+    void fetchPosts(1, PAGE_SIZE)
       .then((res) => {
         if (isMounted) {
           setPosts(res.items || []);
+          setHasMore((res.items?.length ?? 0) >= PAGE_SIZE && res.total > PAGE_SIZE);
         }
       })
       .catch((err) => {
@@ -232,6 +280,10 @@ export function HomeFeed() {
           fetchPosts(1, 1, user.id).then(res => {
             if (isMounted) setUserPostCount(res.total || 0);
           });
+          // Lấy số followers thực từ API
+          fetchFollowStatus(user.id).then(status => {
+            if (isMounted) setFollowersCount(status.followers_count);
+          }).catch(() => { });
         }
       }
     }).catch(() => { });
@@ -337,7 +389,7 @@ export function HomeFeed() {
                   <div className="mt-5 grid grid-cols-2 gap-3">
                     <div className="rounded-[20px] bg-slate-50 p-4 border border-slate-100">
                       <ThemedText as="p" className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Followers</ThemedText>
-                      <ThemedText as="p" className="mt-1 text-[22px] font-bold text-slate-950">0</ThemedText>
+                      <ThemedText as="p" className="mt-1 text-[22px] font-bold text-slate-950">{followersCount}</ThemedText>
                     </div>
                     <div className="rounded-[20px] bg-slate-50 p-4 border border-slate-100">
                       <ThemedText as="p" className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Posts</ThemedText>
@@ -391,6 +443,19 @@ export function HomeFeed() {
                       onOptimisticMetricsChange={patchPostMetrics}
                     />
                   ))}
+                  {/* Infinite scroll sentinel */}
+                  <div ref={bottomRef} className="h-4" />
+                  {loadingMore && (
+                    <div className="flex items-center justify-center py-6">
+                      <div className="h-6 w-6 animate-spin rounded-full border-[3px] border-[#4A9FD8] border-t-transparent" />
+                      <ThemedText as="p" className="ml-3 text-[14px] font-medium text-slate-400">Đang tải thêm...</ThemedText>
+                    </div>
+                  )}
+                  {!hasMore && posts.length > 0 && (
+                    <div className="py-6 text-center">
+                      <ThemedText as="p" className="text-[13px] font-medium text-slate-400">Bạn đã xem hết tất cả bài viết</ThemedText>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

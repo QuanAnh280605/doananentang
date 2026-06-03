@@ -397,6 +397,11 @@ export async function leaveGroupChat(chatId: string): Promise<void> {
   await leaveGroup(chatId);
 }
 
+export async function deleteChatConversation(chatId: string): Promise<void> {
+  const { deleteChat } = await import('./api');
+  await deleteChat(chatId);
+}
+
 export async function listMessages(chatId: string): Promise<ChatMessage[]> {
   const response = await listMessagesPage(chatId);
   return response.items;
