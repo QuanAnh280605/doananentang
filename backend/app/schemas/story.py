@@ -1,16 +1,25 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from app.models.db_enums import MediaType, VisibilityLevel
 
 
 class StoryCreate(BaseModel):
   file_url: str
+  media_url: str | None = None
   caption: str | None = None
   type: MediaType = MediaType.IMAGE
   visibility: VisibilityLevel = VisibilityLevel.PUBLIC
+
+  @model_validator(mode='before')
+  @classmethod
+  def populate_file_url(cls, data):
+    if isinstance(data, dict):
+      if 'media_url' in data and ('file_url' not in data or data['file_url'] is None):
+        data['file_url'] = data['media_url']
+    return data
 
 
 class StoryAuthorRead(BaseModel):

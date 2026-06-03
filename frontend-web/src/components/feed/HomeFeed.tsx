@@ -358,7 +358,7 @@ export function HomeFeed() {
           />
         )}
         <div className="mx-auto w-full max-w-[1720px] px-4 pb-6 pt-4 md:px-6">
-          <AppTopNav searchPlaceholder="Search users" currentUser={currentUser} />
+          <AppTopNav searchPlaceholder="Tìm kiếm người dùng" currentUser={currentUser} />
 
           <div className="mt-4 grid gap-4 xl:grid-cols-[350px_minmax(0,1fr)_360px]">
             {/* Left Rail */}

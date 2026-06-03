@@ -169,7 +169,7 @@ def test_delete_story_rejects_non_author() -> None:
     assert response.status_code == 403
 
 
-def test_upload_story_media_rejects_non_image() -> None:
+def test_upload_story_media_rejects_non_media() -> None:
   with build_test_session() as db:
     user = seed_user(db, email='author@example.com')
     client = build_client(db, user)
@@ -182,7 +182,7 @@ def test_upload_story_media_rejects_non_image() -> None:
     assert response.status_code == 400
 
 
-def test_upload_story_media_returns_static_story_url() -> None:
+def test_upload_story_media_returns_static_story_url_for_image() -> None:
   with build_test_session() as db:
     user = seed_user(db, email='author@example.com')
     client = build_client(db, user)
@@ -196,3 +196,19 @@ def test_upload_story_media_returns_static_story_url() -> None:
     body = response.json()
     assert body['file_url'].startswith('/static/stories/')
     assert body['file_url'].endswith('.jpg')
+
+
+def test_upload_story_media_returns_static_story_url_for_video() -> None:
+  with build_test_session() as db:
+    user = seed_user(db, email='author@example.com')
+    client = build_client(db, user)
+
+    response = client.post(
+      '/api/stories/upload-media',
+      files={'file': ('story.mp4', b'fake-video', 'video/mp4')},
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body['file_url'].startswith('/static/stories/')
+    assert body['file_url'].endswith('.mp4')

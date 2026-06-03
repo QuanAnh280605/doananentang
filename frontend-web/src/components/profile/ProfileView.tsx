@@ -2,7 +2,7 @@
 
 import type { ComponentType } from 'react';
 
-import { Article, EnvelopeSimple, Images, MapPin, SquaresFour, User } from '@phosphor-icons/react';
+import { Article, EnvelopeSimple, Images, MapPin, SquaresFour } from '@phosphor-icons/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 
@@ -19,14 +19,13 @@ import { patchPostMetrics as patchPostMetricsInProfile } from '@/lib/postMetrics
 import type { Post } from '@/lib/types';
 import { FollowListModal } from '@/components/profile/FollowListModal';
 
-type ProfileTab = 'posts' | 'about' | 'media';
+type ProfileTab = 'posts' | 'media';
 
 type IconComponent = ComponentType<{ className?: string; size?: number; weight?: 'thin' | 'light' | 'regular' | 'bold' | 'fill' | 'duotone' }>;
 
 const tabs: { key: ProfileTab; label: string; Icon: IconComponent }[] = [
-  { key: 'posts', label: 'Posts', Icon: SquaresFour },
-  { key: 'about', label: 'About', Icon: User },
-  { key: 'media', label: 'Media', Icon: Images },
+  { key: 'posts', label: 'Tất cả', Icon: SquaresFour },
+  { key: 'media', label: 'Ảnh/Video', Icon: Images },
 ];
 
 type ProfileSnapshot = {
@@ -46,9 +45,9 @@ function buildProfileViewModel(user: AuthUser | null, selectedUser?: ProfileSnap
     return {
       displayName: selectedUser.name,
       initials: selectedUser.initials,
-      headline: 'Search result profile',
+      headline: 'Kết quả tìm kiếm',
       intro: selectedUser.bio,
-      studio: 'Opened from inbox search',
+      studio: 'Mở từ inbox tìm kiếm',
       location: `Profile ID ${selectedUser.id}`,
       website: selectedUser.preview,
       email: '',
@@ -286,7 +285,7 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
           />
         )}
         <div className="mx-auto w-full max-w-[1720px] gap-4 px-4 pb-6 pt-4 md:px-6">
-          <AppTopNav searchPlaceholder="Search users" currentUser={user} />
+          <AppTopNav searchPlaceholder="Tìm kiếm người dùng" currentUser={user} />
 
           <section className={`${surfaceClass} mt-4 overflow-hidden`}>
             <div className="h-[210px] bg-[#D9ECF8]" />
@@ -315,19 +314,19 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
                       onClick={handleFollowToggle}
                       type="button">
                       {isLoadingFollowStatus || isSubmittingFollow
-                        ? 'Please wait...'
+                        ? 'Vui lòng chờ...'
                         : followStatus?.is_following
-                          ? 'Following'
-                          : 'Follow'}
+                          ? 'Đang theo dõi'
+                          : 'Theo dõi'}
                     </button>
-                    <button className="rounded-[20px] bg-[#F7F8FA] px-4 py-4 text-base font-medium text-slate-900" type="button">Message</button>
+                    <button className="rounded-[20px] bg-[#F7F8FA] px-4 py-4 text-base font-medium text-slate-900" type="button">Nhắn tin</button>
                   </div>
                 ) : (
                   <Link
                     href="/profile/edit"
                     className="inline-flex min-w-[140px] items-center justify-center rounded-[22px] bg-[#0A0A0A] px-6 py-4 text-base font-medium !text-white hover:bg-slate-800 transition-colors"
                   >
-                    Edit profile
+                    Chỉnh sửa trang cá nhân
                   </Link>
                 )}
               </div>
@@ -364,13 +363,13 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
             <div className="space-y-4">
               <section className={`${surfaceClass} p-5`}>
                 <div className="flex items-center justify-between mb-5">
-                  <ThemedText as="h2" className="text-[24px] font-semibold text-slate-950">Intro</ThemedText>
+                  <ThemedText as="h2" className="text-[24px] font-semibold text-slate-950">Giới thiệu</ThemedText>
                   {!isEditingIntro ? (
                     <button
                       onClick={() => setIsEditingIntro(true)}
                       className="text-sm font-medium text-blue-600 hover:underline"
                     >
-                      Edit
+                      Chỉnh sửa
                     </button>
                   ) : null}
                 </div>
@@ -378,7 +377,7 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
                 {isEditingIntro ? (
                   <div className="space-y-4">
                     <div>
-                      <ThemedText className="mb-1 block text-xs font-semibold text-slate-500">LOCATION</ThemedText>
+                      <ThemedText className="mb-1 block text-xs font-semibold text-slate-500">VỊ TRÍ</ThemedText>
                       <input
                         type="text"
                         className="w-full rounded-xl border border-slate-200 bg-[#F7F8FA] px-4 py-2.5 text-base text-slate-900 outline-none focus:border-slate-400"
@@ -388,7 +387,7 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
                       />
                     </div>
                     <div>
-                      <ThemedText className="mb-1 block text-xs font-semibold text-slate-500">BIO / INTRO</ThemedText>
+                      <ThemedText className="mb-1 block text-xs font-semibold text-slate-500">GIỚI THIỆU</ThemedText>
                       <textarea
                         className="w-full rounded-xl border border-slate-200 bg-[#F7F8FA] px-4 py-3 text-base text-slate-900 outline-none focus:border-slate-400"
                         rows={4}
@@ -403,13 +402,13 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
                         disabled={isSavingIntro}
                         className="flex-1 rounded-full bg-slate-900 py-3 text-sm font-semibold text-white active:opacity-80 disabled:opacity-50"
                       >
-                        {isSavingIntro ? 'Saving...' : 'Save All Changes'}
+                        {isSavingIntro ? 'Đang lưu...' : 'Lưu tất cả'}
                       </button>
                       <button
                         onClick={handleCancelIntro}
                         className="flex-1 rounded-full bg-[#F7F8FA] py-3 text-sm font-semibold text-slate-700 active:opacity-80"
                       >
-                        Cancel
+                        Hủy
                       </button>
                     </div>
                   </div>
@@ -483,7 +482,7 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
             <div className="space-y-4">
               {activeTab === 'posts' ? (
                 <div className="space-y-4">
-                  <ThemedText as="h2" className="px-1 text-[28px] font-semibold text-slate-950">Recent posts</ThemedText>
+                  <ThemedText as="h2" className="px-1 text-[28px] font-semibold text-slate-950">Bài viết gần đây</ThemedText>
                   {loadingPosts ? (
                     <div className="flex flex-col items-center justify-center p-12 space-y-4">
                       <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#4A9FD8] border-t-transparent" />
@@ -510,26 +509,9 @@ export function ProfileView({ selectedUser }: ProfileViewProps) {
                 </div>
               ) : null}
 
-              {activeTab === 'about' ? (
-                <section className={`${surfaceClass} p-5`}>
-                  <ThemedText as="h2" className="text-[24px] font-semibold text-slate-950">About</ThemedText>
-                  <ThemedText as="p" className="mt-1 text-sm text-slate-500">Calm collaboration, sharper reviews, cleaner systems</ThemedText>
-                  <div className="mt-5 space-y-4">
-                    <div className="rounded-[24px] bg-[#F7F8FA] px-4 py-4">
-                      <ThemedText as="p" className="text-base leading-7 text-slate-700">{profile.intro || 'Chưa có giới thiệu.'}</ThemedText>
-                    </div>
-                    <div className="flex flex-wrap gap-3">
-                      {[profile.location].filter(Boolean).map((item) => (
-                        <div key={item} className="rounded-full bg-[#F7F8FA] px-4 py-3 text-sm font-medium text-slate-700">{item}</div>
-                      ))}
-                    </div>
-                  </div>
-                </section>
-              ) : null}
-
               {activeTab === 'media' ? (
                 <section className={`${surfaceClass} p-5`}>
-                  <ThemedText as="h2" className="text-[24px] font-semibold text-slate-950">Media</ThemedText>
+                  <ThemedText as="h2" className="text-[24px] font-semibold text-slate-950">Ảnh/Video</ThemedText>
                   <ThemedText as="p" className="mt-1 text-sm text-slate-500">Ảnh và video từ các bài viết đã chia sẻ</ThemedText>
                   {featuredMedia.length === 0 ? (
                     <ThemedText className="mt-6 block text-base italic text-slate-400">Chưa tải lên phương tiện nào.</ThemedText>

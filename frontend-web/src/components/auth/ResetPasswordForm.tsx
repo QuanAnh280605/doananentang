@@ -45,15 +45,15 @@ function PromoPanel() {
 
         <div className="hidden md:block">
           <div className="absolute left-0 top-8 w-[240px] -rotate-6 rounded-[28px] border border-white/70 bg-white px-5 py-4 shadow-sm shadow-sky-200">
-            <ThemedText type="defaultSemiBold">Security tip</ThemedText>
+            <ThemedText type="defaultSemiBold">Mẹo bảo mật</ThemedText>
             <ThemedText as="p" className="mt-2 text-slate-600">
-              Use a unique password you do not reuse on other services.
+              Sử dụng mật khẩu duy nhất không trùng với các dịch vụ khác.
             </ThemedText>
           </div>
 
           <div className="absolute right-8 top-0 w-[250px] rotate-6 rounded-[28px] border border-slate-200 bg-slate-900 px-5 py-4 shadow-sm shadow-slate-300">
             <ThemedText as="p" className="text-xs font-semibold uppercase tracking-[1.6px] text-slate-400">
-              Step 2
+              Bước 2
             </ThemedText>
             <ThemedText as="p" className="mt-3 text-2xl font-bold text-white">
               Create password
@@ -118,12 +118,12 @@ export function ResetPasswordForm({ token = '' }: ResetPasswordFormProps) {
       promo={<PromoPanel />}
       card={
         <section className="w-full rounded-[32px] border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200 md:min-h-[736px] md:max-w-[420px] md:px-8 md:py-9">
-          <ThemedText type="eyebrow">Reset password</ThemedText>
+          <ThemedText type="eyebrow">Đặt lại mật khẩu</ThemedText>
           <ThemedText as="h1" className="mt-2 text-[28px] font-bold leading-8 text-slate-900 md:mt-3 md:text-[30px] md:leading-9">
-            Create a new password
+            Tạo mật khẩu mới
           </ThemedText>
           <ThemedText as="p" className="mt-2 text-sm leading-6 text-slate-600 md:mt-3 md:text-base md:leading-6">
-            Enter your new password below, then confirm it to finish the reset.
+            Nhập mật khẩu mới bên dưới, sau đó xác nhận để hoàn tất đặt lại.
           </ThemedText>
 
           <div className="mt-5 grid gap-4 md:mt-6">
@@ -136,7 +136,7 @@ export function ResetPasswordForm({ token = '' }: ResetPasswordFormProps) {
                   setErrorMessage(null);
                 }
               }}
-              placeholder="New password"
+              placeholder="Mật khẩu mới"
               type="password"
               value={newPassword}
             />

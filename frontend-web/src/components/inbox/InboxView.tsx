@@ -46,10 +46,10 @@ import { ROUTES } from '@/lib/routes';
 import { connectAppSocket, joinChatRoom, leaveChatRoom } from '@/lib/socket';
 
 const followedUserProfileDetails: InboxThreadData['profileStats'] = [
-  { label: 'Source', value: 'Following search' },
-  { label: 'Access', value: 'Followed user only' },
-  { label: 'Conversation', value: 'Direct message' },
-  { label: 'State', value: 'Live backend sync' },
+  { label: 'Nguồn', value: 'Tìm kiếm người theo dõi' },
+  { label: 'Truy cập', value: 'Chỉ người theo dõi' },
+  { label: 'Hội thoại', value: 'Tin nhắn trực tiếp' },
+  { label: 'Trạng thái', value: 'Đồng bộ trực tiếp' },
 ];
 
 const MESSAGES_PAGE_SIZE = 30;
@@ -906,7 +906,7 @@ export function InboxView() {
     <ProtectedPage>
       <main className="min-h-[100dvh] bg-[#F8FAFC] xl:h-[100dvh] xl:overflow-hidden">
         <div className="mx-auto flex min-h-[100dvh] w-full max-w-[1720px] flex-col px-4 pb-4 pt-4 md:px-6 xl:h-full xl:min-h-0">
-          <AppTopNav searchPlaceholder="Search people, notes, or screenshots" currentUser={currentUser} hideInboxAction />
+          <AppTopNav searchPlaceholder="Tìm kiếm người dùng, ghi chú..." currentUser={currentUser} hideInboxAction />
           <div className="mt-4 grid min-h-0 flex-1 gap-4 xl:h-[calc(100dvh-112px)] xl:grid-cols-[336px_minmax(0,1fr)_248px]">
             <section className={`${surfaceClass} min-h-0 overflow-hidden p-5`}>
               <div className="flex items-center justify-between">

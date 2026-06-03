@@ -4,6 +4,7 @@ import { Link, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Platform, Image, Modal, Pressable, ScrollView, View, Alert, TextInput, ActivityIndicator, DeviceEventEmitter } from 'react-native';
 import { ThumbsUp, ChatCircleDots, ShareNetwork, CaretRight } from 'phosphor-react-native';
+import { VideoView, useVideoPlayer } from 'expo-video';
 
 import { useToast } from '@/hooks/useToast';
 import { ThemedText } from '@/components/themed-text';
@@ -51,6 +52,55 @@ function formatTime(isoString: string): string {
     if (hours < 24) return `${hours} giờ trước`;
     const days = Math.floor(hours / 24);
     return `${days} ngày trước`;
+}
+
+function PostVideoCard({ url, style, className }: { url: string; style: any; className?: string }) {
+    const player = useVideoPlayer(url, (p) => {
+        p.loop = false;
+    });
+    const [isPlaying, setIsPlaying] = useState(false);
+
+    const togglePlay = () => {
+        if (isPlaying) {
+            player.pause();
+        } else {
+            player.play();
+        }
+        setIsPlaying(!isPlaying);
+    };
+
+    return (
+        <Pressable onPress={togglePlay} className={className} style={[style, { overflow: 'hidden' }]}>
+            <VideoView
+                player={player}
+                style={{ width: '100%', height: '100%' }}
+                contentFit="cover"
+                nativeControls={false}
+            />
+            {!isPlaying && (
+                <View className="absolute inset-0 items-center justify-center bg-black/10">
+                    <View className="h-14 w-14 items-center justify-center rounded-full bg-black/40">
+                        <MaterialIcons name="play-arrow" size={36} color="white" />
+                    </View>
+                </View>
+            )}
+        </Pressable>
+    );
+}
+
+function FullscreenVideoViewer({ url }: { url: string }) {
+    const player = useVideoPlayer(url, (p) => {
+        p.play();
+    });
+
+    return (
+        <VideoView
+            player={player}
+            style={{ width: '100%', height: '100%' }}
+            contentFit="contain"
+            nativeControls
+        />
+    );
 }
 
 export function FeedPost({ item, onDeleteSuccess, onDelete, isNested }: { item: Post; onDeleteSuccess?: () => void; onDelete?: (postId: string) => void; isNested?: boolean }) {
@@ -126,13 +176,18 @@ export function FeedPost({ item, onDeleteSuccess, onDelete, isNested }: { item: 
     // Lấy kích thước thật của ảnh để resize khung linh hoạt
     useEffect(() => {
         if (singleMediaUrl) {
+            const firstMedia = item.media?.[0];
+            if (firstMedia?.type === 'video') {
+                setAspectRatio(16 / 9);
+                return;
+            }
             Image.getSize(singleMediaUrl, (width, height) => {
                 if (width && height) {
                     setAspectRatio(width / height);
                 }
             }, (err) => console.warn('Get image size error:', err));
         }
-    }, [singleMediaUrl]);
+    }, [singleMediaUrl, item.media]);
 
     const handleToggleLike = async () => {
         if (loading) return;
@@ -457,16 +512,28 @@ export function FeedPost({ item, onDeleteSuccess, onDelete, isNested }: { item: 
                     ) : null
                 )}
 
-                {mediaUrls.length > 0 && (
+                {item.media && item.media.length > 0 && (
                     <View className="mt-4 flex-row flex-wrap justify-between gap-y-2">
-                        {mediaUrls.map((url, index) => {
+                        {item.media.map((mediaItem, index) => {
+                            const url = mediaItem.file_url.startsWith('http') ? mediaItem.file_url : `${API_URL}${mediaItem.file_url}`;
                             let itemClass = "relative overflow-hidden rounded-[24px] ";
-                            if (mediaUrls.length === 1) {
+                            if (item.media!.length === 1) {
                                 itemClass += "w-full";
-                            } else if (mediaUrls.length === 2 || mediaUrls.length === 4) {
+                            } else if (item.media!.length === 2 || item.media!.length === 4) {
                                 itemClass += "w-[49%] aspect-square";
-                            } else if (mediaUrls.length === 3) {
+                            } else if (item.media!.length === 3) {
                                 itemClass += index === 0 ? "w-full aspect-[2/1] mb-1" : "w-[49%] aspect-square";
+                            }
+
+                            if (mediaItem.type === 'video') {
+                                return (
+                                    <PostVideoCard
+                                        key={index}
+                                        url={url}
+                                        className={itemClass}
+                                        style={item.media!.length === 1 ? { aspectRatio, maxHeight: 800, width: '100%' } : {}}
+                                    />
+                                );
                             }
 
                             return (
@@ -477,14 +544,14 @@ export function FeedPost({ item, onDeleteSuccess, onDelete, isNested }: { item: 
                                         setIsViewerVisible(true);
                                     }}
                                     className={`${itemClass} active:opacity-95`}
-                                    style={mediaUrls.length === 1 ? { aspectRatio, maxHeight: 800 } : {}}
+                                    style={item.media!.length === 1 ? { aspectRatio, maxHeight: 800 } : {}}
                                 >
                                     <Image
                                         source={{ uri: url }}
                                         className="h-full w-full rounded-[24px]"
                                         resizeMode="cover"
                                         onLoad={(event) => {
-                                            if (mediaUrls.length === 1) {
+                                            if (item.media!.length === 1) {
                                                 const source = event?.nativeEvent?.source;
                                                 if (source?.width && source?.height) {
                                                     setAspectRatio(source.width / source.height);
@@ -505,7 +572,7 @@ export function FeedPost({ item, onDeleteSuccess, onDelete, isNested }: { item: 
                 )}
             </View>
 
-            {/* Trình xem ảnh toàn màn hình */}
+            {/* Trình xem ảnh/video toàn màn hình */}
             <Modal
                 visible={isViewerVisible}
                 transparent={true}
@@ -523,13 +590,15 @@ export function FeedPost({ item, onDeleteSuccess, onDelete, isNested }: { item: 
                     >
                         <MaterialIcons name="close" size={24} color="white" />
                     </Pressable>
-                    {mediaUrls[viewerIndex] && (
+                    {mediaUrls[viewerIndex] && item.media?.[viewerIndex]?.type === 'video' ? (
+                        <FullscreenVideoViewer url={mediaUrls[viewerIndex]} />
+                    ) : mediaUrls[viewerIndex] ? (
                         <Image
                             source={{ uri: mediaUrls[viewerIndex] }}
                             className="w-full h-full"
                             resizeMode="contain"
                         />
-                    )}
+                    ) : null}
                 </View>
             </Modal>
 

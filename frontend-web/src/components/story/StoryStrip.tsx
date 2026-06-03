@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { Plus } from '@phosphor-icons/react';
+import { Play, Plus } from '@phosphor-icons/react';
 
 import { ThemedText } from '@/components/ui/ThemedText';
 import { resolveAvatarUrl } from '@/lib/api';
@@ -97,7 +97,13 @@ export function StoryStrip({ currentUser, stories, onCreateStory, onOpenStory }:
               onClick={() => onOpenStory(story.id)}
               type="button"
             >
-              <img alt={`Tin của ${story.authorName}`} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" src={story.mediaUrl} />
+              {story.type === 'video' ? (
+                <div className="absolute inset-0 flex items-center justify-center bg-slate-800 transition-transform duration-500 group-hover:scale-105">
+                  <Play size={36} weight="fill" className="text-white/80" />
+                </div>
+              ) : (
+                <img alt={`Tin của ${story.authorName}`} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" src={story.mediaUrl} />
+              )}
               <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-slate-950/85 to-transparent" />
               <StoryAvatar story={story} />
               <ThemedText as="p" className="absolute bottom-4 left-3 right-3 text-[14px] font-bold leading-tight text-white">
