@@ -332,6 +332,7 @@ export function createPost(
       media_urls: mediaUrls,
       feeling,
       tagged_users: taggedUsers,
+      tagged_user_ids: taggedUsers ? taggedUsers.map((u) => Number(u.id)) : null,
       visibility,
       ...(sharedPostId ? { shared_post_id: sharedPostId } : {}),
     }),

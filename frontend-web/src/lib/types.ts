@@ -13,11 +13,19 @@ export type PostMedia = {
 };
 
 export type TaggedUser = {
-  id: number;
+  id: string | number;
   first_name: string;
   last_name: string;
-  full_name: string;
   avatar_url: string | null;
+};
+
+export type PostTag = {
+  user: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    avatar_url: string | null;
+  };
 };
 
 export type Post = {
@@ -36,7 +44,7 @@ export type Post = {
   reaction_counts?: Record<string, number>;
   user_reaction?: string | null;
   feeling?: string | null;
-  tagged_users?: TaggedUser[] | null;
+  tagged_users?: PostTag[] | null;
   shared_post_id?: string | null;
   shared_post?: Post | null;
 };
