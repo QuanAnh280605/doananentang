@@ -30,14 +30,14 @@ function PromoPanel({ isLargeScreen }: PromoPanelProps) {
         </View>
 
         <ThemedText className="mt-6 text-sm font-semibold uppercase tracking-[2px] text-[#4A9FD8]">
-          Account support
+          Hỗ trợ tài khoản
         </ThemedText>
         <ThemedText
           className={`mt-4 font-bold text-slate-900 ${isLargeScreen ? 'text-5xl leading-[56px]' : 'text-[26px] leading-8'}`}>
-          Recover your account quickly and securely.
+          Khôi phục tài khoản nhanh chóng và bảo mật.
         </ThemedText>
         <ThemedText className={`mt-3 max-w-[460px] text-slate-600 ${isLargeScreen ? 'text-lg leading-8' : 'text-sm leading-6'}`}>
-          Enter your email to receive a reset link and create a new password in a few steps.
+          Nhập email của bạn để nhận liên kết đặt lại và tạo mật khẩu mới chỉ trong vài bước.
         </ThemedText>
       </View>
 
@@ -45,32 +45,32 @@ function PromoPanel({ isLargeScreen }: PromoPanelProps) {
         {isLargeScreen ? (
           <>
             <View className="absolute left-0 top-8 w-[240px] -rotate-6 rounded-[28px] border border-white/70 bg-white px-5 py-4 shadow-sm shadow-sky-200">
-              <ThemedText type="defaultSemiBold">Secure reset</ThemedText>
-              <ThemedText className="mt-2 text-slate-600">Each reset link is time-limited to keep your account safe.</ThemedText>
+              <ThemedText type="defaultSemiBold">Đặt lại an toàn</ThemedText>
+              <ThemedText className="mt-2 text-slate-600">Mỗi liên kết đặt lại có thời hạn để bảo vệ tài khoản của bạn.</ThemedText>
             </View>
 
             <View className="absolute right-8 top-0 w-[250px] rotate-6 rounded-[28px] border border-slate-200 bg-slate-900 px-5 py-4 shadow-sm shadow-slate-300">
               <ThemedText className="text-xs font-semibold uppercase tracking-[1.6px] text-slate-400">
-                Step 1
+                Bước 1
               </ThemedText>
-              <ThemedText className="mt-3 text-2xl font-bold text-white">Enter email</ThemedText>
-              <ThemedText className="mt-2 text-slate-300">We will send a secure reset link to your inbox.</ThemedText>
+              <ThemedText className="mt-3 text-2xl font-bold text-white">Nhập email</ThemedText>
+              <ThemedText className="mt-2 text-slate-300">Chúng tôi sẽ gửi liên kết đặt lại an toàn tới hộp thư của bạn.</ThemedText>
             </View>
 
             <View className="absolute bottom-0 left-24 w-[280px] rounded-[28px] border border-[#C9DCFB] bg-[#DCEAFF] px-5 py-4">
               <ThemedText type="defaultSemiBold" className="text-slate-900">
-                Step 2: Open the email and set a new password.
+                Bước 2: Mở email và đặt mật khẩu mới.
               </ThemedText>
             </View>
           </>
         ) : (
           <View className="rounded-[24px] border border-[#C9DCFB] bg-white/85 px-4 py-4">
             <ThemedText className="text-xs font-semibold uppercase tracking-[1.6px] text-[#4A9FD8]">
-              Recover access
+              Khôi phục quyền truy cập
             </ThemedText>
-            <ThemedText className="mt-1 text-xl font-bold text-slate-900">Reset in 2 simple steps</ThemedText>
+            <ThemedText className="mt-1 text-xl font-bold text-slate-900">Đặt lại trong 2 bước đơn giản</ThemedText>
             <ThemedText className="mt-2 text-sm text-slate-600">
-              Enter email, then follow the link sent to your inbox.
+              Nhập email, sau đó làm theo liên kết được gửi đến hộp thư của bạn.
             </ThemedText>
           </View>
         )}
@@ -96,7 +96,7 @@ export default function ForgotPasswordScreen() {
       const response = await requestPasswordReset(payload);
       setSuccessMessage(response.message);
     } catch (error: unknown) {
-      setErrorMessage(error instanceof Error ? error.message : 'Unable to send reset link right now');
+      setErrorMessage(error instanceof Error ? error.message : 'Không thể gửi liên kết đặt lại vào lúc này');
     } finally {
       setIsSubmitting(false);
     }
@@ -116,12 +116,12 @@ export default function ForgotPasswordScreen() {
 
           <ThemedView
             className={`w-full rounded-[32px] border border-slate-200 bg-white shadow-sm shadow-slate-200 ${isLargeScreen ? 'min-h-[736px] max-w-[420px] px-8 py-9' : 'p-5'}`}>
-            <ThemedText type="eyebrow">Forgot password</ThemedText>
+            <ThemedText type="eyebrow">Quên mật khẩu</ThemedText>
             <ThemedText className={`font-bold text-slate-900 ${isLargeScreen ? 'mt-3 text-[30px] leading-9' : 'mt-2 text-[28px] leading-8'}`}>
-              Find your account
+              Tìm tài khoản của bạn
             </ThemedText>
             <ThemedText className={`text-slate-600 ${isLargeScreen ? 'mt-3' : 'mt-2 text-sm leading-6'}`}>
-              Enter your email address and we will send you a link to reset your password.
+              Nhập địa chỉ email và chúng tôi sẽ gửi liên kết đặt lại mật khẩu cho bạn.
             </ThemedText>
 
             <View className={`gap-4 ${isLargeScreen ? 'mt-6' : 'mt-5'}`}>
@@ -135,7 +135,7 @@ export default function ForgotPasswordScreen() {
                     setErrorMessage(null);
                   }
                 }}
-                placeholder="Email address"
+                placeholder="Địa chỉ email"
                 placeholderTextColor="#64748B"
                 value={email}
               />
@@ -146,7 +146,7 @@ export default function ForgotPasswordScreen() {
               disabled={isSubmitting}
               onPress={handleSubmit}>
               <ThemedText className="text-center text-base font-semibold text-white">
-                {isSubmitting ? 'Sending link...' : 'Send reset link'}
+                {isSubmitting ? 'Đang gửi liên kết...' : 'Gửi liên kết đặt lại'}
               </ThemedText>
             </Pressable>
 
@@ -163,7 +163,7 @@ export default function ForgotPasswordScreen() {
 
             <Link asChild href="/login">
               <Pressable className="mt-4 self-center px-3 py-2">
-                <ThemedText className="text-sm font-semibold text-[#4A9FD8]">Back to login</ThemedText>
+                <ThemedText className="text-sm font-semibold text-[#4A9FD8]">Quay lại đăng nhập</ThemedText>
               </Pressable>
             </Link>
           </ThemedView>

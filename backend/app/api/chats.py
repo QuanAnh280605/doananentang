@@ -31,6 +31,7 @@ from app.crud.chat import (
 )
 from app.crud.user import get_user_by_id
 from app.models.group_member import ChatMember
+from app.models.message import Message
 from app.models.message_media import MessageMedia
 from app.models.message_read import MessageStatus
 from app.models.db_enums import MessageStatusType
@@ -38,6 +39,7 @@ from app.models.user import User
 from app.realtime import socket_server
 from app.schemas.chat import (
   MESSAGE_CREATED_EVENT,
+  MESSAGE_DELETED_EVENT,
   ChatListItemRead,
   ChatReadStatusRead,
   CreateDirectChatRequest,
@@ -73,9 +75,23 @@ def _get_sender_name(db: Session, sender_id: int) -> str | None:
 
 def _build_message_read(db: Session, message, sender_name: str | None = None) -> MessageRead:
   """Xây dựng MessageRead kèm media_url, media_type và sender_name."""
-  media = _get_message_media(db, message.id)
   if sender_name is None:
     sender_name = _get_sender_name(db, message.sender_id)
+
+  if getattr(message, 'is_deleted', False):
+    return MessageRead(
+      id=message.id,
+      chat_id=message.chat_id,
+      sender_id=message.sender_id,
+      sender_name=sender_name,
+      content=None,
+      media_url=None,
+      media_type=None,
+      is_deleted=True,
+      created_at=message.created_at,
+    )
+
+  media = _get_message_media(db, message.id)
   return MessageRead(
     id=message.id,
     chat_id=message.chat_id,
@@ -84,6 +100,7 @@ def _build_message_read(db: Session, message, sender_name: str | None = None) ->
     content=message.content,
     media_url=media.file_url if media else None,
     media_type=media.type.value if media else None,
+    is_deleted=False,
     created_at=message.created_at,
   )
 
@@ -91,6 +108,11 @@ def _build_message_read(db: Session, message, sender_name: str | None = None) ->
 async def _emit_message_created_to_user_rooms(payload: dict[str, object], user_ids: list[int]) -> None:
   for user_id in user_ids:
     await socket_server.sio.emit(MESSAGE_CREATED_EVENT, payload, room=socket_server.get_user_room_name(user_id))
+
+
+async def _emit_message_deleted_to_user_rooms(payload: dict[str, object], user_ids: list[int]) -> None:
+  for user_id in user_ids:
+    await socket_server.sio.emit(MESSAGE_DELETED_EVENT, payload, room=socket_server.get_user_room_name(user_id))
 
 @router.get('', response_model=PaginatedChatsResponse)
 def list_chats_endpoint(
@@ -451,5 +473,48 @@ def upload_group_avatar_endpoint(
     member_count=len(member_ids),
     created_at=chat.created_at,
   )
+
+
+@router.delete('/{chat_id}/messages/{message_id}', status_code=status.HTTP_200_OK)
+def delete_chat_message_endpoint(
+  chat_id: int,
+  message_id: int,
+  current_user: User = Depends(get_current_user),
+  db: Session = Depends(get_db),
+):
+  """Thu hồi (xóa) một tin nhắn trong cuộc trò chuyện."""
+  chat = get_chat_by_id(db, chat_id)
+  if chat is None:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Chat not found')
+
+  if not is_chat_member(db, chat_id, current_user.id):
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You are not a member of this chat')
+
+  message = db.get(Message, message_id)
+  if message is None or message.chat_id != chat_id:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Message not found')
+
+  if message.sender_id != current_user.id:
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='You can only delete your own messages')
+
+  if message.is_deleted:
+    return {'status': 'success', 'message': 'Tin nhắn đã được xóa trước đó'}
+
+  message.is_deleted = True
+  db.commit()
+
+  # Phát sự kiện realtime qua Socket.IO
+  member_ids = get_chat_member_user_ids(db, chat_id)
+  try:
+    payload = {
+      'chat_id': chat_id,
+      'message_id': message_id,
+    }
+    from_thread.run(_emit_message_deleted_to_user_rooms, payload, member_ids)
+  except Exception:
+    logger.exception('Failed to emit message-deleted event', extra={'chat_id': chat_id, 'message_id': message_id})
+
+  return {'status': 'success', 'message': 'Đã xóa tin nhắn thành công'}
+
 
 

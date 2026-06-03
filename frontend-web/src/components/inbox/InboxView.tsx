@@ -40,6 +40,7 @@ import {
   sendMessage,
   sendMessageWithMedia,
   hasUnreadMessages,
+  deleteChatMessage,
 } from '@/lib/chat';
 import type { ChatMessage, ChatMessageResponse, DirectChat, InboxThreadData } from '@/lib/chat.types';
 import { ROUTES } from '@/lib/routes';
@@ -384,8 +385,38 @@ export function InboxView() {
 
     socket.on('message-created', handleMessageCreated);
 
+    const handleMessageDeleted = (payload: { chat_id: number; message_id: number }) => {
+      const deletedMessageId = String(payload.message_id);
+      const chatIdStr = String(payload.chat_id);
+
+      if (selectedChatIdRef.current === chatIdStr) {
+        setMessages((currentMessages) =>
+          currentMessages.map((msg) =>
+            msg.id === deletedMessageId
+              ? { ...msg, isDeleted: true, body: '', mediaUrl: null, mediaType: null }
+              : msg
+          )
+        );
+      }
+
+      setThreads((currentThreads) =>
+        currentThreads.map((thread) => {
+          if (thread.chatId === chatIdStr) {
+            return {
+              ...thread,
+              preview: 'Tin nhắn đã bị thu hồi',
+            };
+          }
+          return thread;
+        })
+      );
+    };
+
+    socket.on('message-deleted', handleMessageDeleted);
+
     return () => {
       socket.off('message-created', handleMessageCreated);
+      socket.off('message-deleted', handleMessageDeleted);
     };
   }, [clearThreadUnread, refreshThreads, scrollToBottomIfNeeded, setHasNewMessage]);
 
@@ -880,6 +911,19 @@ export function InboxView() {
     }
   };
 
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!selectedChat) return;
+
+    const confirmed = window.confirm('Bạn có chắc chắn muốn thu hồi tin nhắn này?');
+    if (!confirmed) return;
+
+    try {
+      await deleteChatMessage(selectedChat.id, messageId);
+    } catch (error: unknown) {
+      alert(error instanceof Error ? error.message : 'Thu hồi tin nhắn thất bại.');
+    }
+  };
+
   const renderThreadButton = (item: InboxThreadData) => {
     const isGroup = isGroupChatThread(item);
 
@@ -1185,6 +1229,7 @@ export function InboxView() {
                             recipientAvatarUrl={selectedConversation?.user?.avatar_url ?? selectedChat?.avatarUrl ?? null}
                             recipientName={selectedConversation?.user?.full_name ?? selectedChat?.groupName ?? ''}
                             isGroup={selectedChat?.isGroup ?? false}
+                            onDelete={handleDeleteMessage}
                           />
                         );
                       });

@@ -6,6 +6,7 @@ from app.schemas.user import UserSearchRead
 
 
 MESSAGE_CREATED_EVENT = 'message-created'
+MESSAGE_DELETED_EVENT = 'message-deleted'
 
 
 class CreateDirectChatRequest(BaseModel):
@@ -26,6 +27,7 @@ class MessageRead(BaseModel):
   media_url: str | None = None
   media_type: str | None = None
   is_read: bool = False
+  is_deleted: bool = False
   created_at: datetime
 
   model_config = ConfigDict(from_attributes=True)
