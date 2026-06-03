@@ -1,5 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as ImagePicker from 'expo-image-picker';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -53,6 +54,40 @@ type ActionItem = {
   onPress?: () => void;
 };
 
+function PostVideoCard({ url, style, className }: { url: string; style: any; className?: string }) {
+  const player = useVideoPlayer(url, (p) => {
+    p.loop = false;
+  });
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const togglePlay = () => {
+    if (isPlaying) {
+      player.pause();
+    } else {
+      player.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  return (
+    <Pressable onPress={togglePlay} className={className} style={[style, { overflow: 'hidden' }]}>
+      <VideoView
+        player={player}
+        style={{ width: '100%', height: '100%' }}
+        contentFit="cover"
+        nativeControls={false}
+      />
+      {!isPlaying && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.1)' }}>
+          <View style={{ height: 44, width: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }}>
+            <MaterialIcons name="play-arrow" size={28} color="white" />
+          </View>
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
 // ─── Component ───────────────────────────────────────────────
 
 export function ComposerCard({
@@ -64,7 +99,7 @@ export function ComposerCard({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [text, setText] = useState('');
-  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [selectedMedia, setSelectedMedia] = useState<{ uri: string; type: 'image' | 'video'; mimeType?: string }[]>([]);
   const [isPosting, setIsPosting] = useState(false);
   const [visibility, setVisibility] = useState<VisibilityLevel>('public');
   const [showVisibilityPicker, setShowVisibilityPicker] = useState(false);
@@ -79,7 +114,7 @@ export function ComposerCard({
 
   const currentVisibility = getVisibilityOption(visibility);
 
-  const canPost = text.trim().length > 0 || selectedImages.length > 0;
+  const canPost = text.trim().length > 0 || selectedMedia.length > 0;
 
   const initials = currentUser
     ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase()
@@ -88,19 +123,23 @@ export function ComposerCard({
   // ── handlers ──
 
   const handlePickPhoto = async () => {
-    if (selectedImages.length >= 4) {
-      alert('Bạn chỉ được chọn tối đa 4 ảnh.');
+    if (selectedMedia.length >= 4) {
+      alert('Bạn chỉ được chọn tối đa 4 file.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.All,
       allowsMultipleSelection: true,
-      selectionLimit: 4 - selectedImages.length,
+      selectionLimit: 4 - selectedMedia.length,
       quality: 0.8,
     });
     if (!result.canceled) {
-      const newUris = result.assets.map((a: any) => a.uri);
-      setSelectedImages((prev) => [...prev, ...newUris].slice(0, 4));
+      const newAssets = result.assets.map((a: any) => ({
+        uri: a.uri,
+        type: a.type === 'video' ? 'video' : 'image',
+        mimeType: a.mimeType || (a.type === 'video' ? 'video/mp4' : 'image/jpeg')
+      }));
+      setSelectedMedia((prev) => [...prev, ...newAssets].slice(0, 4));
     }
   };
 
@@ -111,7 +150,7 @@ export function ComposerCard({
     }
     setIsOpen(false);
     setText('');
-    setSelectedImages([]);
+    setSelectedMedia([]);
     setVisibility('public');
     setFeeling(null);
     setTaggedUserIds([]);
@@ -123,8 +162,8 @@ export function ComposerCard({
     setIsPosting(true);
     try {
       let mediaUrls: string[] = [];
-      if (selectedImages.length > 0) {
-        const uploadRes = await uploadPostMedia(selectedImages);
+      if (selectedMedia.length > 0) {
+        const uploadRes = await uploadPostMedia(selectedMedia);
         mediaUrls = uploadRes.data;
       }
       await createPost(
@@ -140,7 +179,7 @@ export function ComposerCard({
       );
       setIsOpen(false);
       setText('');
-      setSelectedImages([]);
+      setSelectedMedia([]);
       setVisibility('public');
       setFeeling(null);
       setTaggedUserIds([]);
@@ -364,10 +403,10 @@ export function ComposerCard({
                 }}
               />
 
-              {/* Image previews */}
-              {selectedImages.length > 0 && (
+              {/* Media previews */}
+              {selectedMedia.length > 0 && (
                 <View style={{ marginTop: 16, gap: 8 }}>
-                  {selectedImages.map((uri, index) => (
+                  {selectedMedia.map((media, index) => (
                     <View
                       key={index}
                       style={{
@@ -376,18 +415,26 @@ export function ComposerCard({
                         overflow: 'hidden',
                         borderWidth: 1,
                         borderColor: '#E4E8EE',
-                        ...(selectedImages.length > 1
+                        ...(selectedMedia.length > 1
                           ? { aspectRatio: 1 }
                           : { height: 280 }),
                       }}
                     >
-                      <Image
-                        source={{ uri }}
-                        style={{ width: '100%', height: '100%' }}
-                        resizeMode="cover"
-                      />
+                      {media.type === 'video' ? (
+                        <PostVideoCard
+                          url={media.uri}
+                          className="w-full h-full"
+                          style={{ width: '100%', height: '100%' }}
+                        />
+                      ) : (
+                        <Image
+                          source={{ uri: media.uri }}
+                          style={{ width: '100%', height: '100%' }}
+                          resizeMode="cover"
+                        />
+                      )}
                       <Pressable
-                        onPress={() => setSelectedImages((prev) => prev.filter((_, i) => i !== index))}
+                        onPress={() => setSelectedMedia((prev) => prev.filter((_, i) => i !== index))}
                         style={{
                           position: 'absolute',
                           top: 10,
@@ -398,6 +445,7 @@ export function ComposerCard({
                           backgroundColor: 'rgba(0,0,0,0.5)',
                           alignItems: 'center',
                           justifyContent: 'center',
+                          zIndex: 20,
                         }}
                       >
                         <MaterialIcons name="close" size={18} color="#FFFFFF" />

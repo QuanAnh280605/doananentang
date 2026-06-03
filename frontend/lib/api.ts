@@ -559,24 +559,41 @@ export function deletePost(postId: string): Promise<void> {
   return apiFetch<void>(`/api/posts/${postId}`, { method: 'DELETE' });
 }
 
-export async function uploadPostMedia(uris: string[]): Promise<{ data: string[] }> {
+export async function uploadPostMedia(
+  items: (string | { uri: string; type?: string; mimeType?: string })[]
+): Promise<{ data: string[] }> {
   const formData = new FormData();
 
-  for (const uri of uris) {
+  for (const item of items) {
+    const isObject = typeof item !== 'string';
+    const uri = isObject ? item.uri : item;
+
     let filename = uri.split('/').pop() || 'media.bin';
     // Remove query params or fragments if any
     filename = filename.split('?')[0].split('#')[0];
 
-    let mimeType = 'application/octet-stream';
+    let mimeType = isObject && item.mimeType ? item.mimeType : 'application/octet-stream';
     const match = /\.(\w+)$/.exec(filename);
-    if (match) {
-      const ext = match[1].toLowerCase();
-      if (ext === 'jpg' || ext === 'jpeg') mimeType = 'image/jpeg';
-      else if (ext === 'png') mimeType = 'image/png';
-      else if (ext === 'gif') mimeType = 'image/gif';
-      else if (ext === 'mp4') mimeType = 'video/mp4';
-      else if (ext === 'mov') mimeType = 'video/quicktime';
-      else mimeType = `image/${ext}`;
+
+    if (mimeType === 'application/octet-stream' || !mimeType) {
+      if (match) {
+        const ext = match[1].toLowerCase();
+        if (ext === 'jpg' || ext === 'jpeg') mimeType = 'image/jpeg';
+        else if (ext === 'png') mimeType = 'image/png';
+        else if (ext === 'gif') mimeType = 'image/gif';
+        else if (ext === 'webp') mimeType = 'image/webp';
+        else if (ext === 'mp4') mimeType = 'video/mp4';
+        else if (ext === 'mov' || ext === 'qt') mimeType = 'video/quicktime';
+        else if (ext === 'avi') mimeType = 'video/x-msvideo';
+        else if (ext === 'mkv') mimeType = 'video/x-matroska';
+        else if (ext === 'webm') mimeType = 'video/webm';
+        else if (ext === '3gp') mimeType = 'video/3gpp';
+        else if (isObject && item.type === 'video') mimeType = `video/${ext}`;
+        else mimeType = `${isObject && item.type ? item.type : 'image'}/${ext}`;
+      } else if (isObject && item.type) {
+        mimeType = item.type === 'video' ? 'video/mp4' : 'image/jpeg';
+        filename += item.type === 'video' ? '.mp4' : '.jpg';
+      }
     }
 
     if (Platform.OS === 'web') {

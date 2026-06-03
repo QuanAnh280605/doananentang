@@ -74,8 +74,19 @@ def create_post(db: Session, post_in: PostCreate, author_id: int) -> Post:
   db.add(db_post)
   db.flush()  # Lấy ID trước khi tạo media
   
+  tagged_ids = set()
   if post_in.tagged_user_ids:
-    for tagged_id in post_in.tagged_user_ids:
+    tagged_ids.update(post_in.tagged_user_ids)
+  if post_in.tagged_users:
+    for u in post_in.tagged_users:
+      if isinstance(u, dict) and 'id' in u:
+        try:
+          tagged_ids.add(int(u['id']))
+        except (ValueError, TypeError):
+          pass
+
+  if tagged_ids:
+    for tagged_id in tagged_ids:
       db_tag = PostTag(post_id=db_post.id, user_id=tagged_id)
       db.add(db_tag)
 
@@ -84,7 +95,9 @@ def create_post(db: Session, post_in: PostCreate, author_id: int) -> Post:
     for index, url in enumerate(post_in.media_urls):
       url_lower = url.lower()
       media_type = MediaType.IMAGE
-      if any(url_lower.endswith(ext) for ext in ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.3gp']):
+      # Kiểm tra các đuôi video phổ biến (bao gồm cả query params nếu có)
+      url_clean = url_lower.split('?')[0].split('#')[0]
+      if any(url_clean.endswith(ext) for ext in ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.3gp', '.3gpp', '.qt', '.m4v', '.ogg']):
         media_type = MediaType.VIDEO
 
       db_media = PostMedia(
