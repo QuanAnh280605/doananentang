@@ -276,3 +276,44 @@ def test_create_and_list_group_chat() -> None:
     assert item['is_group'] is True
     assert item['group_name'] == 'My Super Group'
     assert item['participant'] is None
+
+
+def test_delete_chat_message() -> None:
+  with build_test_session() as db:
+    current_user = seed_user(db, email='current@example.com', first_name='Current')
+    participant = seed_user(db, email='participant@example.com', first_name='Participant')
+    chat = Chat(is_group=False)
+    db.add(chat)
+    db.commit()
+    db.refresh(chat)
+    db.add_all([
+      ChatMember(chat_id=chat.id, user_id=current_user.id),
+      ChatMember(chat_id=chat.id, user_id=participant.id),
+    ])
+    db.commit()
+
+    # Tạo tin nhắn của current_user
+    message = Message(chat_id=chat.id, sender_id=current_user.id, content='Hello World')
+    db.add(message)
+    db.commit()
+    db.refresh(message)
+
+    # 1. Thử xóa bằng tài khoản khác (ở đây giả lập client là participant)
+    client_participant = build_client(db, participant)
+    response_forbidden = client_participant.delete(f'/api/chats/{chat.id}/messages/{message.id}')
+    assert response_forbidden.status_code == 403
+
+    # 2. Xóa bằng chính chủ (current_user)
+    client_owner = build_client(db, current_user)
+    response_success = client_owner.delete(f'/api/chats/{chat.id}/messages/{message.id}')
+    assert response_success.status_code == 200
+    assert response_success.json()['status'] == 'success'
+
+    # 3. Lấy lại tin nhắn để kiểm tra đã bị ẩn content và đánh dấu is_deleted
+    messages_response = client_owner.get(f'/api/chats/{chat.id}/messages')
+    assert messages_response.status_code == 200
+    messages_data = messages_response.json()['items']
+    assert len(messages_data) == 1
+    assert messages_data[0]['is_deleted'] is True
+    assert messages_data[0]['content'] is None
+

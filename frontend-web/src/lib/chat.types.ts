@@ -45,6 +45,7 @@ export type ChatMessage = {
   mediaUrl?: string | null;
   mediaType?: string | null;
   isRead?: boolean;
+  isDeleted?: boolean;
 };
 
 export type CreateDirectChatRequest = {
@@ -85,6 +86,7 @@ export type ChatMessageResponse = {
   media_url?: string | null;
   media_type?: string | null;
   is_read?: boolean;
+  is_deleted?: boolean;
   created_at: string;
 };
 

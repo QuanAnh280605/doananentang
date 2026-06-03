@@ -180,6 +180,7 @@ export type ChatMessageRead = {
   content: string | null;
   media_url: string | null;
   media_type: string | null;
+  is_deleted?: boolean;
   created_at: string;
 };
 

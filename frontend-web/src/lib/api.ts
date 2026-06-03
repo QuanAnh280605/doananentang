@@ -471,3 +471,9 @@ export function uploadChatMedia(file: File): Promise<{ url: string; media_type: 
     body: formData,
   });
 }
+
+export function deleteChatMessage(chatId: string, messageId: string): Promise<{ status: string; message: string }> {
+  return apiFetch<{ status: string; message: string }>(`/api/chats/${chatId}/messages/${messageId}`, {
+    method: 'DELETE',
+  });
+}

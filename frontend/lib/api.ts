@@ -415,6 +415,12 @@ export async function deleteChat(chatId: number): Promise<{ status: string; mess
   });
 }
 
+export async function deleteChatMessage(chatId: number, messageId: number): Promise<{ status: string; message: string }> {
+  return apiFetch<{ status: string; message: string }>(`/api/chats/${chatId}/messages/${messageId}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function leaveGroup(chatId: number): Promise<{ status: string; message: string }> {
   return apiFetch<{ status: string; message: string }>(`/api/chats/${chatId}/leave`, {
     method: 'POST',

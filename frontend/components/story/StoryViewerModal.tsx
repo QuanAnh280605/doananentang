@@ -105,28 +105,46 @@ export function StoryViewerModal({ visible, stories, initialStoryId, onClose, on
 
   const goToNext = () => {
     if (!currentStoryId) return;
-    const nextId = getNextStoryId(orderedStories, currentStoryId);
-    if (nextId === orderedStories[0]?.id && currentStoryId !== orderedStories[0]?.id) {
-      // Wrapped around to first story, meaning we reached the end
+    
+    // Nếu chỉ có 1 story duy nhất thì đóng luôn
+    if (orderedStories.length <= 1) {
       onClose();
-    } else if (nextId) {
-      setCurrentStoryId(nextId);
+      return;
+    }
+
+    const currentIndex = orderedStories.findIndex(s => s.id === currentStoryId);
+    if (currentIndex === orderedStories.length - 1) {
+      // Đã chạy tới story cuối cùng của danh sách phẳng, đóng trình xem tin
+      onClose();
     } else {
-      onClose();
+      // Chuyển sang story tiếp theo
+      const nextStory = orderedStories[currentIndex + 1];
+      if (nextStory) {
+        setCurrentStoryId(nextStory.id);
+      } else {
+        onClose();
+      }
     }
   };
 
   const goToPrevious = () => {
     if (!currentStoryId) return;
-    const prevId = getPreviousStoryId(orderedStories, currentStoryId);
-    
-    // If it's the very first story being viewed, just restart it or close
     const currentIndex = orderedStories.findIndex(s => s.id === currentStoryId);
     if (currentIndex === 0) {
       progressAnim.setValue(0);
-      // Let it restart
-    } else if (prevId) {
-      setCurrentStoryId(prevId);
+      // Cho chạy timing lại từ đầu
+      Animated.timing(progressAnim, {
+        toValue: 1,
+        duration: STORY_DURATION,
+        useNativeDriver: false,
+      }).start(({ finished }) => {
+        if (finished) goToNext();
+      });
+    } else {
+      const prevStory = orderedStories[currentIndex - 1];
+      if (prevStory) {
+        setCurrentStoryId(prevStory.id);
+      }
     }
   };
 
@@ -157,21 +175,35 @@ export function StoryViewerModal({ visible, stories, initialStoryId, onClose, on
   return (
     <Modal visible={visible} animationType="fade" transparent={true} onRequestClose={onClose}>
       <View style={styles.container}>
-        {/* Background media */}
-        {currentStory.type === 'video' ? (
-          <VideoView
-            player={videoPlayer}
-            style={StyleSheet.absoluteFill}
-            contentFit="contain"
-            nativeControls={false}
-          />
-        ) : (
+        {/* Nền mờ phía sau (blurred background) từ chính ảnh/video để lấp đầy khoảng trống */}
+        <View style={StyleSheet.absoluteFill}>
           <Image
             source={{ uri: currentStory.mediaUrl }}
             style={StyleSheet.absoluteFillObject}
-            contentFit="contain"
+            contentFit="cover"
+            blurRadius={50}
           />
-        )}
+          {/* Lớp phủ tối để làm nổi bật ảnh/video chính ở trên */}
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0, 0, 0, 0.65)' }]} />
+        </View>
+
+        {/* Khung nội dung chính căn giữa */}
+        <View style={styles.mediaWrapper}>
+          {currentStory.type === 'video' ? (
+            <VideoView
+              player={videoPlayer}
+              style={styles.media}
+              contentFit="contain"
+              nativeControls={false}
+            />
+          ) : (
+            <Image
+              source={{ uri: currentStory.mediaUrl }}
+              style={styles.media}
+              contentFit="contain"
+            />
+          )}
+        </View>
         
         {/* Overlay gradient top */}
         <View style={styles.gradientTop} />
@@ -253,6 +285,8 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+    zIndex: 10,
+    elevation: 10,
   },
   gradientTop: {
     position: 'absolute',
@@ -347,4 +381,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     textShadow: '-1px 1px 10px rgba(0, 0, 0, 0.75)',
   } as any,
+  mediaWrapper: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  media: {
+    width: '100%',
+    height: '100%',
+  },
 });

@@ -35,6 +35,7 @@ import {
   deleteChat,
   leaveGroup,
   uploadGroupAvatar,
+  deleteChatMessage,
   API_URL,
 } from '@/lib/api';
 import { fetchCurrentUser, searchUsers, type AuthUser, type SearchUser } from '@/lib/auth';
@@ -312,8 +313,42 @@ export default function InboxScreen() {
 
     socket.on('message-created', handleMessageCreated);
 
+    const handleMessageDeleted = (payload: any) => {
+      const chatId = payload.chat_id;
+      const messageId = payload.message_id;
+      const currentActiveChatId = activeChatIdRef.current;
+
+      if (currentActiveChatId !== null && Number(chatId) === Number(currentActiveChatId)) {
+        setMessages((prevMsgs) =>
+          prevMsgs.map((m) =>
+            Number(m.id) === Number(messageId)
+              ? { ...m, is_deleted: true, content: 'Tin nhắn đã bị thu hồi', media_url: null, media_type: null }
+              : m
+          )
+        );
+      }
+
+      setChats((prevChats) =>
+        prevChats.map((c) => {
+          if (Number(c.chat_id) === Number(chatId)) {
+            const updatedMsg = c.latest_message && Number(c.latest_message.id) === Number(messageId)
+              ? { ...c.latest_message, is_deleted: true, content: 'Tin nhắn đã bị thu hồi', media_url: null, media_type: null }
+              : c.latest_message;
+            return {
+              ...c,
+              latest_message: updatedMsg,
+            };
+          }
+          return c;
+        })
+      );
+    };
+
+    socket.on('message-deleted', handleMessageDeleted);
+
     return () => {
       socket.off('message-created', handleMessageCreated);
+      socket.off('message-deleted', handleMessageDeleted);
     };
   }, []);
 
@@ -515,6 +550,32 @@ export default function InboxScreen() {
     );
   };
 
+  const handleDeleteMessage = (messageId: number) => {
+    if (activeChatId === null) return;
+
+    Alert.alert(
+      'Thu hồi tin nhắn',
+      'Bạn có chắc chắn muốn thu hồi tin nhắn này?',
+      [
+        {
+          text: 'Hủy',
+          style: 'cancel',
+        },
+        {
+          text: 'Thu hồi',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteChatMessage(activeChatId, messageId);
+            } catch (err: any) {
+              toast.error('Thu hồi tin nhắn thất bại: ' + err.message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   // Handle Send Text Message & Multiple Selected Media
   const handleSendMessage = async () => {
     if (activeChatId === null || isSending) return;
@@ -685,6 +746,7 @@ export default function InboxScreen() {
       senderName: msg.sender_name,
       mediaUrl: msg.media_url,
       mediaType: msg.media_type,
+      is_deleted: msg.is_deleted,
     };
   });
 
@@ -879,7 +941,12 @@ export default function InboxScreen() {
               scrollEventThrottle={16}
               showsVerticalScrollIndicator={false}>
               {mappedMessages.map((item) => (
-                <MessageBubble key={item.id} item={item} isGroup={isGroup} />
+                <MessageBubble 
+                  key={item.id} 
+                  item={item} 
+                  isGroup={isGroup} 
+                  onDelete={() => handleDeleteMessage(Number(item.id))}
+                />
               ))}
             </ScrollView>
           )}

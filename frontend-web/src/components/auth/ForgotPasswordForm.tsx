@@ -18,23 +18,23 @@ function PromoPanel() {
           </ThemedText>
         </div>
         <ThemedText as="p" className="mt-6 text-sm font-semibold uppercase tracking-[2px] text-[#4A9FD8]">
-          Account support
+          Hỗ trợ tài khoản
         </ThemedText>
         <ThemedText as="h2" className="mt-4 text-[26px] font-bold leading-8 text-slate-900 md:text-5xl md:leading-[56px]">
-          Recover your account quickly and securely.
+          Khôi phục tài khoản nhanh chóng và bảo mật.
         </ThemedText>
         <ThemedText as="p" className="mt-3 max-w-[460px] text-sm leading-6 text-slate-600 md:text-lg md:leading-8">
-          Enter your email to receive a reset link and create a new password in a few steps.
+          Nhập email của bạn để nhận liên kết đặt lại và tạo mật khẩu mới chỉ trong vài bước.
         </ThemedText>
       </div>
 
       <div className="relative z-10 mt-5 gap-3 md:mt-16 md:h-[280px]">
         <div className="rounded-[24px] border border-[#C9DCFB] bg-white/85 px-4 py-4 md:hidden">
           <ThemedText as="p" className="text-xs font-semibold uppercase tracking-[1.6px] text-[#4A9FD8]">
-            Recover access
+            Khôi phục quyền truy cập
           </ThemedText>
           <ThemedText as="p" className="mt-1 text-xl font-bold text-slate-900">
-            Reset in 2 simple steps
+            Đặt lại trong 2 bước đơn giản
           </ThemedText>
           <ThemedText as="p" className="mt-2 text-sm text-slate-600">
             Nhập email, sau đó làm theo liên kết được gửi đến hộp thư của bạn.
@@ -54,10 +54,10 @@ function PromoPanel() {
               Bước 1
             </ThemedText>
             <ThemedText as="p" className="mt-3 text-2xl font-bold text-white">
-              Enter email
+              Nhập email
             </ThemedText>
             <ThemedText as="p" className="mt-2 text-slate-300">
-              We will send a secure reset link to your inbox.
+              Chúng tôi sẽ gửi liên kết đặt lại an toàn tới hộp thư của bạn.
             </ThemedText>
           </div>
 
@@ -87,7 +87,7 @@ export function ForgotPasswordForm() {
       const response = await requestPasswordReset(payload);
       setSuccessMessage(response.message);
     } catch (error: unknown) {
-      setErrorMessage(error instanceof Error ? error.message : 'Unable to send reset link right now');
+      setErrorMessage(error instanceof Error ? error.message : 'Không thể gửi liên kết đặt lại vào lúc này');
     } finally {
       setIsSubmitting(false);
     }
@@ -127,7 +127,7 @@ export function ForgotPasswordForm() {
             onClick={handleSubmit}
             type="button"
           >
-            {isSubmitting ? 'Sending link...' : 'Send reset link'}
+            {isSubmitting ? 'Đang gửi liên kết...' : 'Gửi liên kết đặt lại'}
           </button>
 
           {errorMessage ? (
@@ -148,7 +148,7 @@ export function ForgotPasswordForm() {
 
           <div className="mt-4 text-center">
             <Link className="text-sm font-semibold text-[#4A9FD8]" href={ROUTES.login}>
-              Back to login
+              Quay lại đăng nhập
             </Link>
           </div>
         </section>

@@ -83,6 +83,7 @@ function mapChatMessageResponse(message: ChatMessageResponse, participantUserId:
     mediaUrl: message.media_url ?? null,
     mediaType: message.media_type ?? null,
     isRead: message.is_read ?? false,
+    isDeleted: message.is_deleted ?? false,
   };
 }
 
@@ -454,3 +455,6 @@ export async function hasUnreadMessages(): Promise<boolean> {
   const { hasUnreadMessages } = await import('./api');
   return hasUnreadMessages();
 }
+
+export { deleteChatMessage } from './api';
+
