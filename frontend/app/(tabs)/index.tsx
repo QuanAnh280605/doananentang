@@ -20,6 +20,7 @@ import type { FollowUser } from '@/lib/api';
 import { fetchCurrentUser } from '@/lib/auth';
 import type { AuthUser } from '@/lib/auth';
 import type { Post, ChatListItemRead } from '@/lib/types';
+import { getAccessToken } from '@/lib/session';
 
 
 type Contact = {
@@ -268,11 +269,18 @@ export default function HomeScreen() {
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!getAccessToken()) {
+      setLoading(false);
+      return;
+    }
     fetchCurrentUser().then(setCurrentUser).catch(() => { });
     loadStories();
   }, []);
 
   const loadStories = async () => {
+    if (!getAccessToken()) {
+      return;
+    }
     try {
       const apiStories = await fetchStories();
       const mappedStories = apiStories.map(s => mapApiStoryToStoryItem(s as any));
@@ -283,6 +291,10 @@ export default function HomeScreen() {
   };
 
   const loadPosts = useCallback(async (pageNum = 1, shouldAppend = false) => {
+    if (!getAccessToken()) {
+      setLoading(false);
+      return;
+    }
     if (pageNum === 1) {
       setLoading(true);
     } else {
@@ -338,6 +350,10 @@ export default function HomeScreen() {
   }, [loadPosts]);
 
   const handleRefresh = async () => {
+    if (!getAccessToken()) {
+      setRefreshing(false);
+      return;
+    }
     setRefreshing(true);
     setError(null);
     try {

@@ -1,7 +1,8 @@
-import { Aperture, EnvelopeSimple, Bell } from 'phosphor-react-native';
-import { Pressable, View } from 'react-native';
+import { Aperture, EnvelopeSimple, Bell, User, SignOut } from 'phosphor-react-native';
+import { Pressable, View, Modal, TouchableWithoutFeedback, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import React, { useState, useEffect } from 'react';
 
 import { useGlobalSearch } from '@/components/search/GlobalSearchProvider';
 import { ThemedText } from '@/components/themed-text';
@@ -11,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useNotifications } from '@/hooks/useNotifications';
 import { API_URL } from '@/lib/api';
+import { logoutUser, fetchCurrentUser, type AuthUser } from '@/lib/auth';
 
 type AppTopNavProps = {
   isTablet: boolean;
@@ -71,6 +73,33 @@ export function AppTopNav({
   const isControlled = typeof onSearchChange === 'function';
   const resolvedSearchValue = isControlled ? (searchValue ?? '') : globalSearch.query;
 
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  useEffect(() => {
+    fetchCurrentUser().then(setCurrentUser).catch(() => {});
+  }, []);
+
+  const handleOpenProfile = () => {
+    setIsMenuOpen(false);
+    router.push('/profile');
+  };
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      await logoutUser();
+      setIsMenuOpen(false);
+      router.replace('/(auth)/login');
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
   const handleSearchChange = (value: string) => {
     if (isControlled) {
       onSearchChange(value);
@@ -104,15 +133,17 @@ export function AppTopNav({
       {isTablet ? (
         <View className="flex-row items-center justify-between gap-4">
           <View className="flex-1 flex-row items-center gap-4">
-            <View className="flex-row items-center gap-3">
-              <View className="h-12 w-12 items-center justify-center rounded-full bg-[#4A9FD8]">
-                <Aperture color="#FFFFFF" size={22} weight="bold" />
+            <Pressable onPress={() => setIsMenuOpen(true)} className="active:opacity-75">
+              <View className="flex-row items-center gap-3">
+                <View className="h-12 w-12 items-center justify-center rounded-full bg-[#4A9FD8]">
+                  <Aperture color="#FFFFFF" size={22} weight="bold" />
+                </View>
+                <View>
+                  <ThemedText className="text-[26px] font-semibold tracking-[-0.5px] text-slate-950">Northfeed</ThemedText>
+                  <ThemedText className="text-sm text-slate-500">studio</ThemedText>
+                </View>
               </View>
-              <View>
-                <ThemedText className="text-[26px] font-semibold tracking-[-0.5px] text-slate-950">Northfeed</ThemedText>
-                <ThemedText className="text-sm text-slate-500">studio</ThemedText>
-              </View>
-            </View>
+            </Pressable>
 
             {isControlled ? (
               <SearchInput
@@ -160,24 +191,26 @@ export function AppTopNav({
         /* Mobile Header */
         <View className="flex-row items-center justify-between h-12 pb-0.5">
           {/* Left Brand Logo Squircle */}
-          <View className="flex-row items-center gap-2">
-            <View
-              className="h-10 w-10 items-center justify-center bg-[#4A9FD8]"
-              style={{
-                borderRadius: 14,
-                shadowColor: '#4A9FD8',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.2,
-                shadowRadius: 4,
-                elevation: 2,
-              }}
-            >
-              <Aperture color="#FFFFFF" size={20} weight="bold" />
+          <Pressable onPress={() => setIsMenuOpen(true)} className="active:opacity-75">
+            <View className="flex-row items-center gap-2">
+              <View
+                className="h-10 w-10 items-center justify-center bg-[#4A9FD8]"
+                style={{
+                  borderRadius: 14,
+                  shadowColor: '#4A9FD8',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }}
+              >
+                <Aperture color="#FFFFFF" size={20} weight="bold" />
+              </View>
+              <ThemedText className="text-[18px] font-bold tracking-[-0.3px] text-slate-900">
+                Northfeed
+              </ThemedText>
             </View>
-            <ThemedText className="text-[18px] font-bold tracking-[-0.3px] text-slate-900">
-              Northfeed
-            </ThemedText>
-          </View>
+          </Pressable>
 
           {/* Right Action Icons & Avatar */}
           <View className="flex-row items-center gap-2">
@@ -216,6 +249,91 @@ export function AppTopNav({
           </View>
         </View>
       )}
+
+      <Modal
+        visible={isMenuOpen}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsMenuOpen(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setIsMenuOpen(false)}>
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(15, 23, 42, 0.3)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 20,
+          }}>
+            <TouchableWithoutFeedback>
+              <View 
+                className="w-full max-w-[340px] bg-white border border-[#E4E8EE] p-5"
+                style={{
+                  borderRadius: 32,
+                  shadowColor: '#0F172A',
+                  shadowOffset: { width: 0, height: 18 },
+                  shadowOpacity: 0.08,
+                  shadowRadius: 40,
+                  elevation: 10,
+                }}
+              >
+                {/* User Info Header */}
+                <View className="items-center pb-4">
+                  <View className="mb-3">
+                    <NavAvatar 
+                      initials={
+                        currentUser
+                          ? `${currentUser.first_name?.[0] || ''}${currentUser.last_name?.[0] || ''}`.toUpperCase()
+                          : avatarInitials
+                      } 
+                      avatarUrl={currentUser?.avatar_url || avatarUrl} 
+                      size="large" 
+                    />
+                  </View>
+                  <ThemedText className="text-[20px] font-bold text-slate-950 text-center">
+                    {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : 'Người dùng'}
+                  </ThemedText>
+                  <ThemedText className="text-sm text-slate-500 mt-1 text-center">
+                    {currentUser?.email || currentUser?.phone || 'Northfeed Member'}
+                  </ThemedText>
+                </View>
+
+                {/* Divider */}
+                <View className="h-[1px] bg-[#E4E8EE] w-full my-1" />
+
+                {/* Menu Options */}
+                <View className="mt-3 gap-2">
+                  <Pressable
+                    onPress={handleOpenProfile}
+                    className="flex-row items-center gap-3 rounded-[18px] px-4 py-3 bg-slate-50 active:bg-slate-100 transition-colors"
+                    style={{ minHeight: 48 }}
+                  >
+                    <User size={20} color="#475569" weight="bold" />
+                    <ThemedText className="text-base font-semibold text-slate-700">
+                      Trang cá nhân
+                    </ThemedText>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={handleLogout}
+                    disabled={isLoggingOut}
+                    className="flex-row items-center gap-3 rounded-[18px] px-4 py-3 bg-rose-50/50 active:bg-rose-50 transition-colors"
+                    style={{ minHeight: 48 }}
+                  >
+                    {isLoggingOut ? (
+                      <ActivityIndicator size="small" color="#E11D48" />
+                    ) : (
+                      <SignOut size={20} color="#E11D48" weight="bold" />
+                    )}
+                    <ThemedText className="text-base font-semibold text-rose-600">
+                      {isLoggingOut ? 'Đang đăng xuất...' : 'Đăng xuất'}
+                    </ThemedText>
+                  </Pressable>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </ThemedView>
   );
 }
