@@ -178,6 +178,7 @@ export default function InboxScreen() {
       const targetId = Number(params.openChatId);
       if (Number.isInteger(targetId)) {
         setActiveChatId(targetId);
+        loadChats();
         // Clear params to avoid loop, and activate chat view in tab bar dynamically
         router.setParams({ openChatId: undefined });
       }
@@ -820,8 +821,7 @@ export default function InboxScreen() {
     };
 
     return (
-      <ThemedView className={`flex-1 h-full min-h-[350px] bg-[#FCFDFE] px-4 pb-4 ${useViewportLayout ? 'rounded-surface border border-app-border pt-2.5' : ''}`}
-        style={!useViewportLayout ? { paddingTop: Math.max(insets.top, 0) + 10 } : undefined}>
+      <ThemedView className={`flex-1 h-full min-h-[350px] bg-[#FCFDFE] px-4 pt-2.5 pb-4 ${useViewportLayout ? 'rounded-surface border border-app-border' : ''}`}>
         {/* Header tinh gọn ở phía trên */}
         <View className="flex-row items-center gap-2 pb-2 mb-1.5 border-b border-slate-100">
           {!useViewportLayout && (

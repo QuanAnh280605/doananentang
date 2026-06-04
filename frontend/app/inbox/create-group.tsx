@@ -235,7 +235,7 @@ export default function CreateGroupScreen() {
               <>
                 <MaterialIcons color="#FFFFFF" name="group-add" size={18} />
                 <ThemedText className="text-sm font-semibold text-white">
-                  Tạo nhóm ({selectedUserIds.length} thành viên)
+                  Tạo nhóm ({selectedUserIds.length + 1} thành viên)
                 </ThemedText>
               </>
             )}
